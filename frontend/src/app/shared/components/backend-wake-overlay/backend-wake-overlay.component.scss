@@ -1,16 +1,24 @@
 .wake-overlay {
   position: fixed;
   inset: 0;
-  z-index: 15;
+  z-index: 99999;
   display: grid;
   place-items: center;
   padding: 24px;
-  background-color: rgba(255, 214, 232, 0.72);
-  backdrop-filter: blur(5px);
+}
+
+.wake-overlay-blur {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: rgba(0, 0, 0, 0.72);
+  // backdrop-filter: blur(5px);
   animation: overlay-fade 240ms ease-out both;
 }
 
 .wake-card {
+  position: relative;
+  z-index: 1;
   display: grid;
   justify-items: center;
   width: min(480px, 100%);
@@ -54,7 +62,7 @@ p {
   animation: spin 850ms linear infinite;
 }
 
-:host-context(.high-contrast-mode) .wake-overlay {
+:host-context(.high-contrast-mode) .wake-overlay-blur {
   background-color: rgba(255, 255, 255, 0.78);
 }
 

@@ -3,7 +3,7 @@ import { BackendHealthService } from './backend-health.service';
 
 export type BackendStatus = 'checking' | 'online' | 'sleeping';
 
-const RETRY_DELAY_MS = 5000;
+const RETRY_DELAY_MS = 10000;
 
 @Injectable({ providedIn: 'root' })
 export class BackendWakeService {
@@ -22,23 +22,16 @@ export class BackendWakeService {
     }
 
     this.started = true;
-    this.runInitialCheck();
+    setTimeout(() => {
+      this.runInitialCheck();
+    }, 2000);
   }
 
   private runInitialCheck(): void {
     this.checkBackend({
       onSuccess: () => this.markOnline(),
-      onFailure: () => this.scheduleSecondCheck(),
+      onFailure: () => this.markSleepingAndPoll(),
     });
-  }
-
-  private scheduleSecondCheck(): void {
-    this.retryTimer = setTimeout(() => {
-      this.checkBackend({
-        onSuccess: () => this.markOnline(),
-        onFailure: () => this.markSleepingAndPoll(),
-      });
-    }, RETRY_DELAY_MS);
   }
 
   private markSleepingAndPoll(): void {
