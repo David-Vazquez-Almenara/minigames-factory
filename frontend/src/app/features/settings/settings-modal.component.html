@@ -1,0 +1,78 @@
+<div class="settings-backdrop" (click)="close()" aria-label="Cerrar configuracion">
+  <section
+    class="settings-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="settings-title"
+    (click)="$event.stopPropagation()"
+  >
+    <button class="close-button" type="button" aria-label="Cerrar configuracion" (click)="close()">X</button>
+
+    <div class="settings-content">
+      <header>
+        <p>Opciones del juego</p>
+        <h2 id="settings-title">Configuracion</h2>
+      </header>
+
+      <section class="settings-section" aria-labelledby="general-settings-title">
+        <h3 id="general-settings-title">Configuracion general</h3>
+
+        <label class="control-row">
+          <span>Volumen de musica</span>
+          <strong>{{ config().musicVolume }}</strong>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            [value]="config().musicVolume"
+            (input)="onMusicVolumeChange($event)"
+          />
+        </label>
+
+        <label class="control-row">
+          <span>Volumen de efectos</span>
+          <strong>{{ config().effectsVolume }}</strong>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            [value]="config().effectsVolume"
+            (input)="onEffectsVolumeChange($event)"
+          />
+        </label>
+
+        <label class="select-row">
+          <span>Idioma</span>
+          <select [value]="config().language" (change)="onLanguageChange($event)">
+            <option value="es" [selected]="config().language === 'es'">Espanol</option>
+            <option value="en" [selected]="config().language === 'en'">Ingles</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="settings-section" aria-labelledby="accessibility-settings-title">
+        <h3 id="accessibility-settings-title">Accesibilidad</h3>
+
+        <label class="select-row">
+          <span>Tamano de texto</span>
+          <select [value]="config().textSize" (change)="onTextSizeChange($event)">
+            @for (textSize of textSizes; track textSize.value) {
+              <option [value]="textSize.value" [selected]="config().textSize === textSize.value">
+                {{ textSize.label }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="toggle-row">
+          <span>Modo blanco y negro</span>
+          <input
+            type="checkbox"
+            [checked]="config().highContrastMode"
+            (change)="onHighContrastChange($event)"
+          />
+        </label>
+      </section>
+    </div>
+  </section>
+</div>

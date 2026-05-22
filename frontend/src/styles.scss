@@ -1,0 +1,38 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+html {
+  font-size: 16px;
+}
+
+html.text-size-small {
+  font-size: 14px;
+}
+
+html.text-size-large {
+  font-size: 18px;
+}
+
+body {
+  font-family: "Trebuchet MS", "Comic Sans MS", Arial, sans-serif;
+  color: #17120e;
+  background-color: #ffd6e8;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+html.high-contrast-mode body {
+  color: #000;
+  background-color: #fff;
+}

@@ -1,0 +1,202 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.main-menu {
+  position: relative;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 96px 24px 48px;
+  overflow: hidden;
+  color: #17120e;
+  background-color: #ffd6e8;
+}
+
+.social-links {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  display: flex;
+  gap: 10px;
+  animation: socials-drop 420ms ease-out 1500ms both;
+}
+
+.social-button {
+  width: 48px;
+  height: 48px;
+  color: #000;
+  font-weight: 900;
+  background-color: #fff4b8;
+  border: 3px solid #000;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 0 #000;
+  }
+}
+
+.menu-panel {
+  display: grid;
+  justify-items: center;
+  width: min(680px, 100%);
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  font-weight: 900;
+  animation: logo-pop 450ms cubic-bezier(0.18, 0.88, 0.3, 1.25) 250ms both;
+}
+
+h1 {
+  max-width: 10ch;
+  margin: 0;
+  color: #000;
+  font-size: clamp(3rem, 11vw, 6.7rem);
+  line-height: 0.9;
+  text-wrap: balance;
+  animation: logo-pop 520ms cubic-bezier(0.18, 0.88, 0.3, 1.25) 320ms both;
+}
+
+.status-line {
+  min-height: 28px;
+  margin: 20px 0 28px;
+  font-weight: 900;
+  animation: logo-pop 420ms cubic-bezier(0.18, 0.88, 0.3, 1.25) 650ms both;
+
+  span {
+    text-transform: uppercase;
+  }
+
+  .online {
+    color: #126d23;
+  }
+
+  .offline {
+    color: #8f1616;
+  }
+}
+
+.menu-actions {
+  display: grid;
+  width: min(420px, 100%);
+  gap: 18px;
+}
+
+.menu-button {
+  min-height: 72px;
+  padding: 16px 22px;
+  color: #000;
+  font: inherit;
+  font-size: 1.45rem;
+  font-weight: 950;
+  background-color: #ffe27a;
+  border: 3px solid #000;
+  border-radius: 18px;
+  cursor: pointer;
+  animation-name: button-pop, gentle-bounce;
+  animation-duration: 360ms, 2200ms;
+  animation-timing-function: cubic-bezier(0.18, 0.88, 0.3, 1.25), ease-in-out;
+  animation-fill-mode: both, none;
+  animation-iteration-count: 1, infinite;
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+
+  &:hover {
+    animation-play-state: paused;
+    transform: translateY(-5px);
+    background-color: #fff0a3;
+    box-shadow: 0 5px 0 #000;
+  }
+}
+
+.button-one {
+  animation-delay: 820ms, 1280ms;
+}
+
+.button-two {
+  animation-delay: 1020ms, 1480ms;
+}
+
+.button-three {
+  animation-delay: 1220ms, 1680ms;
+}
+
+.high-contrast {
+  color: #000;
+  background-color: #fff;
+
+  .social-button,
+  .menu-button {
+    background-color: #fff;
+  }
+
+  .status-line .online,
+  .status-line .offline {
+    color: #000;
+  }
+}
+
+@keyframes logo-pop {
+  from {
+    transform: scale(0);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes button-pop {
+  from {
+    transform: scale(0) rotate(-2deg);
+  }
+
+  to {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes gentle-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes socials-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 520px) {
+  .main-menu {
+    padding-inline: 18px;
+  }
+
+  .social-links {
+    top: 16px;
+    left: 16px;
+  }
+
+  .menu-button {
+    min-height: 64px;
+    font-size: 1.18rem;
+  }
+}

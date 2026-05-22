@@ -1,0 +1,48 @@
+<main class="main-menu" [class.high-contrast]="config().highContrastMode">
+  <nav class="social-links" aria-label="Enlaces sociales">
+    <button class="social-button" type="button" (click)="openSocial(youtubeUrl)" aria-label="Abrir YouTube">
+      YT
+    </button>
+    <button class="social-button" type="button" (click)="openSocial(githubUrl)" aria-label="Abrir GitHub">
+      GH
+    </button>
+  </nav>
+
+  <section class="menu-panel" aria-labelledby="game-title">
+    <p class="eyebrow">Multijugador online</p>
+    <h1 id="game-title">Quien Soy Online</h1>
+    <p class="status-line">
+      Backend:
+      <span [class.online]="backendStatus() === 'online'" [class.offline]="backendStatus() === 'sleeping'">
+        {{ backendStatus() }}
+      </span>
+      - Socket:
+      <span [class.online]="socketConnected()" [class.offline]="!socketConnected()">
+        {{ socketConnected() ? 'conectado' : 'pendiente' }}
+      </span>
+    </p>
+
+    <div class="menu-actions" aria-label="Acciones principales">
+      <button class="menu-button button-one" type="button" (click)="createRoom()">Crear Partida</button>
+      <button class="menu-button button-two" type="button" (click)="joinRoom()">Unirse a Partida</button>
+      <button class="menu-button button-three" type="button" (click)="openSettings()">Configuracion</button>
+    </div>
+  </section>
+
+  @if (setupMode(); as mode) {
+    <app-game-setup-flow
+      [mode]="mode"
+      [initialRoomCode]="setupRoomCode()"
+      [autoJoinAfterName]="setupAutoJoin()"
+      (closed)="closeSetup()"
+    />
+  }
+
+  @if (showSettings()) {
+    <app-settings-modal (closed)="closeSettings()" />
+  }
+
+  @if (backendSleeping()) {
+    <app-backend-wake-overlay />
+  }
+</main>
