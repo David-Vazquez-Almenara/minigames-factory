@@ -4,22 +4,26 @@ import { CharacterSelectionComponent } from '../character-selection/character-se
 import { CountdownComponent } from '../countdown/countdown.component';
 import { QuestionRoundComponent } from '../question-round/question-round.component';
 import { ScoreboardComponent } from '../scoreboard/scoreboard.component';
+import { SpecialRoundComponent } from '../special-round/special-round.component';
 
 @Component({
   selector: 'app-game-screen',
-  imports: [CharacterSelectionComponent, CountdownComponent, QuestionRoundComponent, ScoreboardComponent],
+  imports: [CharacterSelectionComponent, CountdownComponent, QuestionRoundComponent, ScoreboardComponent, SpecialRoundComponent],
   templateUrl: './game-screen.component.html',
   styleUrl: './game-screen.component.scss',
 })
 export class GameScreenComponent implements OnDestroy {
   private readonly matchService = inject(MatchService);
   private hostWaitTimer?: ReturnType<typeof setInterval>;
+  private viewTransitionTimer?: ReturnType<typeof setTimeout>;
 
   readonly match = this.matchService.match;
   readonly hostPaused = this.matchService.hostPaused;
   readonly hostPauseDeadline = this.matchService.hostPauseDeadline;
   readonly countdownDone = signal(false);
   readonly hostWaitSeconds = signal(60);
+  readonly activeView = signal<'countdown' | 'character' | 'question' | 'scoreboard' | 'special' | 'questionsComplete'>('countdown');
+  readonly viewTransition = signal<'entering' | 'leaving' | 'idle'>('entering');
 
   readonly showCharacterSelection = computed(() => {
     const match = this.match();
@@ -40,6 +44,28 @@ export class GameScreenComponent implements OnDestroy {
 
   constructor() {
     effect(() => {
+      const match = this.match();
+
+      if (!match) {
+        return;
+      }
+
+      const nextView = this.getViewForMatch();
+
+      if (nextView === this.activeView()) {
+        return;
+      }
+
+      this.clearViewTransitionTimer();
+      this.viewTransition.set('leaving');
+      this.viewTransitionTimer = setTimeout(() => {
+        this.activeView.set(nextView);
+        this.viewTransition.set('entering');
+        this.viewTransitionTimer = setTimeout(() => this.viewTransition.set('idle'), 520);
+      }, 520);
+    });
+
+    effect(() => {
       const deadline = this.hostPauseDeadline();
 
       if (!deadline) {
@@ -55,6 +81,7 @@ export class GameScreenComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearHostWaitTimer();
+    this.clearViewTransitionTimer();
   }
 
   finishCountdown(): void {
@@ -72,5 +99,38 @@ export class GameScreenComponent implements OnDestroy {
 
     clearInterval(this.hostWaitTimer);
     this.hostWaitTimer = undefined;
+  }
+
+  private getViewForMatch(): 'countdown' | 'character' | 'question' | 'scoreboard' | 'special' | 'questionsComplete' {
+    if (this.match()?.phase === 'questions-complete') {
+      return 'questionsComplete';
+    }
+
+    if (this.match()?.phase === 'special-round') {
+      return 'special';
+    }
+
+    if (this.showScoreboard()) {
+      return 'scoreboard';
+    }
+
+    if (this.showQuestionRound()) {
+      return 'question';
+    }
+
+    if (!this.showCharacterSelection()) {
+      return 'countdown';
+    }
+
+    return 'character';
+  }
+
+  private clearViewTransitionTimer(): void {
+    if (!this.viewTransitionTimer) {
+      return;
+    }
+
+    clearTimeout(this.viewTransitionTimer);
+    this.viewTransitionTimer = undefined;
   }
 }

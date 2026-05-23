@@ -30,6 +30,14 @@ const PRESENCE_CHECK_MS = 6000;
 const HOST_RECONNECT_WAIT_MS = 60000;
 const COUNTDOWN_MS = 3000;
 const IMAGE_SELECTION_MS = 60000;
+const SPECIAL_QUESTION_PROBABILITY = 1;
+const CUSTOM_QUESTION_EXTRA_MS = 30000;
+const SPECIAL_ROUND_COIN_PROBABILITY = 0.5;
+const SPECIAL_QUESTION_OPTION = {
+  id: 'special-custom-question',
+  text: 'Pregunta especial: escribe tu propia pregunta',
+  special: true,
+};
 const QUESTION_OPTIONS = [
   { id: 'has-glasses', text: 'Tu personaje tiene gafas?' },
   { id: 'has-hat', text: 'Tu personaje lleva sombrero?' },
@@ -80,6 +88,32 @@ function generateRoomCode() {
   } while (gameState.rooms.has(code));
 
   return code;
+}
+
+function generateSpecialRounds(totalRounds) {
+  const maxSpecialRounds = Math.floor(totalRounds / 2);
+  const specialRounds = [];
+  let previousWasSpecial = false;
+
+  for (let roundNumber = 2; roundNumber <= totalRounds; roundNumber += 1) {
+    if (specialRounds.length >= maxSpecialRounds) {
+      break;
+    }
+
+    if (previousWasSpecial) {
+      previousWasSpecial = false;
+      continue;
+    }
+
+    if (Math.random() <= SPECIAL_ROUND_COIN_PROBABILITY) {
+      specialRounds.push(roundNumber);
+      previousWasSpecial = true;
+    } else {
+      previousWasSpecial = false;
+    }
+  }
+
+  return specialRounds;
 }
 
 function toLobby(room) {
@@ -133,6 +167,7 @@ function toMatchState(room) {
           playerId,
           questionId: question.questionId,
           question: question.question,
+          questionType: question.questionType,
         }))
       : [],
     questionOptionsByPlayer: room.match.questionBatch
@@ -142,11 +177,22 @@ function toMatchState(room) {
         }))
       : [],
     questionHistory: room.match.questionHistory || [],
+    customQuestionEditingPlayerIds: room.match.questionBatch
+      ? Array.from(room.match.questionBatch.customEditingDeadlines.keys())
+      : [],
+    customQuestionDeadlineByPlayer: room.match.questionBatch
+      ? Array.from(room.match.questionBatch.customEditingDeadlines.entries()).map(([playerId, deadline]) => ({
+          playerId,
+          deadline,
+        }))
+      : [],
     currentAnswer: getCurrentAnswerPayload(room),
     answerEndsAt: room.match.questionBatch?.answerEndsAt || null,
     answerResults: room.match.questionBatch ? Array.from(room.match.questionBatch.results.values()) : [],
     waitingQuestionBatchPlayerIds: Array.from(room.match.waitingQuestionBatchPlayerIds || []),
     scoreboard: room.match.scoreboard || null,
+    specialRounds: room.match.specialRounds || [],
+    specialRound: room.match.specialRound || null,
   };
 }
 
@@ -232,7 +278,17 @@ function buildQuestionOptionsForPlayer(room, playerId) {
     (firstQuestion, secondQuestion) =>
       (usedRoundByQuestionId.get(firstQuestion.id) || 0) - (usedRoundByQuestionId.get(secondQuestion.id) || 0),
   );
-  const selectedQuestions = [...unusedQuestions, ...usedLeastRecentQuestions].slice(0, 6);
+  let selectedQuestions = [...unusedQuestions, ...usedLeastRecentQuestions].slice(0, 6);
+
+  if (
+    (room.match?.questionBatch?.roundNumber || 1) >= 2 &&
+    Math.random() <= SPECIAL_QUESTION_PROBABILITY
+  ) {
+    selectedQuestions = [SPECIAL_QUESTION_OPTION, ...selectedQuestions.filter((question) => !question.special)].slice(
+      0,
+      6,
+    );
+  }
 
   if (selectedQuestions.length >= 6) {
     return selectedQuestions;
@@ -250,6 +306,51 @@ function buildQuestionOptionsByPlayer(room) {
     playerId: player.id,
     options: buildQuestionOptionsForPlayer(room, player.id),
   }));
+}
+
+function assignAutomaticQuestion(room, playerId) {
+  const batch = room.match?.questionBatch;
+
+  if (!batch || batch.selections.has(playerId)) {
+    return;
+  }
+
+  const normalOptions = (batch.optionsByPlayer.get(playerId) || []).filter((option) => !option.special);
+  const fallbackOptions = normalOptions.length ? normalOptions : QUESTION_OPTIONS;
+  const selectedOption = fallbackOptions[Math.floor(Math.random() * fallbackOptions.length)];
+
+  batch.customEditingDeadlines.delete(playerId);
+  batch.selections.set(playerId, {
+    questionId: selectedOption.id,
+    question: selectedOption.text,
+    questionType: 'auto-assigned',
+  });
+}
+
+function assignTimedOutQuestions(room) {
+  const batch = room.match?.questionBatch;
+
+  if (!batch) {
+    return;
+  }
+
+  const now = Date.now();
+
+  for (const player of getActiveMatchPlayers(room)) {
+    if (batch.selections.has(player.id)) {
+      continue;
+    }
+
+    const customDeadline = batch.customEditingDeadlines.get(player.id);
+
+    if (customDeadline && now < customDeadline) {
+      continue;
+    }
+
+    if ((batch.questionSelectionEndsAt && now >= batch.questionSelectionEndsAt) || customDeadline) {
+      assignAutomaticQuestion(room, player.id);
+    }
+  }
 }
 
 function getCurrentAnswerPayload(room) {
@@ -273,6 +374,7 @@ function getCurrentAnswerPayload(room) {
     ownerPlayerName: ownerPlayer.name,
     questionId: question.questionId,
     question: question.question,
+    questionType: question.questionType,
     imageUrl,
   };
 }
@@ -297,6 +399,7 @@ function emitQuestionBackup(room) {
         ownerPlayerId,
         questionId: selectedQuestion.questionId,
         selectedQuestion: selectedQuestion.question,
+        questionType: selectedQuestion.questionType,
         finalAnswer: result?.finalAnswer || null,
       };
     }),
@@ -362,7 +465,7 @@ function emitAllImagesReadyIfComplete(room) {
   startQuestionBatch(room);
 }
 
-function startQuestionBatch(room) {
+function startQuestionBatch(room, forcedRoundNumber = null) {
   if (!room.match) {
     return;
   }
@@ -374,8 +477,9 @@ function startQuestionBatch(room) {
     }
   }
 
-  const nextRoundNumber = (room.match.questionBatch?.roundNumber || 0) + 1;
+  const nextRoundNumber = forcedRoundNumber || (room.match.questionBatch?.roundNumber || 0) + 1;
   room.match.phase = 'question-selection';
+  room.match.specialRound = null;
   room.match.questionBatch = {
     roundNumber: nextRoundNumber,
     selections: new Map(),
@@ -383,10 +487,14 @@ function startQuestionBatch(room) {
     answerOrder: [],
     currentAnswerIndex: -1,
     votes: new Map(),
-    optionsByPlayer: new Map(buildQuestionOptionsByPlayer(room).map((entry) => [entry.playerId, entry.options])),
+    optionsByPlayer: new Map(),
+    customEditingDeadlines: new Map(),
     questionSelectionEndsAt: Date.now() + Number(room.settings.questionDuration || 30) * 1000,
     answerEndsAt: null,
   };
+  room.match.questionBatch.optionsByPlayer = new Map(
+    buildQuestionOptionsByPlayer(room).map((entry) => [entry.playerId, entry.options]),
+  );
 
   emitQuestionState(room);
 }
@@ -398,6 +506,7 @@ function startAnswerPhase(room) {
     return;
   }
 
+  assignTimedOutQuestions(room);
   const activePlayerIds = getActiveMatchPlayers(room).map((player) => player.id);
   batch.answerOrder = activePlayerIds.filter((playerId) => batch.selections.has(playerId));
   batch.currentAnswerIndex = 0;
@@ -451,6 +560,39 @@ function startScoreboardPhase(room) {
   emitQuestionState(room);
 }
 
+function finishQuestionsPhase(room) {
+  if (!room.match) {
+    return;
+  }
+
+  room.match.phase = 'questions-complete';
+  io.to(room.code).emit('match:questions-complete', {
+    lobbyId: room.code,
+    roundNumber: room.match.questionBatch?.roundNumber || 0,
+  });
+  emitQuestionState(room);
+}
+
+function startSpecialRound(room, roundNumber) {
+  if (!room.match) {
+    return;
+  }
+
+  room.match.phase = 'special-round';
+  room.match.specialRound = {
+    roundNumber,
+    minigameId: 'placeholder-minigame',
+    title: 'Minijuego',
+    description:
+      'Ronda especial de prueba. En el futuro aqui se cargara un minijuego sincronizado para todos los jugadores.',
+  };
+  io.to(room.code).emit('match:special-round-started', {
+    lobbyId: room.code,
+    specialRound: room.match.specialRound,
+  });
+  emitQuestionState(room);
+}
+
 function finalizeCurrentAnswer(room) {
   const batch = room.match?.questionBatch;
   const currentAnswer = getCurrentAnswerPayload(room);
@@ -475,6 +617,7 @@ function finalizeCurrentAnswer(room) {
     ownerPlayerId: currentAnswer.ownerPlayerId,
     questionId: currentAnswer.questionId,
     selectedQuestion: currentAnswer.question,
+    questionType: currentAnswer.questionType,
     finalAnswer,
   };
 
@@ -487,6 +630,7 @@ function finalizeCurrentAnswer(room) {
     ownerPlayerId: currentAnswer.ownerPlayerId,
     questionId: currentAnswer.questionId,
     question: currentAnswer.question,
+    questionType: currentAnswer.questionType,
     answer: finalAnswer,
     roundNumber: batch.roundNumber,
   });
@@ -1004,6 +1148,13 @@ io.on('connection', (socket) => {
       return;
     }
 
+    const totalRounds = Number(room.settings.rounds || 5);
+    const specialRounds = generateSpecialRounds(totalRounds);
+    room.settings = {
+      ...room.settings,
+      specialRounds,
+    };
+
     room.match = {
       phase: 'countdown',
       assignments: buildAssignments(room),
@@ -1019,6 +1170,8 @@ io.on('connection', (socket) => {
       characterImages: new Map(),
       questionHistory: [],
       scoreboard: null,
+      specialRounds,
+      specialRound: null,
       questionBatch: null,
       lastVerificationFailedPlayerIds: new Set(),
     };
@@ -1176,6 +1329,7 @@ io.on('connection', (socket) => {
     const playerId = String(payload.playerId || '').trim();
     const questionId = String(payload.questionId || '').trim();
     const questionText = String(payload.question || '').trim();
+    const customQuestion = String(payload.customQuestion || '').trim();
     const room = gameState.rooms.get(code);
     const player = room?.players.get(playerId);
     const batch = room?.match?.questionBatch;
@@ -1185,7 +1339,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const question = questionId ? getQuestionById(questionId) : getQuestionByText(questionText);
+    const question =
+      questionId === SPECIAL_QUESTION_OPTION.id ? SPECIAL_QUESTION_OPTION : questionId ? getQuestionById(questionId) : getQuestionByText(questionText);
     const allowedOptionIds = new Set((batch.optionsByPlayer.get(playerId) || []).map((option) => option.id));
 
     if (!question || !allowedOptionIds.has(question.id)) {
@@ -1198,10 +1353,26 @@ io.on('connection', (socket) => {
       return;
     }
 
-    batch.selections.set(playerId, {
-      questionId: question.id,
-      question: question.text,
-    });
+    if (question.special) {
+      if (customQuestion.length < 8) {
+        callback?.({ ok: false, reason: 'Escribe una pregunta personalizada mas clara.' });
+        return;
+      }
+
+      batch.customEditingDeadlines.delete(playerId);
+      batch.selections.set(playerId, {
+        questionId: `${SPECIAL_QUESTION_OPTION.id}:${playerId}:${batch.roundNumber}`,
+        question: customQuestion,
+        questionType: 'custom',
+      });
+    } else {
+      batch.customEditingDeadlines.delete(playerId);
+      batch.selections.set(playerId, {
+        questionId: question.id,
+        question: question.text,
+        questionType: 'normal',
+      });
+    }
     emitQuestionState(room);
     emitQuestionBackup(room);
 
@@ -1212,6 +1383,38 @@ io.on('connection', (socket) => {
       startAnswerPhase(room);
     }
 
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
+  socket.on('match:player-custom-question-editing', (payload = {}, callback) => {
+    const code = String(payload.code || payload.lobbyId || '').trim().toUpperCase();
+    const playerId = String(payload.playerId || '').trim();
+    const room = gameState.rooms.get(code);
+    const player = room?.players.get(playerId);
+    const batch = room?.match?.questionBatch;
+
+    if (!room || !player || !room.match || !batch || room.match.phase !== 'question-selection') {
+      callback?.({ ok: false, reason: 'No hay una tanda de preguntas activa.' });
+      return;
+    }
+
+    const allowedOptionIds = new Set((batch.optionsByPlayer.get(playerId) || []).map((option) => option.id));
+
+    if (!allowedOptionIds.has(SPECIAL_QUESTION_OPTION.id)) {
+      callback?.({ ok: false, reason: 'La pregunta especial no esta disponible en esta tanda.' });
+      return;
+    }
+
+    if (!batch.customEditingDeadlines.has(playerId)) {
+      batch.customEditingDeadlines.set(playerId, Date.now() + CUSTOM_QUESTION_EXTRA_MS);
+    }
+
+    io.to(room.code).emit('player-custom-question-editing', {
+      lobbyId: room.code,
+      playerId,
+      extraTime: CUSTOM_QUESTION_EXTRA_MS / 1000,
+    });
+    emitQuestionState(room);
     callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
   });
 
@@ -1305,7 +1508,37 @@ io.on('connection', (socket) => {
       return;
     }
 
-    startQuestionBatch(room);
+    const currentRoundNumber = room.match.questionBatch?.roundNumber || 0;
+    const maxRounds = Number(room.settings.rounds || 5);
+
+    const nextRoundNumber = currentRoundNumber + 1;
+
+    if (currentRoundNumber >= maxRounds) {
+      finishQuestionsPhase(room);
+    } else if ((room.match.specialRounds || []).includes(nextRoundNumber)) {
+      startSpecialRound(room, nextRoundNumber);
+    } else {
+      startQuestionBatch(room, nextRoundNumber);
+    }
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
+  socket.on('match:special-round-continue', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const hostId = String(payload.hostId || '').trim();
+    const room = gameState.rooms.get(code);
+
+    if (!room || !room.match || room.match.phase !== 'special-round') {
+      callback?.({ ok: false, reason: 'No hay una ronda especial activa.' });
+      return;
+    }
+
+    if (room.hostId !== hostId) {
+      callback?.({ ok: false, reason: 'Solo el host puede saltar el minijuego.' });
+      return;
+    }
+
+    startQuestionBatch(room, room.match.specialRound?.roundNumber || (room.match.questionBatch?.roundNumber || 0) + 1);
     callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
   });
 
@@ -1378,12 +1611,16 @@ setInterval(() => {
 
     if (!room.match?.hostPaused && room.match?.phase === 'question-selection') {
       const batch = room.match.questionBatch;
+      assignTimedOutQuestions(room);
       const activePlayerIds = getActiveMatchPlayers(room).map((player) => player.id);
       const allActiveSelected =
         activePlayerIds.length > 0 && activePlayerIds.every((playerId) => batch?.selections.has(playerId));
 
-      if (allActiveSelected || (batch?.questionSelectionEndsAt && Date.now() >= batch.questionSelectionEndsAt)) {
+      if (allActiveSelected) {
         startAnswerPhase(room);
+      } else if (batch?.questionSelectionEndsAt && Date.now() >= batch.questionSelectionEndsAt) {
+        emitQuestionState(room);
+        emitQuestionBackup(room);
       }
     }
 

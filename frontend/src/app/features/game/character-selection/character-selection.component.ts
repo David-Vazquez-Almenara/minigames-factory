@@ -234,10 +234,14 @@ export class CharacterSelectionComponent implements OnDestroy {
       return;
     }
 
+    const nextDeadline = response.match?.imageSelectionEndsAt || Date.now() + IMAGE_SELECTION_SECONDS * 1000;
     this.verificationPlayers.set([]);
     this.showTimeoutDecision.set(false);
-    this.remainingSeconds.set(IMAGE_SELECTION_SECONDS);
     this.timeoutHandled = false;
+    this.autoVerifyKey = '';
+    this.clearTimer();
+    this.updateRemainingSeconds(nextDeadline);
+    this.startTimer();
   }
 
   async excludeUnreadyPlayers(): Promise<void> {

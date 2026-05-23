@@ -15,6 +15,7 @@ const MATCH_DATA_KEY = 'matchData';
 const QUESTION_BACKUP_KEY = 'questionRoundBackup';
 const SCOREBOARD_COPY_KEY = 'quien-soy-online-scoreboard';
 const HOST_RECONNECT_LOBBY_KEY = 'quien-soy-online-host-reconnect-lobby';
+const HOST_RECONNECT_CONFIG_KEY = 'quien-soy-online-host-reconnect-config';
 const BANNED_PLAYERS_KEY = 'quien-soy-online-banned-players';
 const PLAYER_IMAGE_SELECTION_KEY = 'quien-soy-online-player-image-selection';
 const IMAGE_TIMEOUT_PLAYERS_KEY = 'quien-soy-online-image-timeout-players';
@@ -119,6 +120,17 @@ export class MatchService {
       this.saveOfficialScoreboard(scoreboard);
       void this.socketService.updateScoreboard(lobby.code, request.roundNumber, scoreboard.scores);
     });
+
+    effect(() => {
+      const lobby = this.socketService.lobby();
+      const match = this.socketService.match();
+
+      if (!lobby || !match || !this.socketService.isCurrentPlayerHost(lobby)) {
+        return;
+      }
+
+      this.saveSpecialRoundsReconnectConfig(lobby.code, match.specialRounds || []);
+    });
   }
 
   async startMatch(lobby: LobbyState): Promise<RoomResponse> {
@@ -143,8 +155,12 @@ export class MatchService {
     this.socketService.notifyImageSelectionReconnect(lobbyId);
   }
 
-  selectQuestion(lobbyId: string, questionId: string): Promise<RoomResponse> {
-    return this.socketService.selectQuestion(lobbyId, questionId);
+  startCustomQuestionEditing(lobbyId: string): Promise<RoomResponse> {
+    return this.socketService.startCustomQuestionEditing(lobbyId);
+  }
+
+  selectQuestion(lobbyId: string, questionId: string, customQuestion = ''): Promise<RoomResponse> {
+    return this.socketService.selectQuestion(lobbyId, questionId, customQuestion);
   }
 
   submitAnswer(lobbyId: string, answer: 'yes' | 'no'): Promise<RoomResponse> {
@@ -153,6 +169,10 @@ export class MatchService {
 
   continueFromScoreboard(lobbyId: string): Promise<RoomResponse> {
     return this.socketService.continueFromScoreboard(lobbyId);
+  }
+
+  continueFromSpecialRound(lobbyId: string): Promise<RoomResponse> {
+    return this.socketService.continueFromSpecialRound(lobbyId);
   }
 
   saveLocalScoreboardCopy(scoreboard: ScoreboardPayload): void {
@@ -343,8 +363,6 @@ export class MatchService {
   }
 
   private saveOfficialScoreboard(scoreboard: ScoreboardPayload): void {
-    this.saveLocalScoreboardCopy(scoreboard);
-
     localStorage.setItem(
       HOST_RECONNECT_LOBBY_KEY,
       JSON.stringify({
@@ -356,6 +374,28 @@ export class MatchService {
         })),
       }),
     );
+  }
+
+  private saveSpecialRoundsReconnectConfig(lobbyId: string, specialRounds: number[]): void {
+    try {
+      const currentValue = JSON.parse(localStorage.getItem(HOST_RECONNECT_CONFIG_KEY) || 'null') as
+        | Record<string, unknown>
+        | null;
+
+      if (!currentValue || currentValue['lobbyId'] !== lobbyId) {
+        return;
+      }
+
+      localStorage.setItem(
+        HOST_RECONNECT_CONFIG_KEY,
+        JSON.stringify({
+          ...currentValue,
+          specialRounds,
+        }),
+      );
+    } catch {
+      // The reconnect config is only a backup; ignore malformed older snapshots.
+    }
   }
 
   private getQuestionBackup(lobbyId: string): {

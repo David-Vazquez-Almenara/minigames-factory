@@ -1,24 +1,33 @@
+import { FormsModule } from '@angular/forms';
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MatchService } from '../../../core/services/match.service';
 
 @Component({
   selector: 'app-question-round',
+  imports: [FormsModule],
   templateUrl: './question-round.component.html',
   styleUrl: './question-round.component.scss',
 })
 export class QuestionRoundComponent implements OnDestroy {
   private readonly matchService = inject(MatchService);
   private timer?: ReturnType<typeof setInterval>;
+  private answerSlideTimer?: ReturnType<typeof setTimeout>;
   private lastAnswerKey = '';
+  private customExtraRequestedKey = '';
 
   readonly match = this.matchService.match;
   readonly hostPaused = this.matchService.hostPaused;
   readonly currentPlayerId = this.matchService.currentPlayerId;
   readonly waitingQuestionBatchMessage = this.matchService.waitingQuestionBatchMessage;
   readonly selectedQuestionId = signal('');
+  readonly customQuestion = signal('');
+  readonly customQuestionEditing = signal(false);
+  readonly customQuestionModalOpen = signal(false);
+  readonly historyModalOpen = signal(false);
   readonly loading = signal(false);
   readonly errorMessage = signal('');
   readonly submittedAnswer = signal(false);
+  readonly answerSlideActive = signal(false);
   readonly remainingSeconds = signal(0);
 
   readonly currentPlayerQuestion = computed(
@@ -33,12 +42,33 @@ export class QuestionRoundComponent implements OnDestroy {
     () =>
       this.match()?.questionOptionsByPlayer.find((entry) => entry.playerId === this.currentPlayerId)?.options || [],
   );
+  readonly selectedQuestionOption = computed(
+    () => this.currentQuestionOptions().find((option) => option.id === this.selectedQuestionId()) || null,
+  );
+  readonly customQuestionDeadline = computed(
+    () =>
+      this.match()?.customQuestionDeadlineByPlayer.find((entry) => entry.playerId === this.currentPlayerId)?.deadline ||
+      null,
+  );
+  readonly canSubmitQuestion = computed(() => {
+    if (this.questionSubmitted() || this.loading() || this.hostPaused() || !this.selectedQuestionId()) {
+      return false;
+    }
+
+    if (this.customQuestionEditing()) {
+      return this.customQuestion().trim().length >= 8;
+    }
+
+    return true;
+  });
 
   readonly currentPlayerHistory = computed(() =>
     (this.match()?.questionHistory || [])
       .filter((entry) => entry.ownerPlayerId === this.currentPlayerId)
-      .sort((firstEntry, secondEntry) => firstEntry.roundNumber - secondEntry.roundNumber),
+      .sort((firstEntry, secondEntry) => secondEntry.roundNumber - firstEntry.roundNumber),
   );
+  readonly compactHistory = computed(() => this.currentPlayerHistory().slice(0, 3));
+  readonly hasHiddenHistory = computed(() => this.currentPlayerHistory().length > this.compactHistory().length);
 
   readonly questionSubmitted = computed(() => Boolean(this.currentPlayerQuestion()));
   readonly currentAnswer = computed(() => this.match()?.currentAnswer || null);
@@ -92,6 +122,8 @@ export class QuestionRoundComponent implements OnDestroy {
 
       if (selectedQuestion) {
         this.selectedQuestionId.set(this.currentPlayerQuestionId());
+        this.customQuestionEditing.set(false);
+        this.customQuestionModalOpen.set(false);
       }
 
       const answer = match?.currentAnswer;
@@ -101,6 +133,11 @@ export class QuestionRoundComponent implements OnDestroy {
         this.lastAnswerKey = nextAnswerKey;
         this.submittedAnswer.set(false);
         this.errorMessage.set('');
+        this.answerSlideActive.set(false);
+        if (this.answerSlideTimer) {
+          clearTimeout(this.answerSlideTimer);
+        }
+        this.answerSlideTimer = setTimeout(() => this.answerSlideActive.set(true), 10);
       }
 
       this.syncTimer();
@@ -120,15 +157,60 @@ export class QuestionRoundComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearTimer();
+    if (this.answerSlideTimer) {
+      clearTimeout(this.answerSlideTimer);
+    }
   }
 
-  chooseQuestion(questionId: string): void {
+  async chooseQuestion(questionId: string): Promise<void> {
     if (this.questionSubmitted()) {
       return;
     }
 
     this.selectedQuestionId.set(questionId);
     this.errorMessage.set('');
+
+    const selectedOption = this.currentQuestionOptions().find((option) => option.id === questionId);
+
+    if (!selectedOption?.special) {
+      this.customQuestionEditing.set(false);
+      this.customQuestionModalOpen.set(false);
+      this.customQuestion.set('');
+      return;
+    }
+
+    this.customQuestionEditing.set(true);
+    this.customQuestionModalOpen.set(true);
+    const match = this.match();
+
+    if (!match) {
+      return;
+    }
+
+    const customKey = `${match.lobbyId}:${match.questionRoundNumber}:${this.currentPlayerId}`;
+
+    if (this.customExtraRequestedKey === customKey) {
+      return;
+    }
+
+    this.customExtraRequestedKey = customKey;
+    const response = await this.matchService.startCustomQuestionEditing(match.lobbyId);
+
+    if (!response.ok) {
+      this.errorMessage.set(response.reason || 'No se pudo activar la pregunta especial.');
+    }
+  }
+
+  closeCustomQuestionModal(): void {
+    this.customQuestionModalOpen.set(false);
+  }
+
+  openHistoryModal(): void {
+    this.historyModalOpen.set(true);
+  }
+
+  closeHistoryModal(): void {
+    this.historyModalOpen.set(false);
   }
 
   async submitQuestion(): Promise<void> {
@@ -140,7 +222,7 @@ export class QuestionRoundComponent implements OnDestroy {
     }
 
     this.loading.set(true);
-    const response = await this.matchService.selectQuestion(match.lobbyId, questionId);
+    const response = await this.matchService.selectQuestion(match.lobbyId, questionId, this.customQuestion());
     this.loading.set(false);
 
     if (!response.ok) {
@@ -183,7 +265,7 @@ export class QuestionRoundComponent implements OnDestroy {
     const match = this.match();
     const deadline =
       match?.phase === 'question-selection'
-        ? match.questionSelectionEndsAt
+        ? this.customQuestionDeadline() || match.questionSelectionEndsAt
         : match?.phase === 'answer-phase'
           ? match.answerEndsAt
           : null;
@@ -205,7 +287,7 @@ export class QuestionRoundComponent implements OnDestroy {
       const match = this.match();
       const deadline =
         match?.phase === 'question-selection'
-          ? match.questionSelectionEndsAt
+          ? this.customQuestionDeadline() || match.questionSelectionEndsAt
           : match?.phase === 'answer-phase'
             ? match.answerEndsAt
             : null;

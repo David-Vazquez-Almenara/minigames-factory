@@ -44,8 +44,9 @@ export class GameSetupFlowComponent {
     randomThemePerPlayer: true,
     randomCharacterTypePerPlayer: true,
     questionDuration: 30,
-    respondQuestionTime: 5,
+    respondQuestionTime: 10,
     rounds: 5,
+    specialRounds: [],
     themeCategories: [],
     characterTypes: [],
   });

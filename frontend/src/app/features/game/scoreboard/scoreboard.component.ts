@@ -23,10 +23,11 @@ export class ScoreboardComponent implements OnDestroy {
   readonly isHost = this.matchService.isHost;
   readonly rows = signal<AnimatedScoreboardEntry[]>([]);
   readonly positionsSettled = signal(false);
+  readonly scoreAnimationStarted = signal(false);
   readonly loading = signal(false);
   readonly errorMessage = signal('');
 
-  readonly canContinue = computed(() => Boolean(this.isHost() && this.scoreboard() && !this.loading()));
+  readonly canContinue = computed(() => Boolean(this.isHost() && this.scoreboard() && this.positionsSettled() && !this.loading()));
 
   constructor() {
     effect(() => {
@@ -78,6 +79,7 @@ export class ScoreboardComponent implements OnDestroy {
 
     this.clearAnimationTimers();
     this.positionsSettled.set(false);
+    this.scoreAnimationStarted.set(false);
     this.errorMessage.set('');
 
     const previousScoreboard = this.matchService.getLocalScoreboardCopy(scoreboard.lobbyId);
@@ -97,7 +99,11 @@ export class ScoreboardComponent implements OnDestroy {
       .sort((firstRow, secondRow) => firstRow.previousPosition - secondRow.previousPosition);
 
     this.rows.set(initialRows);
-    this.animateScores(nextRows);
+    const scoreDelayTimer = setTimeout(() => {
+      this.scoreAnimationStarted.set(true);
+      this.animateScores(nextRows);
+    }, 1500);
+    this.animationTimers.push(scoreDelayTimer);
   }
 
   private animateScores(nextRows: ScoreboardEntry[]): void {
@@ -135,12 +141,15 @@ export class ScoreboardComponent implements OnDestroy {
       this.rows.set(
         nextRows.map((row) => ({
           ...row,
-          previousPosition: row.position,
+          previousPosition: this.rows().find((currentRow) => currentRow.playerId === row.playerId)?.previousPosition || row.position,
           displayScore: row.score,
           scoreIncreased: false,
         })),
       );
-      this.positionsSettled.set(true);
+      const settleTimer = setTimeout(() => {
+        this.positionsSettled.set(true);
+      }, 40);
+      this.animationTimers.push(settleTimer);
 
       const scoreboard = this.scoreboard();
 
@@ -150,6 +159,14 @@ export class ScoreboardComponent implements OnDestroy {
     }, 420);
 
     this.animationTimers.push(positionTimer);
+  }
+
+  rowOffset(row: AnimatedScoreboardEntry): string {
+    if (this.positionsSettled() || row.previousPosition === row.position) {
+      return 'translateY(0)';
+    }
+
+    return `translateY(${(row.previousPosition - row.position) * 80}px)`;
   }
 
   private clearAnimationTimers(): void {

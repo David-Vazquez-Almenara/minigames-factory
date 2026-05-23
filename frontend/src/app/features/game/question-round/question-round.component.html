@@ -20,22 +20,22 @@
       <h1>Elige una pregunta para adivinar tu personaje</h1>
     </header>
 
+    @if (currentPlayerHistory().length) {
     <section class="history-block" aria-label="Preguntas ya realizadas">
       <h2>Preguntas ya realizadas</h2>
-      @if (currentPlayerHistory().length) {
       <div class="history-list">
-        @for (entry of currentPlayerHistory(); track entry.roundNumber + entry.questionId) {
-        <div class="history-item">
+        @for (entry of compactHistory(); track entry.roundNumber + entry.questionId) {
+        <div class="history-item" [class.answer-yes]="entry.answer === 'yes'" [class.answer-no]="entry.answer === 'no'" [class.answer-maybe]="entry.answer === 'maybe'">
           <span>Ronda {{ entry.roundNumber }}</span>
           <p>{{ entry.question }}</p>
-          <strong>{{ answerLabel(entry.answer) }}</strong>
         </div>
         }
       </div>
-      } @else {
-      <p class="empty-history">Todavia no has realizado preguntas en esta partida.</p>
+      @if (hasHiddenHistory()) {
+      <button class="history-more-button" type="button" (click)="openHistoryModal()">Ver todas las respuestas</button>
       }
     </section>
+    }
 
     <section class="current-question-block" aria-label="Seleccion de pregunta actual">
       <h2>Selecciona una pregunta</h2>
@@ -44,6 +44,7 @@
       <button
         type="button"
         class="question-option"
+        [class.special-question]="question.special"
         [class.selected]="selectedQuestionId() === question.id"
         [disabled]="questionSubmitted()"
         (click)="chooseQuestion(question.id)"
@@ -52,6 +53,7 @@
       </button>
       }
     </div>
+
     </section>
 
     @if (currentPlayerQuestion()) {
@@ -65,11 +67,50 @@
     <button
       class="ready-button"
       type="button"
-      [disabled]="!selectedQuestionId() || questionSubmitted() || loading() || hostPaused()"
+      [disabled]="!canSubmitQuestion()"
       (click)="submitQuestion()"
     >
-      {{ loading() ? 'Guardando...' : 'Listo' }}
+      {{ loading() ? 'Guardando...' : customQuestionEditing() ? 'Confirmar pregunta' : 'Listo' }}
     </button>
+
+    @if (customQuestionModalOpen()) {
+    <div class="custom-question-backdrop" role="dialog" aria-modal="true" aria-labelledby="custom-question-title" (click)="closeCustomQuestionModal()">
+      <section class="custom-question-modal" (click)="$event.stopPropagation()">
+        <button class="custom-close-button" type="button" aria-label="Cerrar pregunta personalizada" (click)="closeCustomQuestionModal()">X</button>
+        <h2 id="custom-question-title">Pregunta especial</h2>
+        <label class="custom-question-field">
+          <span>Escribe tu pregunta personalizada</span>
+          <textarea
+            rows="4"
+            maxlength="140"
+            [ngModel]="customQuestion()"
+            (ngModelChange)="customQuestion.set($event)"
+            placeholder="Mi personaje podria vivir en el espacio?"
+          ></textarea>
+          <small>Has recibido 30 segundos extra una sola vez para confirmar esta pregunta.</small>
+        </label>
+        <button class="ready-button" type="button" [disabled]="!canSubmitQuestion()" (click)="submitQuestion()">
+          {{ loading() ? 'Guardando...' : 'Confirmar pregunta' }}
+        </button>
+      </section>
+    </div>
+    }
+    @if (historyModalOpen()) {
+    <div class="custom-question-backdrop" role="dialog" aria-modal="true" aria-labelledby="history-title" (click)="closeHistoryModal()">
+      <section class="custom-question-modal history-modal" (click)="$event.stopPropagation()">
+        <button class="custom-close-button" type="button" aria-label="Cerrar historial" (click)="closeHistoryModal()">X</button>
+        <h2 id="history-title">Todas tus respuestas</h2>
+        <div class="history-list modal-history-list">
+          @for (entry of currentPlayerHistory(); track entry.roundNumber + entry.questionId) {
+          <div class="history-item" [class.answer-yes]="entry.answer === 'yes'" [class.answer-no]="entry.answer === 'no'" [class.answer-maybe]="entry.answer === 'maybe'">
+            <span>Ronda {{ entry.roundNumber }}</span>
+            <p>{{ entry.question }}</p>
+          </div>
+          }
+        </div>
+      </section>
+    </div>
+    }
     } @else if (match()?.phase === 'answer-phase') {
     @if (currentAnswer(); as answer) {
     <header>
@@ -77,7 +118,7 @@
       <h1>{{ answer.ownerPlayerName }}</h1>
     </header>
 
-    <section class="answer-card">
+    <section class="answer-card" [class.answer-slide-active]="answerSlideActive()">
       @if (!isQuestionOwner()) {
       <div class="answer-image">
         @if (answer.imageUrl) {

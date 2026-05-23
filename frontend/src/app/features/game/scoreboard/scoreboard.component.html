@@ -7,7 +7,7 @@
 
     <div class="score-list" [class.positions-settled]="positionsSettled()">
       @for (row of rows(); track row.playerId) {
-      <article class="score-row" [class.score-up]="row.scoreIncreased">
+      <article class="score-row" [class.score-up]="row.scoreIncreased && scoreAnimationStarted()" [class.rank-gold]="row.position === 1" [class.rank-silver]="row.position === 2" [class.rank-bronze]="row.position === 3" [style.transform]="rowOffset(row)">
         <strong class="position">{{ row.position }}o</strong>
         <span class="player-name">{{ row.playerName }}</span>
         <strong class="score">{{ row.displayScore }} pts</strong>
@@ -19,8 +19,11 @@
     <p class="error-message" role="alert">{{ errorMessage() }}</p>
     }
 
-    <button class="continue-button" type="button" [disabled]="!canContinue()" (click)="continueToNextBatch()">
-      {{ loading() ? 'Continuando...' : isHost() ? 'Continuar' : 'Esperando al host' }}
-    </button>
   </main>
+
+  @if (isHost()) {
+  <button class="continue-button" type="button" [disabled]="!canContinue()" (click)="continueToNextBatch()">
+    {{ loading() ? 'Continuando...' : 'Continuar' }}
+  </button>
+  }
 </section>

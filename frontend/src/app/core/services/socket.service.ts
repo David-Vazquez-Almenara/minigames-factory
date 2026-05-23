@@ -14,6 +14,7 @@ export interface CreateRoomSettings {
   questionDuration: 15 | 30 | 60;
   respondQuestionTime: 5 | 10 | 15;
   rounds: number;
+  specialRounds: number[];
   themeCategories: string[];
   characterTypes: string[];
 }
@@ -53,6 +54,7 @@ export interface MatchSelection {
 export interface QuestionOption {
   id: string;
   text: string;
+  special?: boolean;
 }
 
 export interface MatchState {
@@ -64,7 +66,9 @@ export interface MatchState {
     | 'image-selection-complete'
     | 'question-selection'
     | 'answer-phase'
-    | 'scoreboard';
+    | 'scoreboard'
+    | 'special-round'
+    | 'questions-complete';
   assignments: MatchAssignment[];
   readySelections: MatchSelection[];
   readyCount: number;
@@ -80,6 +84,7 @@ export interface MatchState {
     playerId: string;
     questionId: string;
     question: string;
+    questionType: 'normal' | 'custom' | 'auto-assigned';
   }>;
   questionOptionsByPlayer: Array<{
     playerId: string;
@@ -89,14 +94,21 @@ export interface MatchState {
     ownerPlayerId: string;
     questionId: string;
     question: string;
+    questionType: 'normal' | 'custom' | 'auto-assigned';
     answer: 'yes' | 'no' | 'maybe';
     roundNumber: number;
+  }>;
+  customQuestionEditingPlayerIds: string[];
+  customQuestionDeadlineByPlayer: Array<{
+    playerId: string;
+    deadline: number;
   }>;
   currentAnswer: {
     ownerPlayerId: string;
     ownerPlayerName: string;
     questionId: string;
     question: string;
+    questionType?: 'normal' | 'custom' | 'auto-assigned';
     imageUrl: string;
   } | null;
   answerEndsAt: number | null;
@@ -104,10 +116,20 @@ export interface MatchState {
     ownerPlayerId: string;
     questionId?: string;
     selectedQuestion: string;
+    questionType?: 'normal' | 'custom' | 'auto-assigned';
     finalAnswer: 'yes' | 'no' | 'maybe';
   }>;
   waitingQuestionBatchPlayerIds: string[];
   scoreboard: ScoreboardPayload | null;
+  specialRounds: number[];
+  specialRound: SpecialRoundPayload | null;
+}
+
+export interface SpecialRoundPayload {
+  roundNumber: number;
+  minigameId: string;
+  title: string;
+  description: string;
 }
 
 export interface ScoreboardEntry {
@@ -140,6 +162,7 @@ export interface QuestionBackupPayload {
     ownerPlayerId: string;
     questionId: string;
     selectedQuestion: string;
+    questionType: 'normal' | 'custom' | 'auto-assigned';
     finalAnswer: 'yes' | 'no' | 'maybe' | null;
   }>;
   history?: MatchState['questionHistory'];
@@ -342,6 +365,22 @@ export class SocketService {
       );
     });
 
+    this.socket.on('match:questions-complete', (payload: { lobbyId: string; roundNumber: number }) => {
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, phase: 'questions-complete' }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:special-round-started', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
+          : currentMatch,
+      );
+    });
+
     this.socket.on(
       'match:answer-result',
       (payload: {
@@ -532,10 +571,19 @@ export class SocketService {
     });
   }
 
-  selectQuestion(code: string, questionId: string): Promise<RoomResponse> {
+  startCustomQuestionEditing(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:player-custom-question-editing', {
+      code,
+      playerId: this.playerId,
+      extraTime: 30,
+    });
+  }
+
+  selectQuestion(code: string, questionId: string, customQuestion = ''): Promise<RoomResponse> {
     return this.emitWithResponse('match:select-question', {
       code,
       questionId,
+      customQuestion,
       playerId: this.playerId,
     });
   }
@@ -559,6 +607,13 @@ export class SocketService {
 
   continueFromScoreboard(code: string): Promise<RoomResponse> {
     return this.emitWithResponse('match:scoreboard-continue', {
+      code,
+      hostId: this.playerId,
+    });
+  }
+
+  continueFromSpecialRound(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:special-round-continue', {
       code,
       hostId: this.playerId,
     });
@@ -648,6 +703,7 @@ export class SocketService {
         customQuestionsEnabled: lobby.settings.customQuestionsEnabled,
         questionTime: lobby.settings.questionDuration,
         rounds: lobby.settings.rounds,
+        specialRounds: lobby.settings.specialRounds || [],
         randomThemePerPlayer: lobby.settings.randomThemePerPlayer,
         randomCharacterTypePerPlayer: lobby.settings.randomCharacterTypePerPlayer,
         respondQuestionTime: lobby.settings.respondQuestionTime,

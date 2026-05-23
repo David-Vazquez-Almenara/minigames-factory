@@ -66,12 +66,23 @@
     background-color 180ms ease;
 }
 
+.score-row.rank-gold {
+  background-color: #ebd620;
+}
+
+.score-row.rank-silver {
+  background-color: #f2f2f2;
+}
+
+.score-row.rank-bronze {
+  background-color: #ce8946;
+}
+
 .positions-settled .score-row {
   animation: row-settle 260ms ease-out both;
 }
 
-.position,
-.score {
+.position {
   display: grid;
   min-height: 42px;
   place-items: center;
@@ -89,15 +100,23 @@
 }
 
 .score {
+  display: grid;
+  min-height: 42px;
+  place-items: center;
   font-size: 1.1rem;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 .score-up .score {
-  color: #053d12;
-  background-color: #b9f7b5;
+  color: #088a2a;
 }
 
 .continue-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
   min-width: 190px;
   min-height: 56px;
   padding: 12px 18px;
