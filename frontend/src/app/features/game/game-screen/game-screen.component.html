@@ -1,0 +1,29 @@
+@if (match()) {
+  @if (match()?.phase === 'game-started') {
+    <section class="game-started-screen" aria-label="Partida iniciada">
+      <div class="game-started-card">
+        <p>Quien Soy Online</p>
+        <h1>Partida iniciada</h1>
+        <span>Preparando la siguiente fase...</span>
+      </div>
+    </section>
+  } @else if (!showCharacterSelection()) {
+    <app-countdown (finished)="finishCountdown()" />
+  } @else {
+    <app-character-selection />
+  }
+
+  @if (hostPaused()) {
+    <div class="host-wait-overlay" role="alert" aria-live="assertive">
+      <section class="host-wait-card">
+        <div class="connection-icon" aria-hidden="true">!</div>
+        <h2>El host se ha desconectado.</h2>
+        <p>Estamos esperando a que vuelva a conectarse.</p>
+        <p>La partida continuara automaticamente si vuelve a tiempo.</p>
+        <strong>{{ hostWaitSeconds() }}s</strong>
+        <span class="loading-ring" aria-hidden="true"></span>
+        <small>Si el host no vuelve en 60 segundos, la sala se cerrara.</small>
+      </section>
+    </div>
+  }
+}

@@ -1,0 +1,128 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 16;
+  display: block;
+}
+
+.game-started-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  color: #000;
+  background-color: #ffd6e8;
+}
+
+.game-started-card {
+  display: grid;
+  width: min(560px, 100%);
+  justify-items: center;
+  gap: 12px;
+  padding: 30px;
+  text-align: center;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 18px;
+  animation: modal-pop 220ms cubic-bezier(0.18, 0.88, 0.3, 1.2) both;
+
+  p,
+  h1,
+  span {
+    margin: 0;
+  }
+
+  p,
+  span {
+    font-weight: 900;
+  }
+
+  h1 {
+    font-size: clamp(3rem, 10vw, 5.5rem);
+    line-height: 0.95;
+  }
+}
+
+.host-wait-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #000;
+  background-color: rgba(0, 0, 0, 0.68);
+  animation: fade-in 180ms ease-out both;
+}
+
+.host-wait-card {
+  display: grid;
+  width: min(440px, 100%);
+  justify-items: center;
+  gap: 12px;
+  padding: 26px;
+  text-align: center;
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 18px;
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h2 {
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  p,
+  small {
+    font-weight: 900;
+  }
+
+  strong {
+    font-size: 3rem;
+    line-height: 1;
+  }
+}
+
+.connection-icon {
+  display: grid;
+  width: 72px;
+  aspect-ratio: 1;
+  place-items: center;
+  color: #000;
+  font-size: 3rem;
+  font-weight: 950;
+  background-color: #ff9b9b;
+  border: 3px solid #000;
+  border-radius: 50%;
+}
+
+.loading-ring {
+  width: 42px;
+  aspect-ratio: 1;
+  border: 5px solid #000;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes modal-pop {
+  from {
+    transform: scale(0.94);
+  }
+}

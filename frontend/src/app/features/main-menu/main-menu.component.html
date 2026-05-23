@@ -45,4 +45,8 @@
   @if (backendSleeping()) {
     <app-backend-wake-overlay />
   }
+
+  @if (match()) {
+    <app-game-screen />
+  }
 </main>

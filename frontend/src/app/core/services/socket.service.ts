@@ -33,10 +33,64 @@ export interface LobbyState {
   createdAt: string;
 }
 
+export interface MatchAssignment {
+  playerId: string;
+  targetPlayerId: string;
+  targetPlayerName: string;
+  theme: string;
+  characterType: string;
+}
+
+export interface MatchSelection {
+  playerId: string;
+  targetPlayerId?: string;
+  imageUrl: string;
+  theme: string;
+  characterType: string;
+}
+
+export interface MatchState {
+  lobbyId: string;
+  phase: 'lobby' | 'countdown' | 'image-selection' | 'image-selection-complete' | 'game-started';
+  assignments: MatchAssignment[];
+  readySelections: MatchSelection[];
+  readyCount: number;
+  totalPlayers: number;
+  hostPaused: boolean;
+  hostPauseDeadline: number | null;
+  countdownEndsAt: number;
+  imageSelectionEndsAt: number;
+  waitingPlayerIds: string[];
+}
+
+export interface AllImagesReadyPayload {
+  lobbyId: string;
+  selectedImages: Array<{
+    playerId: string;
+    imageUrl: string;
+    theme: string;
+    characterType: string;
+  }>;
+}
+
 export interface RoomResponse {
   ok: boolean;
   reason?: string;
   lobby?: LobbyState;
+  match?: MatchState;
+  waitingNextRound?: boolean;
+  excludedPlayers?: Array<{
+    playerId: string;
+    name: string;
+    round: number;
+    reason: string;
+  }>;
+  unreadyPlayers?: Array<{
+    playerId: string;
+    name: string;
+    round: number;
+    reason: string;
+  }>;
 }
 
 const PLAYER_ID_KEY = 'quien-soy-online-player-id';
@@ -55,6 +109,11 @@ export class SocketService {
   readonly connected = signal(false);
   readonly serverMessage = signal('Backend pendiente de conexion');
   readonly lobby = signal<LobbyState | null>(null);
+  readonly match = signal<MatchState | null>(null);
+  readonly allImagesReady = signal<AllImagesReadyPayload | null>(null);
+  readonly imageSelectionTimerReset = signal<number | null>(null);
+  readonly hostPauseDeadline = signal<number | null>(null);
+  readonly waitingNextRoundMessage = signal<string | null>(null);
   readonly kickedFromRoom = signal<string | null>(null);
   readonly closedRoomMessage = signal<string | null>(null);
   readonly playerId = this.getOrCreatePlayerId();
@@ -70,6 +129,11 @@ export class SocketService {
 
     this.socket.on('connect', () => {
       this.connected.set(true);
+      const activeMatch = this.match();
+
+      if (activeMatch && activeMatch.phase === 'image-selection') {
+        this.notifyImageSelectionReconnect(activeMatch.lobbyId);
+      }
     });
 
     this.socket.on('disconnect', () => {
@@ -88,12 +152,15 @@ export class SocketService {
     this.socket.on('room:kicked', (payload: { code: string }) => {
       this.stopHeartbeat();
       this.lobby.set(null);
+      this.match.set(null);
       this.kickedFromRoom.set(payload.code);
     });
 
     this.socket.on('room:closed', (payload: { code: string; reason: string }) => {
       this.stopHeartbeat();
       this.lobby.set(null);
+      this.match.set(null);
+      this.hostPauseDeadline.set(null);
       this.closedRoomMessage.set(payload.reason || 'El lobby se ha cerrado.');
       this.clearLobbyUrl();
     });
@@ -104,12 +171,17 @@ export class SocketService {
       }
 
       const params = new URLSearchParams(window.location.search);
+      const activeMatch = this.match();
+      const isActiveInRoom =
+        params.get('room') === payload.code &&
+        params.get('lobby') === 'true' &&
+        (!activeMatch || activeMatch.lobbyId === payload.code);
 
       this.socket?.emit('room:presence-response', {
         code: payload.code,
         playerId: this.playerId,
         currentUrl: window.location.href,
-        inLobby: params.get('room') === payload.code && params.get('lobby') === 'true',
+        inLobby: isActiveInRoom,
       });
     });
 
@@ -118,6 +190,132 @@ export class SocketService {
         ok: true,
         bannedPlayerIds: this.getBannedPlayerIds(_payload.code),
       });
+    });
+
+    this.socket.on('match:started', (payload: MatchState) => {
+      this.match.set(payload);
+      this.hostPauseDeadline.set(payload.hostPauseDeadline);
+      this.startHeartbeat(payload.lobbyId);
+    });
+
+    this.socket.on(
+      'match:image-selection-updated',
+      (payload: {
+        lobbyId: string;
+        readyPlayerIds: string[];
+        readyCount: number;
+        totalPlayers: number;
+        imageSelectionEndsAt: number;
+      }) => {
+        this.match.update((currentMatch) => {
+          if (!currentMatch || currentMatch.lobbyId !== payload.lobbyId) {
+            return currentMatch;
+          }
+
+          const readySelectionMap = new Map(
+            currentMatch.readySelections.map((selection) => [selection.playerId, selection]),
+          );
+
+          return {
+            ...currentMatch,
+            phase: 'image-selection',
+            readySelections: payload.readyPlayerIds.map(
+              (playerId) =>
+                readySelectionMap.get(playerId) || {
+                  playerId,
+                  imageUrl: '',
+                  theme: '',
+                  characterType: '',
+                },
+            ),
+            readyCount: payload.readyCount,
+            totalPlayers: payload.totalPlayers,
+            imageSelectionEndsAt: payload.imageSelectionEndsAt,
+          };
+        });
+      },
+    );
+
+    this.socket.on('match:all-images-ready', (payload: AllImagesReadyPayload) => {
+      this.allImagesReady.set(payload);
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, phase: 'image-selection-complete', readyCount: payload.selectedImages.length }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:game-started', (payload: { lobbyId: string }) => {
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, phase: 'game-started' }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:host-paused', (payload: { lobbyId: string; deadline: number }) => {
+      this.hostPauseDeadline.set(payload.deadline);
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, hostPaused: true, hostPauseDeadline: payload.deadline }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:host-resumed', (payload: { lobbyId: string; imageSelectionEndsAt?: number }) => {
+      this.hostPauseDeadline.set(null);
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? {
+              ...currentMatch,
+              hostPaused: false,
+              hostPauseDeadline: null,
+              imageSelectionEndsAt: payload.imageSelectionEndsAt || currentMatch.imageSelectionEndsAt,
+            }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:timer-reset', (payload: { lobbyId: string; imageSelectionEndsAt: number }) => {
+      this.imageSelectionTimerReset.set(payload.imageSelectionEndsAt);
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, imageSelectionEndsAt: payload.imageSelectionEndsAt }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:waiting-next-round', (payload: { lobbyId: string; reason: string }) => {
+      this.waitingNextRoundMessage.set(payload.reason || 'Espera a la siguiente ronda.');
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, waitingPlayerIds: [...new Set([...currentMatch.waitingPlayerIds, this.playerId])] }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:confirm-image-ready', (payload: { lobbyId: string; playerId: string }, callback) => {
+      if (payload.playerId !== this.playerId) {
+        callback?.({ ok: false, ready: false });
+        return;
+      }
+
+      const match = this.match();
+      const ready = Boolean(
+        match &&
+          match.lobbyId === payload.lobbyId &&
+          !match.waitingPlayerIds.includes(this.playerId) &&
+          match.readySelections.some((selection) => selection.playerId === this.playerId),
+      );
+
+      callback?.({ ok: true, ready });
+    });
+
+    this.socket.on('match:closed', (payload: { lobbyId: string; reason: string }) => {
+      this.match.set(null);
+      this.hostPauseDeadline.set(null);
+      this.closedRoomMessage.set(payload.reason || 'La partida se ha cerrado.');
+      this.clearLobbyUrl();
     });
   }
 
@@ -155,6 +353,50 @@ export class SocketService {
     });
   }
 
+  startMatch(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:start', {
+      code,
+      hostId: this.playerId,
+    });
+  }
+
+  submitImageSelection(code: string, imageUrl: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:image-selection-ready', {
+      code,
+      imageUrl,
+      playerId: this.playerId,
+    });
+  }
+
+  extendImageSelection(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:extend-image-selection', {
+      code,
+      hostId: this.playerId,
+    });
+  }
+
+  excludeUnreadyImagePlayers(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:exclude-unready-players', {
+      code,
+      hostId: this.playerId,
+    });
+  }
+
+  verifyImageSelectionReady(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:verify-image-selection-ready', {
+      code,
+      hostId: this.playerId,
+    });
+  }
+
+  notifyImageSelectionReconnect(code: string): void {
+    this.connect();
+    this.socket?.emit('match:player-reconnected-selection', {
+      code,
+      playerId: this.playerId,
+    });
+  }
+
   leaveRoom(code: string): Promise<RoomResponse> {
     this.stopHeartbeat();
     this.clearLobbyNavigation();
@@ -169,8 +411,29 @@ export class SocketService {
   }
 
   saveHostForRoom(code: string): void {
+    this.clearStoredHostIdentity();
     localStorage.setItem(HOST_ROOM_KEY, code);
     localStorage.setItem(HOST_ID_KEY, this.playerId);
+  }
+
+  clearStoredHostIdentity(): void {
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+
+      if (!key) {
+        continue;
+      }
+
+      if (
+        key === HOST_ROOM_KEY ||
+        key === HOST_ID_KEY ||
+        key.startsWith(`${HOST_ROOM_KEY}:`) ||
+        key.startsWith(`${HOST_ID_KEY}:`) ||
+        key.startsWith('quien-soy-online-host-reconnect-')
+      ) {
+        localStorage.removeItem(key);
+      }
+    }
   }
 
   hasHostIdentityForRoom(code: string): boolean {
@@ -180,6 +443,14 @@ export class SocketService {
   clearRoomNotices(): void {
     this.kickedFromRoom.set(null);
     this.closedRoomMessage.set(null);
+    this.allImagesReady.set(null);
+    this.waitingNextRoundMessage.set(null);
+  }
+
+  clearMatch(): void {
+    this.match.set(null);
+    this.allImagesReady.set(null);
+    this.hostPauseDeadline.set(null);
   }
 
   clearLobbyNavigation(): void {
@@ -223,13 +494,21 @@ export class SocketService {
       }
 
       this.socket.emit(eventName, payload, (response: RoomResponse) => {
-        if (response.ok && response.lobby) {
-          this.lobby.set(response.lobby);
-          this.startHeartbeat(response.lobby.code);
-        }
+      if (response.ok && response.lobby) {
+        this.lobby.set(response.lobby);
+        this.startHeartbeat(response.lobby.code);
+      }
 
-        resolve(response);
-      });
+      if (response.ok && response.match) {
+        this.match.set(response.match);
+      }
+
+      if (response.ok && response.waitingNextRound) {
+        this.waitingNextRoundMessage.set('No seleccionaste imagen a tiempo. Espera a la siguiente ronda.');
+      }
+
+      resolve(response);
+    });
     });
   }
 

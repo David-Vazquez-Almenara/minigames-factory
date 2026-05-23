@@ -177,7 +177,9 @@
     <div class="action-row lobby-actions">
       <button class="danger-button" type="button" [disabled]="loading()" (click)="leaveLobby()">Salir</button>
       @if (isHost()) {
-      <button class="success-button" type="button" (click)="startGame()">Iniciar partida</button>
+      <button class="success-button" type="button" [disabled]="loading() || !canStartGame()" (click)="startGame()">
+        {{ loading() ? 'Iniciando...' : 'Iniciar partida' }}
+      </button>
       } @else {
       <button class="success-button" type="button" [disabled]="loading()" (click)="toggleReady()">
         {{ currentPlayerReady() ? 'No listo' : 'Listo' }}

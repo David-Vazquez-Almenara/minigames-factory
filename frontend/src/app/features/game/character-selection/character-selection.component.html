@@ -1,0 +1,89 @@
+<section class="selection-screen" aria-label="Seleccion de personaje">
+  <aside class="selection-status" aria-label="Estado de seleccion">
+    <strong>{{ remainingSeconds() }}s</strong>
+    <div class="ready-counter" aria-label="Jugadores listos">
+      <span>&#10003;</span>
+      <b>{{ readyLabel() }}</b>
+    </div>
+  </aside>
+
+  <main class="selection-panel">
+    @if (waitingNextRoundMessage()) {
+    <section class="waiting-panel" role="status" aria-live="polite">
+      <div class="waiting-icon" aria-hidden="true">...</div>
+      <h1>Esperando siguiente ronda</h1>
+      <p>{{ waitingNextRoundMessage() }}</p>
+    </section>
+    } @else {
+    @if (assignment(); as currentAssignment) {
+    <header>
+      <p>Elige el personaje de</p>
+      <h1>{{ currentAssignment.targetPlayerName }}</h1>
+      <div class="assignment-tags">
+        <span>Tematica: {{ currentAssignment.theme }}</span>
+        <span>Tipo de personaje: {{ currentAssignment.characterType }}</span>
+      </div>
+    </header>
+
+    <div class="image-preview" [class.has-image]="previewUrl()">
+      @if (previewUrl()) {
+      <img [src]="previewUrl()" alt="Vista previa del personaje" />
+      } @else {
+      <div class="placeholder" aria-hidden="true">?</div>
+      }
+    </div>
+
+    <label class="field" [class.saved-field]="submitted() && !editingSelection()">
+      <span>URL de imagen</span>
+      <div class="url-edit-row">
+        <input
+          type="url"
+          autocomplete="off"
+          [disabled]="submitted() && !editingSelection()"
+          [ngModel]="imageUrl()"
+          (ngModelChange)="updateImageUrl($event)"
+          placeholder="https://example.com/personaje.png"
+        />
+        @if (submitted() && !editingSelection()) {
+        <button class="edit-url-button" type="button" aria-label="Editar URL de imagen" (click)="editSelection()">
+          ✎
+        </button>
+        }
+      </div>
+    </label>
+
+    @if (errorMessage()) {
+    <p class="error-message" role="alert">{{ errorMessage() }}</p>
+    }
+
+    <button class="ready-button" type="button" [disabled]="!canSubmit()" (click)="submitSelection()">
+      {{ validating() ? 'Comprobando...' : editingSelection() ? 'Guardar nueva imagen' : 'Listo' }}
+    </button>
+    } @else {
+    <p class="error-message" role="alert">No se encontro tu asignacion de personaje.</p>
+    }
+    }
+  </main>
+
+  @if (showTimeoutDecision()) {
+  <div class="timeout-backdrop" role="dialog" aria-modal="true" aria-labelledby="timeout-title">
+    <section class="timeout-modal">
+      <h2 id="timeout-title">Faltan jugadores por elegir imagen</h2>
+      <p>Estos jugadores aun no han pulsado Listo:</p>
+      <div class="timeout-player-list">
+        @for (player of timeoutDecisionPlayers(); track player.id) {
+        <span>{{ player.name }}</span>
+        }
+      </div>
+      <div class="timeout-actions">
+        <button class="wait-button" type="button" [disabled]="timeoutDecisionLoading()" (click)="waitForUnreadyPlayers()">
+          Esperar al jugador (anadir 60 segundos mas al contador)
+        </button>
+        <button class="start-without-button" type="button" [disabled]="timeoutDecisionLoading() || !timeoutDecisionPlayers().length" (click)="excludeUnreadyPlayers()">
+          Empezar la partida sin el jugador
+        </button>
+      </div>
+    </section>
+  </div>
+  }
+</section>

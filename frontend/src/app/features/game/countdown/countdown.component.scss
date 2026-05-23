@@ -1,0 +1,41 @@
+.countdown-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  color: #000;
+  background-color: #ffd6e8;
+}
+
+.countdown-number {
+  display: grid;
+  width: clamp(150px, 30vw, 250px);
+  aspect-ratio: 1;
+  place-items: center;
+  font-size: clamp(7rem, 24vw, 15rem);
+  font-weight: 950;
+  line-height: 1;
+  background-color: #ffe27a;
+  border: 5px solid #000;
+  border-radius: 50%;
+  animation: countdown-pop 900ms cubic-bezier(0.18, 0.88, 0.3, 1.25) both;
+}
+
+.countdown-number::after {
+  content: attr(data-number);
+  position: absolute;
+  opacity: 0;
+}
+
+@keyframes countdown-pop {
+  0% {
+    transform: scale(0) rotate(-14deg);
+  }
+
+  62% {
+    transform: scale(1.08) rotate(4deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}

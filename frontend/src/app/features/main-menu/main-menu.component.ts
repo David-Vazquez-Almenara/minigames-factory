@@ -3,12 +3,13 @@ import { BackendWakeService } from '../../core/services/backend-wake.service';
 import { ConfigService } from '../../core/services/config.service';
 import { SocketService } from '../../core/services/socket.service';
 import { BackendWakeOverlayComponent } from '../../shared/components/backend-wake-overlay/backend-wake-overlay.component';
+import { GameScreenComponent } from '../game/game-screen/game-screen.component';
 import { GameSetupFlowComponent } from '../game-setup/game-setup-flow.component';
 import { SettingsModalComponent } from '../settings/settings-modal.component';
 
 @Component({
   selector: 'app-main-menu',
-  imports: [BackendWakeOverlayComponent, GameSetupFlowComponent, SettingsModalComponent],
+  imports: [BackendWakeOverlayComponent, GameScreenComponent, GameSetupFlowComponent, SettingsModalComponent],
   templateUrl: './main-menu.component.html',
   styleUrl: './main-menu.component.scss',
 })
@@ -22,6 +23,7 @@ export class MainMenuComponent implements OnInit {
   readonly backendSleeping = this.backendWakeService.sleeping;
   readonly socketConnected = this.socketService.connected;
   readonly serverMessage = this.socketService.serverMessage;
+  readonly match = this.socketService.match;
   readonly showSettings = signal(false);
   readonly setupMode = signal<'create' | 'join' | null>(null);
   readonly setupRoomCode = signal('');

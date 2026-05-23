@@ -6,6 +6,7 @@ import {
   LobbyState,
   SocketService,
 } from '../../core/services/socket.service';
+import { MatchService } from '../../core/services/match.service';
 
 type SetupMode = 'create' | 'join';
 type FlowStep = 'name' | 'create-settings' | 'join-code' | 'lobby';
@@ -20,6 +21,7 @@ const PLAYER_NAME_KEY = 'quien-soy-online-player-name';
 })
 export class GameSetupFlowComponent {
   private readonly socketService = inject(SocketService);
+  private readonly matchService = inject(MatchService);
 
   readonly mode = input.required<SetupMode>();
   readonly initialRoomCode = input('');
@@ -73,6 +75,15 @@ export class GameSetupFlowComponent {
 
   readonly currentPlayerId = this.socketService.playerId;
   readonly isHost = computed(() => this.socketService.isCurrentPlayerHost(this.lobby()));
+  readonly canStartGame = computed(() => {
+    const lobby = this.lobby();
+
+    if (!lobby || !this.isHost() || lobby.players.length < 2) {
+      return false;
+    }
+
+    return lobby.players.filter((player) => player.id !== lobby.hostId).every((player) => player.ready);
+  });
 
   readonly title = computed(() => {
     if (this.step() === 'name') {
@@ -128,6 +139,17 @@ export class GameSetupFlowComponent {
 
       this.lobby.set(null);
       this.socketService.clearRoomNotices();
+      this.closed.emit();
+    });
+
+    effect(() => {
+      const match = this.socketService.match();
+      const lobby = this.lobby();
+
+      if (!match || !lobby || match.lobbyId !== lobby.code) {
+        return;
+      }
+
       this.closed.emit();
     });
   }
@@ -260,6 +282,7 @@ export class GameSetupFlowComponent {
     this.errorMessage.set('');
     this.loading.set(true);
 
+    this.socketService.clearStoredHostIdentity();
     const response = await this.socketService.joinRoom(this.playerName().trim(), code);
     this.handleRoomResponse(response);
   }
@@ -379,14 +402,26 @@ export class GameSetupFlowComponent {
     this.cancel();
   }
 
-  startGame(): void {
+  async startGame(): Promise<void> {
     const lobby = this.lobby();
 
     if (!lobby || !this.isHost()) {
       return;
     }
 
-    this.socketService.prepareHostReconnectSnapshot(lobby);
+    if (!this.canStartGame()) {
+      this.errorMessage.set('Todos los jugadores deben estar listos antes de iniciar.');
+      return;
+    }
+
+    this.loading.set(true);
+    const response = await this.matchService.startMatch(lobby);
+    this.loading.set(false);
+
+    if (!response.ok) {
+      this.errorMessage.set(response.reason || 'No se pudo iniciar la partida.');
+      return;
+    }
   }
 
   currentPlayerReady(): boolean {
