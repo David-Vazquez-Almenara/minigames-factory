@@ -3,12 +3,18 @@ import {
   AllImagesReadyPayload,
   LobbyState,
   MatchAssignment,
+  QuestionBackupPayload,
   MatchState,
   RoomResponse,
+  ScoreboardEntry,
+  ScoreboardPayload,
   SocketService,
 } from './socket.service';
 
 const MATCH_DATA_KEY = 'matchData';
+const QUESTION_BACKUP_KEY = 'questionRoundBackup';
+const SCOREBOARD_COPY_KEY = 'quien-soy-online-scoreboard';
+const HOST_RECONNECT_LOBBY_KEY = 'quien-soy-online-host-reconnect-lobby';
 const BANNED_PLAYERS_KEY = 'quien-soy-online-banned-players';
 const PLAYER_IMAGE_SELECTION_KEY = 'quien-soy-online-player-image-selection';
 const IMAGE_TIMEOUT_PLAYERS_KEY = 'quien-soy-online-image-timeout-players';
@@ -23,12 +29,16 @@ interface ImageValidationResult {
 export class MatchService {
   private readonly socketService = inject(SocketService);
   private readonly savedMatchDataLobbyId = signal<string | null>(null);
+  private readonly calculatedScoreboardKey = signal('');
 
   readonly match = this.socketService.match;
   readonly lobby = this.socketService.lobby;
   readonly hostPauseDeadline = this.socketService.hostPauseDeadline;
   readonly imageSelectionTimerReset = this.socketService.imageSelectionTimerReset;
   readonly waitingNextRoundMessage = this.socketService.waitingNextRoundMessage;
+  readonly waitingQuestionBatchMessage = this.socketService.waitingQuestionBatchMessage;
+  readonly scoreboard = this.socketService.scoreboard;
+  readonly scoreboardCalculateRequest = this.socketService.scoreboardCalculateRequest;
   readonly currentPlayerId = this.socketService.playerId;
 
   readonly currentAssignment = computed<MatchAssignment | null>(() => {
@@ -68,6 +78,47 @@ export class MatchService {
       this.saveMatchData(payload);
       this.savedMatchDataLobbyId.set(payload.lobbyId);
     });
+
+    effect(() => {
+      const payload = this.socketService.questionBackup();
+      const lobby = this.socketService.lobby();
+
+      if (!payload || !lobby || !this.socketService.isCurrentPlayerHost(lobby)) {
+        return;
+      }
+
+      this.saveQuestionBackup(payload);
+    });
+
+    effect(() => {
+      const request = this.socketService.scoreboardCalculateRequest();
+      const lobby = this.socketService.lobby();
+      const match = this.socketService.match();
+
+      if (
+        !request ||
+        !lobby ||
+        !match ||
+        request.lobbyId !== lobby.code ||
+        match.phase !== 'scoreboard' ||
+        !this.socketService.isCurrentPlayerHost(lobby)
+      ) {
+        return;
+      }
+
+      const scoreboardKey = `${request.lobbyId}:${request.roundNumber}:${match.answerResults
+        .map((result) => `${result.ownerPlayerId}-${result.finalAnswer}`)
+        .join('|')}`;
+
+      if (scoreboardKey === this.calculatedScoreboardKey()) {
+        return;
+      }
+
+      this.calculatedScoreboardKey.set(scoreboardKey);
+      const scoreboard = this.calculateOfficialScoreboard(lobby, match, request.roundNumber);
+      this.saveOfficialScoreboard(scoreboard);
+      void this.socketService.updateScoreboard(lobby.code, request.roundNumber, scoreboard.scores);
+    });
   }
 
   async startMatch(lobby: LobbyState): Promise<RoomResponse> {
@@ -90,6 +141,36 @@ export class MatchService {
 
   notifyImageSelectionReconnect(lobbyId: string): void {
     this.socketService.notifyImageSelectionReconnect(lobbyId);
+  }
+
+  selectQuestion(lobbyId: string, questionId: string): Promise<RoomResponse> {
+    return this.socketService.selectQuestion(lobbyId, questionId);
+  }
+
+  submitAnswer(lobbyId: string, answer: 'yes' | 'no'): Promise<RoomResponse> {
+    return this.socketService.submitAnswer(lobbyId, answer);
+  }
+
+  continueFromScoreboard(lobbyId: string): Promise<RoomResponse> {
+    return this.socketService.continueFromScoreboard(lobbyId);
+  }
+
+  saveLocalScoreboardCopy(scoreboard: ScoreboardPayload): void {
+    localStorage.setItem(SCOREBOARD_COPY_KEY, JSON.stringify(scoreboard));
+  }
+
+  getLocalScoreboardCopy(lobbyId: string): ScoreboardPayload | null {
+    try {
+      const parsedValue = JSON.parse(localStorage.getItem(SCOREBOARD_COPY_KEY) || 'null') as ScoreboardPayload | null;
+
+      if (parsedValue?.lobbyId !== lobbyId || !Array.isArray(parsedValue.scores)) {
+        return null;
+      }
+
+      return parsedValue;
+    } catch {
+      return null;
+    }
   }
 
   extendImageSelection(lobbyId: string): Promise<RoomResponse> {
@@ -188,6 +269,7 @@ export class MatchService {
   clearMatchState(): void {
     this.socketService.clearMatch();
     this.savedMatchDataLobbyId.set(null);
+    this.calculatedScoreboardKey.set('');
   }
 
   private saveMatchData(payload: AllImagesReadyPayload): void {
@@ -200,8 +282,115 @@ export class MatchService {
     );
   }
 
+  private saveQuestionBackup(payload: QuestionBackupPayload): void {
+    const currentBackup = this.getQuestionBackup(payload.lobbyId);
+    const rounds = currentBackup.rounds.filter((round) => round.roundNumber !== payload.roundNumber);
+
+    rounds.push({
+      roundNumber: payload.roundNumber,
+      questions: payload.questions,
+    });
+
+    rounds.sort((firstRound, secondRound) => firstRound.roundNumber - secondRound.roundNumber);
+
+    localStorage.setItem(
+      QUESTION_BACKUP_KEY,
+      JSON.stringify({
+        lobbyId: payload.lobbyId,
+        rounds,
+      }),
+    );
+  }
+
+  private calculateOfficialScoreboard(lobby: LobbyState, match: MatchState, roundNumber: number): ScoreboardPayload {
+    const previousScoreboard = this.getLocalScoreboardCopy(lobby.code);
+    const previousScores = new Map((previousScoreboard?.scores || []).map((score) => [score.playerId, score.score]));
+    const pointsByAnswer = {
+      yes: 10,
+      maybe: 5,
+      no: 0,
+    } satisfies Record<'yes' | 'no' | 'maybe', number>;
+    const currentRoundPoints = new Map<string, number>();
+
+    for (const result of match.answerResults) {
+      currentRoundPoints.set(result.ownerPlayerId, pointsByAnswer[result.finalAnswer]);
+    }
+
+    const lobbyOrder = new Map(lobby.players.map((player, index) => [player.id, index]));
+    const scores = lobby.players.map((player) => ({
+      playerId: player.id,
+      playerName: player.name,
+      score: (previousScores.get(player.id) || 0) + (currentRoundPoints.get(player.id) || 0),
+      position: 0,
+    }));
+
+    scores.sort((firstPlayer, secondPlayer) => {
+      if (secondPlayer.score !== firstPlayer.score) {
+        return secondPlayer.score - firstPlayer.score;
+      }
+
+      return (lobbyOrder.get(firstPlayer.playerId) || 0) - (lobbyOrder.get(secondPlayer.playerId) || 0);
+    });
+
+    return {
+      lobbyId: lobby.code,
+      roundNumber,
+      scores: scores.map((score, index) => ({
+        ...score,
+        position: index + 1,
+      })),
+    };
+  }
+
+  private saveOfficialScoreboard(scoreboard: ScoreboardPayload): void {
+    this.saveLocalScoreboardCopy(scoreboard);
+
+    localStorage.setItem(
+      HOST_RECONNECT_LOBBY_KEY,
+      JSON.stringify({
+        lobbyId: scoreboard.lobbyId,
+        players: scoreboard.scores.map((score) => ({
+          playerId: score.playerId,
+          score: score.score,
+          position: score.position,
+        })),
+      }),
+    );
+  }
+
+  private getQuestionBackup(lobbyId: string): {
+    lobbyId: string;
+    rounds: Array<{
+      roundNumber: number;
+      questions: QuestionBackupPayload['questions'];
+    }>;
+  } {
+    try {
+      const parsedValue = JSON.parse(localStorage.getItem(QUESTION_BACKUP_KEY) || 'null') as {
+        lobbyId?: string;
+        rounds?: Array<{
+          roundNumber: number;
+          questions: QuestionBackupPayload['questions'];
+        }>;
+      } | null;
+
+      if (parsedValue?.lobbyId !== lobbyId || !Array.isArray(parsedValue.rounds)) {
+        return { lobbyId, rounds: [] };
+      }
+
+      return {
+        lobbyId,
+        rounds: parsedValue.rounds,
+      };
+    } catch {
+      return { lobbyId, rounds: [] };
+    }
+  }
+
   private cleanOldHostMatchStorage(currentLobbyId: string): void {
     localStorage.removeItem(MATCH_DATA_KEY);
+    localStorage.removeItem(QUESTION_BACKUP_KEY);
+    localStorage.removeItem(SCOREBOARD_COPY_KEY);
     this.removeObjectFromOtherLobby(BANNED_PLAYERS_KEY, currentLobbyId);
     this.removeObjectFromOtherLobby(PLAYER_IMAGE_SELECTION_KEY, currentLobbyId);
     this.removeObjectFromOtherLobby(IMAGE_TIMEOUT_PLAYERS_KEY, currentLobbyId);

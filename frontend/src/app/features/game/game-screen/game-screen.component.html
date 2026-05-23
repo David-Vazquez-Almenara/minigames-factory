@@ -1,12 +1,8 @@
 @if (match()) {
-  @if (match()?.phase === 'game-started') {
-    <section class="game-started-screen" aria-label="Partida iniciada">
-      <div class="game-started-card">
-        <p>Quien Soy Online</p>
-        <h1>Partida iniciada</h1>
-        <span>Preparando la siguiente fase...</span>
-      </div>
-    </section>
+  @if (showScoreboard()) {
+    <app-scoreboard />
+  } @else if (showQuestionRound()) {
+    <app-question-round />
   } @else if (!showCharacterSelection()) {
     <app-countdown (finished)="finishCountdown()" />
   } @else {

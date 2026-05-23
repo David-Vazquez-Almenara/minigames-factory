@@ -12,6 +12,7 @@ export interface CreateRoomSettings {
   randomThemePerPlayer: boolean;
   randomCharacterTypePerPlayer: boolean;
   questionDuration: 15 | 30 | 60;
+  respondQuestionTime: 5 | 10 | 15;
   rounds: number;
   themeCategories: string[];
   characterTypes: string[];
@@ -49,9 +50,21 @@ export interface MatchSelection {
   characterType: string;
 }
 
+export interface QuestionOption {
+  id: string;
+  text: string;
+}
+
 export interface MatchState {
   lobbyId: string;
-  phase: 'lobby' | 'countdown' | 'image-selection' | 'image-selection-complete' | 'game-started';
+  phase:
+    | 'lobby'
+    | 'countdown'
+    | 'image-selection'
+    | 'image-selection-complete'
+    | 'question-selection'
+    | 'answer-phase'
+    | 'scoreboard';
   assignments: MatchAssignment[];
   readySelections: MatchSelection[];
   readyCount: number;
@@ -61,6 +74,53 @@ export interface MatchState {
   countdownEndsAt: number;
   imageSelectionEndsAt: number;
   waitingPlayerIds: string[];
+  questionRoundNumber: number;
+  questionSelectionEndsAt: number | null;
+  selectedQuestions: Array<{
+    playerId: string;
+    questionId: string;
+    question: string;
+  }>;
+  questionOptionsByPlayer: Array<{
+    playerId: string;
+    options: QuestionOption[];
+  }>;
+  questionHistory: Array<{
+    ownerPlayerId: string;
+    questionId: string;
+    question: string;
+    answer: 'yes' | 'no' | 'maybe';
+    roundNumber: number;
+  }>;
+  currentAnswer: {
+    ownerPlayerId: string;
+    ownerPlayerName: string;
+    questionId: string;
+    question: string;
+    imageUrl: string;
+  } | null;
+  answerEndsAt: number | null;
+  answerResults: Array<{
+    ownerPlayerId: string;
+    questionId?: string;
+    selectedQuestion: string;
+    finalAnswer: 'yes' | 'no' | 'maybe';
+  }>;
+  waitingQuestionBatchPlayerIds: string[];
+  scoreboard: ScoreboardPayload | null;
+}
+
+export interface ScoreboardEntry {
+  playerId: string;
+  playerName: string;
+  score: number;
+  position: number;
+}
+
+export interface ScoreboardPayload {
+  lobbyId: string;
+  roundNumber: number;
+  scores: ScoreboardEntry[];
 }
 
 export interface AllImagesReadyPayload {
@@ -73,12 +133,25 @@ export interface AllImagesReadyPayload {
   }>;
 }
 
+export interface QuestionBackupPayload {
+  lobbyId: string;
+  roundNumber: number;
+  questions: Array<{
+    ownerPlayerId: string;
+    questionId: string;
+    selectedQuestion: string;
+    finalAnswer: 'yes' | 'no' | 'maybe' | null;
+  }>;
+  history?: MatchState['questionHistory'];
+}
+
 export interface RoomResponse {
   ok: boolean;
   reason?: string;
   lobby?: LobbyState;
   match?: MatchState;
   waitingNextRound?: boolean;
+  waitingQuestionBatch?: boolean;
   excludedPlayers?: Array<{
     playerId: string;
     name: string;
@@ -112,8 +185,12 @@ export class SocketService {
   readonly match = signal<MatchState | null>(null);
   readonly allImagesReady = signal<AllImagesReadyPayload | null>(null);
   readonly imageSelectionTimerReset = signal<number | null>(null);
+  readonly questionBackup = signal<QuestionBackupPayload | null>(null);
+  readonly scoreboard = signal<ScoreboardPayload | null>(null);
+  readonly scoreboardCalculateRequest = signal<{ lobbyId: string; roundNumber: number } | null>(null);
   readonly hostPauseDeadline = signal<number | null>(null);
   readonly waitingNextRoundMessage = signal<string | null>(null);
+  readonly waitingQuestionBatchMessage = signal<string | null>(null);
   readonly kickedFromRoom = signal<string | null>(null);
   readonly closedRoomMessage = signal<string | null>(null);
   readonly playerId = this.getOrCreatePlayerId();
@@ -245,12 +322,70 @@ export class SocketService {
       );
     });
 
-    this.socket.on('match:game-started', (payload: { lobbyId: string }) => {
+    this.socket.on('match:question-state', (payload: MatchState) => {
+      this.match.set(payload);
+      if (payload.scoreboard) {
+        this.scoreboard.set(payload.scoreboard);
+      }
+    });
+
+    this.socket.on('match:scoreboard-calculate', (payload: { lobbyId: string; roundNumber: number }) => {
+      this.scoreboardCalculateRequest.set(payload);
+    });
+
+    this.socket.on('match:scoreboard-sync', (payload: { lobbyId: string; scoreboard: ScoreboardPayload | null }) => {
+      this.scoreboard.set(payload.scoreboard);
       this.match.update((currentMatch) =>
         currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, phase: 'game-started' }
+          ? { ...currentMatch, phase: 'scoreboard', scoreboard: payload.scoreboard }
           : currentMatch,
       );
+    });
+
+    this.socket.on(
+      'match:answer-result',
+      (payload: {
+        lobbyId: string;
+        result: {
+          ownerPlayerId: string;
+          questionId?: string;
+          selectedQuestion: string;
+          finalAnswer: 'yes' | 'no' | 'maybe';
+        };
+      }) => {
+        this.match.update((currentMatch) => {
+          if (!currentMatch || currentMatch.lobbyId !== payload.lobbyId) {
+            return currentMatch;
+          }
+
+          const previousResults = currentMatch.answerResults.filter(
+            (result) => result.ownerPlayerId !== payload.result.ownerPlayerId,
+          );
+
+          return {
+            ...currentMatch,
+            answerResults: [...previousResults, payload.result],
+          };
+        });
+      },
+    );
+
+    this.socket.on('match:waiting-next-question-batch', (payload: { lobbyId: string; reason: string }) => {
+      this.waitingQuestionBatchMessage.set(payload.reason || 'Espera a la siguiente tanda de preguntas.');
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? {
+              ...currentMatch,
+              waitingQuestionBatchPlayerIds: [
+                ...new Set([...currentMatch.waitingQuestionBatchPlayerIds, this.playerId]),
+              ],
+            }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:question-backup-updated', (payload: QuestionBackupPayload) => {
+      this.questionBackup.set(payload);
     });
 
     this.socket.on('match:host-paused', (payload: { lobbyId: string; deadline: number }) => {
@@ -397,6 +532,38 @@ export class SocketService {
     });
   }
 
+  selectQuestion(code: string, questionId: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:select-question', {
+      code,
+      questionId,
+      playerId: this.playerId,
+    });
+  }
+
+  submitAnswer(code: string, answer: 'yes' | 'no'): Promise<RoomResponse> {
+    return this.emitWithResponse('match:submit-answer', {
+      code,
+      answer,
+      playerId: this.playerId,
+    });
+  }
+
+  updateScoreboard(code: string, roundNumber: number, scores: ScoreboardEntry[]): Promise<RoomResponse> {
+    return this.emitWithResponse('match:scoreboard-updated', {
+      code,
+      roundNumber,
+      scores,
+      hostId: this.playerId,
+    });
+  }
+
+  continueFromScoreboard(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:scoreboard-continue', {
+      code,
+      hostId: this.playerId,
+    });
+  }
+
   leaveRoom(code: string): Promise<RoomResponse> {
     this.stopHeartbeat();
     this.clearLobbyNavigation();
@@ -445,12 +612,20 @@ export class SocketService {
     this.closedRoomMessage.set(null);
     this.allImagesReady.set(null);
     this.waitingNextRoundMessage.set(null);
+    this.waitingQuestionBatchMessage.set(null);
+    this.questionBackup.set(null);
+    this.scoreboardCalculateRequest.set(null);
   }
 
   clearMatch(): void {
     this.match.set(null);
     this.allImagesReady.set(null);
     this.hostPauseDeadline.set(null);
+    this.waitingNextRoundMessage.set(null);
+    this.waitingQuestionBatchMessage.set(null);
+    this.questionBackup.set(null);
+    this.scoreboard.set(null);
+    this.scoreboardCalculateRequest.set(null);
   }
 
   clearLobbyNavigation(): void {
@@ -475,6 +650,7 @@ export class SocketService {
         rounds: lobby.settings.rounds,
         randomThemePerPlayer: lobby.settings.randomThemePerPlayer,
         randomCharacterTypePerPlayer: lobby.settings.randomCharacterTypePerPlayer,
+        respondQuestionTime: lobby.settings.respondQuestionTime,
         themeCategories: lobby.settings.themeCategories,
         characterTypes: lobby.settings.characterTypes,
       }),
@@ -505,6 +681,10 @@ export class SocketService {
 
       if (response.ok && response.waitingNextRound) {
         this.waitingNextRoundMessage.set('No seleccionaste imagen a tiempo. Espera a la siguiente ronda.');
+      }
+
+      if (response.ok && response.waitingQuestionBatch) {
+        this.waitingQuestionBatchMessage.set('Espera a la siguiente tanda de preguntas.');
       }
 
       resolve(response);

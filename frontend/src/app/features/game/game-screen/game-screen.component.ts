@@ -2,10 +2,12 @@ import { Component, OnDestroy, computed, effect, inject, signal } from '@angular
 import { MatchService } from '../../../core/services/match.service';
 import { CharacterSelectionComponent } from '../character-selection/character-selection.component';
 import { CountdownComponent } from '../countdown/countdown.component';
+import { QuestionRoundComponent } from '../question-round/question-round.component';
+import { ScoreboardComponent } from '../scoreboard/scoreboard.component';
 
 @Component({
   selector: 'app-game-screen',
-  imports: [CharacterSelectionComponent, CountdownComponent],
+  imports: [CharacterSelectionComponent, CountdownComponent, QuestionRoundComponent, ScoreboardComponent],
   templateUrl: './game-screen.component.html',
   styleUrl: './game-screen.component.scss',
 })
@@ -28,6 +30,13 @@ export class GameScreenComponent implements OnDestroy {
 
     return this.countdownDone() || match.phase !== 'countdown' || Date.now() >= match.countdownEndsAt;
   });
+
+  readonly showQuestionRound = computed(() => {
+    const phase = this.match()?.phase;
+    return phase === 'question-selection' || phase === 'answer-phase';
+  });
+
+  readonly showScoreboard = computed(() => this.match()?.phase === 'scoreboard');
 
   constructor() {
     effect(() => {

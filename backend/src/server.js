@@ -30,6 +30,26 @@ const PRESENCE_CHECK_MS = 6000;
 const HOST_RECONNECT_WAIT_MS = 60000;
 const COUNTDOWN_MS = 3000;
 const IMAGE_SELECTION_MS = 60000;
+const QUESTION_OPTIONS = [
+  { id: 'has-glasses', text: 'Tu personaje tiene gafas?' },
+  { id: 'has-hat', text: 'Tu personaje lleva sombrero?' },
+  { id: 'is-real', text: 'Tu personaje es real?' },
+  { id: 'can-fly', text: 'Tu personaje puede volar?' },
+  { id: 'appears-in-movies', text: 'Tu personaje aparece en peliculas?' },
+  { id: 'has-powers', text: 'Tu personaje tiene poderes?' },
+  { id: 'is-human', text: 'Tu personaje es humano?' },
+  { id: 'wears-armor', text: 'Tu personaje lleva armadura?' },
+  { id: 'is-fictional', text: 'Tu personaje es ficticio?' },
+  { id: 'uses-magic', text: 'Tu personaje usa magia?' },
+  { id: 'is-famous', text: 'Tu personaje es famoso?' },
+  { id: 'is-an-object', text: 'Tu personaje es un objeto?' },
+  { id: 'is-from-history', text: 'Tu personaje pertenece a la historia?' },
+  { id: 'is-animated', text: 'Tu personaje es animado?' },
+  { id: 'has-animal-traits', text: 'Tu personaje tiene rasgos de animal?' },
+  { id: 'uses-technology', text: 'Tu personaje usa tecnologia?' },
+  { id: 'is-from-space', text: 'Tu personaje viene del espacio?' },
+  { id: 'has-weapon', text: 'Tu personaje lleva un arma?' },
+];
 const FALLBACK_THEMES = [
   'Espacial',
   'Fantasia',
@@ -106,6 +126,27 @@ function toMatchState(room) {
     countdownEndsAt: room.match.countdownEndsAt,
     imageSelectionEndsAt: room.match.imageSelectionEndsAt,
     waitingPlayerIds: Array.from(room.match.excludedPlayers?.keys() || []),
+    questionRoundNumber: room.match.questionBatch?.roundNumber || 0,
+    questionSelectionEndsAt: room.match.questionBatch?.questionSelectionEndsAt || null,
+    selectedQuestions: room.match.questionBatch
+      ? Array.from(room.match.questionBatch.selections.entries()).map(([playerId, question]) => ({
+          playerId,
+          questionId: question.questionId,
+          question: question.question,
+        }))
+      : [],
+    questionOptionsByPlayer: room.match.questionBatch
+      ? Array.from(room.match.questionBatch.optionsByPlayer.entries()).map(([playerId, options]) => ({
+          playerId,
+          options,
+        }))
+      : [],
+    questionHistory: room.match.questionHistory || [],
+    currentAnswer: getCurrentAnswerPayload(room),
+    answerEndsAt: room.match.questionBatch?.answerEndsAt || null,
+    answerResults: room.match.questionBatch ? Array.from(room.match.questionBatch.results.values()) : [],
+    waitingQuestionBatchPlayerIds: Array.from(room.match.waitingQuestionBatchPlayerIds || []),
+    scoreboard: room.match.scoreboard || null,
   };
 }
 
@@ -164,6 +205,113 @@ function getUnconfirmedPlayers(room) {
   );
 }
 
+function getQuestionById(questionId) {
+  return QUESTION_OPTIONS.find((question) => question.id === questionId) || null;
+}
+
+function getQuestionByText(questionText) {
+  return QUESTION_OPTIONS.find((question) => question.text === questionText) || null;
+}
+
+function getActiveMatchPlayers(room) {
+  const waitingQuestionIds = room.match?.waitingQuestionBatchPlayerIds || new Set();
+  return Array.from(room.players.values()).filter((player) => player.active && !waitingQuestionIds.has(player.id));
+}
+
+function buildQuestionOptionsForPlayer(room, playerId) {
+  const history = room.match?.questionHistory || [];
+  const playerHistory = history.filter((entry) => entry.ownerPlayerId === playerId);
+  const usedRoundByQuestionId = new Map();
+
+  for (const entry of playerHistory) {
+    usedRoundByQuestionId.set(entry.questionId, entry.roundNumber);
+  }
+
+  const unusedQuestions = QUESTION_OPTIONS.filter((question) => !usedRoundByQuestionId.has(question.id));
+  const usedLeastRecentQuestions = QUESTION_OPTIONS.filter((question) => usedRoundByQuestionId.has(question.id)).sort(
+    (firstQuestion, secondQuestion) =>
+      (usedRoundByQuestionId.get(firstQuestion.id) || 0) - (usedRoundByQuestionId.get(secondQuestion.id) || 0),
+  );
+  const selectedQuestions = [...unusedQuestions, ...usedLeastRecentQuestions].slice(0, 6);
+
+  if (selectedQuestions.length >= 6) {
+    return selectedQuestions;
+  }
+
+  const selectedIds = new Set(selectedQuestions.map((question) => question.id));
+  return [
+    ...selectedQuestions,
+    ...QUESTION_OPTIONS.filter((question) => !selectedIds.has(question.id)).slice(0, 6 - selectedQuestions.length),
+  ];
+}
+
+function buildQuestionOptionsByPlayer(room) {
+  return getActiveMatchPlayers(room).map((player) => ({
+    playerId: player.id,
+    options: buildQuestionOptionsForPlayer(room, player.id),
+  }));
+}
+
+function getCurrentAnswerPayload(room) {
+  const batch = room.match?.questionBatch;
+
+  if (!batch || batch.currentAnswerIndex < 0 || batch.currentAnswerIndex >= batch.answerOrder.length) {
+    return null;
+  }
+
+  const ownerPlayerId = batch.answerOrder[batch.currentAnswerIndex];
+  const ownerPlayer = room.players.get(ownerPlayerId);
+  const question = batch.selections.get(ownerPlayerId);
+  const imageUrl = room.match.characterImages?.get(ownerPlayerId) || '';
+
+  if (!ownerPlayer || !question) {
+    return null;
+  }
+
+  return {
+    ownerPlayerId,
+    ownerPlayerName: ownerPlayer.name,
+    questionId: question.questionId,
+    question: question.question,
+    imageUrl,
+  };
+}
+
+function emitQuestionState(room) {
+  io.to(room.code).emit('match:question-state', toMatchState(room));
+}
+
+function emitQuestionBackup(room) {
+  const batch = room.match?.questionBatch;
+
+  if (!batch) {
+    return;
+  }
+
+  io.to(room.code).emit('match:question-backup-updated', {
+    lobbyId: room.code,
+    roundNumber: batch.roundNumber,
+    questions: Array.from(batch.selections.entries()).map(([ownerPlayerId, selectedQuestion]) => {
+      const result = batch.results.get(ownerPlayerId);
+      return {
+        ownerPlayerId,
+        questionId: selectedQuestion.questionId,
+        selectedQuestion: selectedQuestion.question,
+        finalAnswer: result?.finalAnswer || null,
+      };
+    }),
+    history: room.match.questionHistory || [],
+  });
+}
+
+function emitScoreboardState(room) {
+  io.to(room.code).emit('match:scoreboard-sync', {
+    lobbyId: room.code,
+    scoreboard: room.match?.scoreboard || null,
+  });
+  emitQuestionState(room);
+}
+
 function resetImageSelectionTimer(room) {
   if (!room.match || room.match.phase === 'image-selection-complete') {
     return;
@@ -184,7 +332,13 @@ function resetImageSelectionTimer(room) {
 }
 
 function emitAllImagesReadyIfComplete(room) {
-  if (!room.match || room.match.phase === 'image-selection-complete' || room.match.phase === 'game-started') {
+  if (
+    !room.match ||
+    room.match.phase === 'image-selection-complete' ||
+    room.match.phase === 'question-selection' ||
+    room.match.phase === 'answer-phase' ||
+    room.match.phase === 'scoreboard'
+  ) {
     return;
   }
 
@@ -192,7 +346,6 @@ function emitAllImagesReadyIfComplete(room) {
     return;
   }
 
-  room.match.phase = 'game-started';
   const selectedImages = Array.from(room.match.selections.values()).map((selection) => ({
     playerId: selection.targetPlayerId,
     imageUrl: selection.imageUrl,
@@ -204,9 +357,153 @@ function emitAllImagesReadyIfComplete(room) {
     lobbyId: room.code,
     selectedImages,
   });
-  io.to(room.code).emit('match:game-started', {
+  room.match.characterImages = new Map(selectedImages.map((selection) => [selection.playerId, selection.imageUrl]));
+  room.match.phase = 'image-selection-complete';
+  startQuestionBatch(room);
+}
+
+function startQuestionBatch(room) {
+  if (!room.match) {
+    return;
+  }
+
+  room.match.waitingQuestionBatchPlayerIds = room.match.waitingQuestionBatchPlayerIds || new Set();
+  for (const playerId of [...room.match.waitingQuestionBatchPlayerIds]) {
+    if (room.players.get(playerId)?.active) {
+      room.match.waitingQuestionBatchPlayerIds.delete(playerId);
+    }
+  }
+
+  const nextRoundNumber = (room.match.questionBatch?.roundNumber || 0) + 1;
+  room.match.phase = 'question-selection';
+  room.match.questionBatch = {
+    roundNumber: nextRoundNumber,
+    selections: new Map(),
+    results: new Map(),
+    answerOrder: [],
+    currentAnswerIndex: -1,
+    votes: new Map(),
+    optionsByPlayer: new Map(buildQuestionOptionsByPlayer(room).map((entry) => [entry.playerId, entry.options])),
+    questionSelectionEndsAt: Date.now() + Number(room.settings.questionDuration || 30) * 1000,
+    answerEndsAt: null,
+  };
+
+  emitQuestionState(room);
+}
+
+function startAnswerPhase(room) {
+  const batch = room.match?.questionBatch;
+
+  if (!batch || room.match.phase === 'answer-phase') {
+    return;
+  }
+
+  const activePlayerIds = getActiveMatchPlayers(room).map((player) => player.id);
+  batch.answerOrder = activePlayerIds.filter((playerId) => batch.selections.has(playerId));
+  batch.currentAnswerIndex = 0;
+
+  if (!batch.answerOrder.length) {
+    startQuestionBatch(room);
+    return;
+  }
+
+  room.match.phase = 'answer-phase';
+  emitQuestionBackup(room);
+  startCurrentAnswerTurn(room);
+}
+
+function startCurrentAnswerTurn(room) {
+  const batch = room.match?.questionBatch;
+
+  if (!batch || batch.currentAnswerIndex >= batch.answerOrder.length) {
+    startScoreboardPhase(room);
+    return;
+  }
+
+  batch.votes = new Map();
+  batch.answerEndsAt = Date.now() + Number(room.settings.respondQuestionTime || 5) * 1000;
+  emitQuestionState(room);
+}
+
+function startScoreboardPhase(room) {
+  const batch = room.match?.questionBatch;
+
+  if (!room.match || !batch) {
+    return;
+  }
+
+  room.match.phase = 'scoreboard';
+  room.match.scoreboard = room.match.scoreboard || {
     lobbyId: room.code,
+    roundNumber: batch.roundNumber,
+    scores: [],
+  };
+
+  io.to(room.code).emit('match:question-batch-finished', {
+    lobbyId: room.code,
+    roundNumber: batch.roundNumber,
   });
+  io.to(room.code).emit('match:scoreboard-calculate', {
+    lobbyId: room.code,
+    roundNumber: batch.roundNumber,
+    results: Array.from(batch.results.values()),
+  });
+  emitQuestionState(room);
+}
+
+function finalizeCurrentAnswer(room) {
+  const batch = room.match?.questionBatch;
+  const currentAnswer = getCurrentAnswerPayload(room);
+
+  if (!batch || !currentAnswer || batch.results.has(currentAnswer.ownerPlayerId)) {
+    return;
+  }
+
+  let yesVotes = 0;
+  let noVotes = 0;
+
+  for (const vote of batch.votes.values()) {
+    if (vote === 'yes') {
+      yesVotes += 1;
+    } else {
+      noVotes += 1;
+    }
+  }
+
+  const finalAnswer = yesVotes === noVotes ? 'maybe' : yesVotes > noVotes ? 'yes' : 'no';
+  const result = {
+    ownerPlayerId: currentAnswer.ownerPlayerId,
+    questionId: currentAnswer.questionId,
+    selectedQuestion: currentAnswer.question,
+    finalAnswer,
+  };
+
+  batch.results.set(currentAnswer.ownerPlayerId, result);
+  room.match.questionHistory = (room.match.questionHistory || []).filter(
+    (entry) =>
+      !(entry.roundNumber === batch.roundNumber && entry.ownerPlayerId === currentAnswer.ownerPlayerId),
+  );
+  room.match.questionHistory.push({
+    ownerPlayerId: currentAnswer.ownerPlayerId,
+    questionId: currentAnswer.questionId,
+    question: currentAnswer.question,
+    answer: finalAnswer,
+    roundNumber: batch.roundNumber,
+  });
+  io.to(room.code).emit('match:answer-result', {
+    lobbyId: room.code,
+    result,
+  });
+  emitQuestionBackup(room);
+
+  setTimeout(() => {
+    if (!gameState.rooms.has(room.code) || room.match?.hostPaused) {
+      return;
+    }
+
+    batch.currentAnswerIndex += 1;
+    startCurrentAnswerTurn(room);
+  }, 2200);
 }
 
 function buildAssignments(room) {
@@ -274,16 +571,29 @@ function resumeHostPause(room) {
     return;
   }
 
+  const pausedDuration = room.match.hostPauseStartedAt ? Date.now() - room.match.hostPauseStartedAt : 0;
   room.match.hostPaused = false;
   room.match.hostPauseStartedAt = null;
   room.match.hostPauseDeadline = null;
+
+  if (room.match.phase === 'question-selection' && room.match.questionBatch?.questionSelectionEndsAt) {
+    room.match.questionBatch.questionSelectionEndsAt += pausedDuration;
+  }
+
+  if (room.match.phase === 'answer-phase' && room.match.questionBatch?.answerEndsAt) {
+    room.match.questionBatch.answerEndsAt += pausedDuration;
+  }
 
   io.to(room.code).emit('match:host-resumed', {
     lobbyId: room.code,
     imageSelectionEndsAt: room.match.imageSelectionEndsAt,
   });
 
-  resetImageSelectionTimer(room);
+  if (room.match.phase === 'countdown' || room.match.phase === 'image-selection') {
+    resetImageSelectionTimer(room);
+  } else {
+    emitQuestionState(room);
+  }
 }
 
 function closeMatchRoom(room, reason) {
@@ -303,7 +613,9 @@ function upsertPlayer(room, socket, playerId, playerName) {
     existingPlayer.missedPresenceChecks = 0;
     existingPlayer.inLobby = true;
     existingPlayer.active = true;
-    existingPlayer.ready = room.match ? false : existingPlayer.ready;
+    if (!room.match || room.match.phase === 'countdown' || room.match.phase === 'image-selection') {
+      existingPlayer.ready = room.match ? false : existingPlayer.ready;
+    }
     return existingPlayer;
   }
 
@@ -444,6 +756,23 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if (room.match?.waitingQuestionBatchPlayerIds?.has(playerId)) {
+      upsertPlayer(room, socket, playerId, playerName);
+      socket.join(code);
+      socket.emit('match:question-state', toMatchState(room));
+      socket.emit('match:waiting-next-question-batch', {
+        lobbyId: code,
+        reason: 'Espera a la siguiente tanda de preguntas.',
+      });
+      callback?.({
+        ok: true,
+        lobby: toLobby(room),
+        match: toMatchState(room),
+        waitingQuestionBatch: true,
+      });
+      return;
+    }
+
     const playerWasInactive = room.players.has(playerId) && !room.players.get(playerId).active;
     upsertPlayer(room, socket, playerId, playerName);
     socket.join(code);
@@ -452,19 +781,36 @@ io.on('connection', (socket) => {
       resumeHostPause(room);
     }
 
-    if (room.match && room.match.phase !== 'image-selection-complete') {
+    if (room.match && (room.match.phase === 'countdown' || room.match.phase === 'image-selection')) {
       room.match.selections.delete(playerId);
 
       if (!isHostRejoining || playerWasInactive) {
         resetImageSelectionTimer(room);
       }
+    } else if (
+      room.match &&
+      (room.match.phase === 'question-selection' || room.match.phase === 'answer-phase') &&
+      playerWasInactive &&
+      !isHostRejoining
+    ) {
+      room.match.waitingQuestionBatchPlayerIds = room.match.waitingQuestionBatchPlayerIds || new Set();
+      room.match.waitingQuestionBatchPlayerIds.add(playerId);
+      socket.emit('match:waiting-next-question-batch', {
+        lobbyId: code,
+        reason: 'Espera a la siguiente tanda de preguntas.',
+      });
+      emitQuestionState(room);
     }
 
     broadcastLobby(room);
 
     if (room.match && room.match.phase !== 'lobby') {
       socket.emit('match:started', toMatchState(room));
-      broadcastImageSelectionUpdate(room);
+      if (room.match.phase === 'countdown' || room.match.phase === 'image-selection') {
+        broadcastImageSelectionUpdate(room);
+      } else {
+        emitQuestionState(room);
+      }
     }
 
     callback?.({
@@ -491,16 +837,26 @@ io.on('connection', (socket) => {
 
     if (room.match && wasInactive) {
       player.ready = false;
-      room.match.selections.delete(playerId);
 
       if (playerId === room.hostId && room.match.hostPaused) {
         resumeHostPause(room);
+      } else if (room.match.phase === 'question-selection' || room.match.phase === 'answer-phase') {
+        room.match.waitingQuestionBatchPlayerIds = room.match.waitingQuestionBatchPlayerIds || new Set();
+        room.match.waitingQuestionBatchPlayerIds.add(playerId);
+        socket.emit('match:waiting-next-question-batch', {
+          lobbyId: code,
+          reason: 'Espera a la siguiente tanda de preguntas.',
+        });
+        emitQuestionState(room);
       } else {
+        room.match.selections.delete(playerId);
         resetImageSelectionTimer(room);
       }
 
       broadcastLobby(room);
-      broadcastImageSelectionUpdate(room);
+      if (room.match.phase === 'countdown' || room.match.phase === 'image-selection') {
+        broadcastImageSelectionUpdate(room);
+      }
     }
   });
 
@@ -659,6 +1015,11 @@ io.on('connection', (socket) => {
       countdownEndsAt: Date.now() + COUNTDOWN_MS,
       imageSelectionEndsAt: Date.now() + COUNTDOWN_MS + IMAGE_SELECTION_MS,
       excludedPlayers: new Map(),
+      waitingQuestionBatchPlayerIds: new Set(),
+      characterImages: new Map(),
+      questionHistory: [],
+      scoreboard: null,
+      questionBatch: null,
       lastVerificationFailedPlayerIds: new Set(),
     };
 
@@ -810,6 +1171,144 @@ io.on('connection', (socket) => {
     callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
   });
 
+  socket.on('match:select-question', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const playerId = String(payload.playerId || '').trim();
+    const questionId = String(payload.questionId || '').trim();
+    const questionText = String(payload.question || '').trim();
+    const room = gameState.rooms.get(code);
+    const player = room?.players.get(playerId);
+    const batch = room?.match?.questionBatch;
+
+    if (!room || !player || !room.match || !batch || room.match.phase !== 'question-selection') {
+      callback?.({ ok: false, reason: 'No hay una tanda de preguntas activa.' });
+      return;
+    }
+
+    const question = questionId ? getQuestionById(questionId) : getQuestionByText(questionText);
+    const allowedOptionIds = new Set((batch.optionsByPlayer.get(playerId) || []).map((option) => option.id));
+
+    if (!question || !allowedOptionIds.has(question.id)) {
+      callback?.({ ok: false, reason: 'Selecciona una pregunta valida.' });
+      return;
+    }
+
+    if (room.match.waitingQuestionBatchPlayerIds?.has(playerId) || !player.active) {
+      callback?.({ ok: false, reason: 'Espera a la siguiente tanda de preguntas.' });
+      return;
+    }
+
+    batch.selections.set(playerId, {
+      questionId: question.id,
+      question: question.text,
+    });
+    emitQuestionState(room);
+    emitQuestionBackup(room);
+
+    const activePlayerIds = getActiveMatchPlayers(room).map((activePlayer) => activePlayer.id);
+    const allActiveSelected = activePlayerIds.length > 0 && activePlayerIds.every((activePlayerId) => batch.selections.has(activePlayerId));
+
+    if (allActiveSelected) {
+      startAnswerPhase(room);
+    }
+
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
+  socket.on('match:submit-answer', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const playerId = String(payload.playerId || '').trim();
+    const answer = String(payload.answer || '').trim();
+    const room = gameState.rooms.get(code);
+    const player = room?.players.get(playerId);
+    const batch = room?.match?.questionBatch;
+    const currentAnswer = room ? getCurrentAnswerPayload(room) : null;
+
+    if (!room || !player || !room.match || !batch || room.match.phase !== 'answer-phase' || !currentAnswer) {
+      callback?.({ ok: false, reason: 'No hay una pregunta activa para responder.' });
+      return;
+    }
+
+    if (!['yes', 'no'].includes(answer)) {
+      callback?.({ ok: false, reason: 'Respuesta no valida.' });
+      return;
+    }
+
+    if (playerId === currentAnswer.ownerPlayerId) {
+      callback?.({ ok: false, reason: 'No puedes votar tu propia pregunta.' });
+      return;
+    }
+
+    if (!player.active || room.match.waitingQuestionBatchPlayerIds?.has(playerId)) {
+      callback?.({ ok: false, reason: 'Espera a la siguiente tanda de preguntas.' });
+      return;
+    }
+
+    batch.votes.set(playerId, answer);
+    emitQuestionState(room);
+
+    const expectedVoters = getActiveMatchPlayers(room).filter((activePlayer) => activePlayer.id !== currentAnswer.ownerPlayerId);
+    const allVoted = expectedVoters.every((activePlayer) => batch.votes.has(activePlayer.id));
+
+    if (allVoted) {
+      finalizeCurrentAnswer(room);
+    }
+
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
+  socket.on('match:scoreboard-updated', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const hostId = String(payload.hostId || '').trim();
+    const room = gameState.rooms.get(code);
+    const scores = Array.isArray(payload.scores) ? payload.scores : [];
+
+    if (!room || !room.match || room.match.phase !== 'scoreboard') {
+      callback?.({ ok: false, reason: 'No hay un scoreboard activo.' });
+      return;
+    }
+
+    if (room.hostId !== hostId) {
+      callback?.({ ok: false, reason: 'Solo el host puede sincronizar el scoreboard.' });
+      return;
+    }
+
+    room.match.scoreboard = {
+      lobbyId: code,
+      roundNumber: room.match.questionBatch?.roundNumber || Number(payload.roundNumber || 0),
+      scores: scores
+        .map((scoreEntry) => ({
+          playerId: String(scoreEntry.playerId || ''),
+          playerName: String(scoreEntry.playerName || ''),
+          score: Number(scoreEntry.score || 0),
+          position: Number(scoreEntry.position || 0),
+        }))
+        .filter((scoreEntry) => scoreEntry.playerId && scoreEntry.playerName && scoreEntry.position > 0),
+    };
+
+    emitScoreboardState(room);
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
+  socket.on('match:scoreboard-continue', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const hostId = String(payload.hostId || '').trim();
+    const room = gameState.rooms.get(code);
+
+    if (!room || !room.match || room.match.phase !== 'scoreboard') {
+      callback?.({ ok: false, reason: 'No hay un scoreboard activo.' });
+      return;
+    }
+
+    if (room.hostId !== hostId) {
+      callback?.({ ok: false, reason: 'Solo el host puede continuar a la siguiente tanda.' });
+      return;
+    }
+
+    startQuestionBatch(room);
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
   socket.on('match:exclude-unready-players', (payload = {}, callback) => {
     const code = String(payload.code || '').trim().toUpperCase();
     const hostId = String(payload.hostId || '').trim();
@@ -877,6 +1376,31 @@ setInterval(() => {
       continue;
     }
 
+    if (!room.match?.hostPaused && room.match?.phase === 'question-selection') {
+      const batch = room.match.questionBatch;
+      const activePlayerIds = getActiveMatchPlayers(room).map((player) => player.id);
+      const allActiveSelected =
+        activePlayerIds.length > 0 && activePlayerIds.every((playerId) => batch?.selections.has(playerId));
+
+      if (allActiveSelected || (batch?.questionSelectionEndsAt && Date.now() >= batch.questionSelectionEndsAt)) {
+        startAnswerPhase(room);
+      }
+    }
+
+    if (!room.match?.hostPaused && room.match?.phase === 'answer-phase') {
+      const batch = room.match.questionBatch;
+      const currentAnswer = getCurrentAnswerPayload(room);
+
+      if (batch && currentAnswer) {
+        const expectedVoters = getActiveMatchPlayers(room).filter((player) => player.id !== currentAnswer.ownerPlayerId);
+        const allVoted = expectedVoters.every((player) => batch.votes.has(player.id));
+
+        if (allVoted || (batch.answerEndsAt && Date.now() >= batch.answerEndsAt)) {
+          finalizeCurrentAnswer(room);
+        }
+      }
+    }
+
     if (!hostPlayer) {
       if (room.match && room.match.phase !== 'lobby') {
         startHostPause(room);
@@ -898,7 +1422,9 @@ setInterval(() => {
       if (playerId === room.hostId && room.match && room.match.phase !== 'lobby') {
         player.active = false;
         player.ready = false;
-        room.match.selections.delete(playerId);
+        if (room.match.phase === 'countdown' || room.match.phase === 'image-selection') {
+          room.match.selections.delete(playerId);
+        }
         broadcastImageSelectionUpdate(room);
         startHostPause(room);
         continue;
@@ -907,9 +1433,15 @@ setInterval(() => {
       if (room.match && room.match.phase !== 'lobby') {
         player.active = false;
         player.ready = false;
-        room.match.selections.delete(playerId);
+        if (room.match.phase === 'question-selection' || room.match.phase === 'answer-phase') {
+          room.match.waitingQuestionBatchPlayerIds = room.match.waitingQuestionBatchPlayerIds || new Set();
+          room.match.waitingQuestionBatchPlayerIds.add(playerId);
+          emitQuestionState(room);
+        } else {
+          room.match.selections.delete(playerId);
+          broadcastImageSelectionUpdate(room);
+        }
         broadcastLobby(room);
-        broadcastImageSelectionUpdate(room);
         continue;
       }
 

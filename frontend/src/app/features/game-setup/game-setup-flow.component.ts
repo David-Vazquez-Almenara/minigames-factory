@@ -44,6 +44,7 @@ export class GameSetupFlowComponent {
     randomThemePerPlayer: true,
     randomCharacterTypePerPlayer: true,
     questionDuration: 30,
+    respondQuestionTime: 5,
     rounds: 5,
     themeCategories: [],
     characterTypes: [],
@@ -207,6 +208,10 @@ export class GameSetupFlowComponent {
 
   updateQuestionDuration(value: string): void {
     this.patchSettings({ questionDuration: Number(value) as 15 | 30 | 60 });
+  }
+
+  updateRespondQuestionTime(value: string): void {
+    this.patchSettings({ respondQuestionTime: Number(value) as 5 | 10 | 15 });
   }
 
   updateRounds(value: string): void {

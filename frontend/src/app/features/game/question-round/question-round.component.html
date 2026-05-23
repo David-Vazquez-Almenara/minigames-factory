@@ -1,0 +1,127 @@
+<section class="question-screen" aria-label="Tanda de preguntas">
+  <aside class="question-status" aria-label="Estado de la tanda">
+    <strong>{{ remainingSeconds() }}s</strong>
+    <div class="round-counter">
+      <span>Tanda</span>
+      <b>{{ match()?.questionRoundNumber || 1 }}</b>
+    </div>
+  </aside>
+
+  <main class="question-panel">
+    @if (waitingQuestionBatchMessage()) {
+    <section class="waiting-panel" role="status" aria-live="polite">
+      <div class="waiting-icon" aria-hidden="true">...</div>
+      <h1>Espera a la siguiente tanda de preguntas</h1>
+      <p>{{ waitingQuestionBatchMessage() }}</p>
+    </section>
+    } @else if (match()?.phase === 'question-selection') {
+    <header>
+      <p>{{ selectedCountLabel() }} preguntas listas</p>
+      <h1>Elige una pregunta para adivinar tu personaje</h1>
+    </header>
+
+    <section class="history-block" aria-label="Preguntas ya realizadas">
+      <h2>Preguntas ya realizadas</h2>
+      @if (currentPlayerHistory().length) {
+      <div class="history-list">
+        @for (entry of currentPlayerHistory(); track entry.roundNumber + entry.questionId) {
+        <div class="history-item">
+          <span>Ronda {{ entry.roundNumber }}</span>
+          <p>{{ entry.question }}</p>
+          <strong>{{ answerLabel(entry.answer) }}</strong>
+        </div>
+        }
+      </div>
+      } @else {
+      <p class="empty-history">Todavia no has realizado preguntas en esta partida.</p>
+      }
+    </section>
+
+    <section class="current-question-block" aria-label="Seleccion de pregunta actual">
+      <h2>Selecciona una pregunta</h2>
+    <div class="question-list" aria-label="Preguntas disponibles">
+      @for (question of currentQuestionOptions(); track question.id) {
+      <button
+        type="button"
+        class="question-option"
+        [class.selected]="selectedQuestionId() === question.id"
+        [disabled]="questionSubmitted()"
+        (click)="chooseQuestion(question.id)"
+      >
+        {{ question.text }}
+      </button>
+      }
+    </div>
+    </section>
+
+    @if (currentPlayerQuestion()) {
+    <p class="saved-message" role="status">Pregunta guardada. Esperando al resto de jugadores...</p>
+    }
+
+    @if (errorMessage()) {
+    <p class="error-message" role="alert">{{ errorMessage() }}</p>
+    }
+
+    <button
+      class="ready-button"
+      type="button"
+      [disabled]="!selectedQuestionId() || questionSubmitted() || loading() || hostPaused()"
+      (click)="submitQuestion()"
+    >
+      {{ loading() ? 'Guardando...' : 'Listo' }}
+    </button>
+    } @else if (match()?.phase === 'answer-phase') {
+    @if (currentAnswer(); as answer) {
+    <header>
+      <p>Resolviendo la pregunta de</p>
+      <h1>{{ answer.ownerPlayerName }}</h1>
+    </header>
+
+    <section class="answer-card">
+      @if (!isQuestionOwner()) {
+      <div class="answer-image">
+        @if (answer.imageUrl) {
+        <img [src]="answer.imageUrl" alt="Personaje de {{ answer.ownerPlayerName }}" />
+        } @else {
+        <span aria-hidden="true">?</span>
+        }
+      </div>
+      }
+
+      <h2>{{ answer.question }}</h2>
+
+      @if (currentAnswerResult()) {
+      <div class="answer-result" role="status">
+        <span>Respuesta final</span>
+        <strong>{{ answerResultLabel() }}</strong>
+      </div>
+      } @else if (isQuestionOwner()) {
+      <p class="owner-wait">Esperando respuesta del resto de jugadores...</p>
+      } @else {
+      <div class="vote-actions">
+        <button type="button" class="yes-button" [disabled]="submittedAnswer() || loading()" (click)="submitAnswer('yes')">
+          Si
+        </button>
+        <button type="button" class="no-button" [disabled]="submittedAnswer() || loading()" (click)="submitAnswer('no')">
+          No
+        </button>
+      </div>
+      @if (submittedAnswer()) {
+      <p class="saved-message" role="status">Respuesta guardada. Esperando resultado...</p>
+      }
+      }
+    </section>
+
+    @if (errorMessage()) {
+    <p class="error-message" role="alert">{{ errorMessage() }}</p>
+    }
+    } @else {
+    <section class="waiting-panel" role="status" aria-live="polite">
+      <div class="waiting-icon" aria-hidden="true">...</div>
+      <h1>Preparando siguiente tanda</h1>
+      <p>Las respuestas de esta tanda ya se han resuelto.</p>
+    </section>
+    }
+    }
+  </main>
+</section>
