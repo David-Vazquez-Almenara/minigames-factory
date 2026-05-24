@@ -5,13 +5,7 @@
     <p>El host esta generando la misma tanda para todos.</p>
     <span class="loader" aria-hidden="true"></span>
   </div>
-  } @else if (submitted()) {
-  <div class="waiting-card ready">
-    <h2>Minijuego terminado</h2>
-    <p>Has llegado al final. Preparando puntuaciones...</p>
-    <strong>{{ completedCount() }} / {{ totalPlayers() }}</strong>
-  </div>
-  } @else {
+  } @else if (!submitted()) {
   <div class="math-panel">
     <header>
       <p>Operacion {{ currentIndex() + 1 }} de {{ operations().length }}</p>

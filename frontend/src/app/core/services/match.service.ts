@@ -4,6 +4,7 @@ import {
   LobbyState,
   MatchAssignment,
   MathOperationPayload,
+  PaintTargetPayload,
   MinigameResultPayload,
   QuestionBackupPayload,
   MatchState,
@@ -214,6 +215,18 @@ export class MatchService {
     return this.socketService.submitMinigameProgress(lobbyId, progress);
   }
 
+  preparePaintMinigame(lobbyId: string, paintTarget: PaintTargetPayload): Promise<RoomResponse> {
+    return this.socketService.preparePaintMinigame(lobbyId, paintTarget);
+  }
+
+  submitPaintDrawing(lobbyId: string, imageDataUrl: string): Promise<RoomResponse> {
+    return this.socketService.submitPaintDrawing(lobbyId, imageDataUrl);
+  }
+
+  submitPaintVote(lobbyId: string, targetPlayerId: string): Promise<RoomResponse> {
+    return this.socketService.submitPaintVote(lobbyId, targetPlayerId);
+  }
+
   saveLocalScoreboardCopy(scoreboard: ScoreboardPayload): void {
     localStorage.setItem(SCOREBOARD_COPY_KEY, JSON.stringify(scoreboard));
   }
@@ -419,6 +432,7 @@ export class MatchService {
       position: 0,
       minigameCorrectCount: resultMap.get(player.id)?.correctCount || 0,
       minigameAnsweredCount: resultMap.get(player.id)?.answeredCount || 0,
+      minigameVoteCount: resultMap.get(player.id)?.votesReceived,
     }));
 
     scores.sort((firstPlayer, secondPlayer) => {
@@ -441,6 +455,18 @@ export class MatchService {
 
   private calculateMinigameBonusPoints(results: MinigameResultPayload[]): Map<string, number> {
     const points = new Map<string, number>();
+
+    if (results.some((result) => result.votesReceived !== undefined)) {
+      return this.calculateRankedBonusPoints(
+        results
+          .filter((result) => result.submitted)
+          .map((result) => ({
+            playerId: result.playerId,
+            value: result.votesReceived || 0,
+          })),
+      );
+    }
+
     const submittedResults = results.filter((result) => result.submitted || (result.answeredCount || 0) > 0);
 
     const completedResults = submittedResults.filter((result) => result.finishedAt);
@@ -473,6 +499,31 @@ export class MatchService {
 
       const correctCount = remainingResults[currentIndex].correctCount;
       const tiedResults = remainingResults.filter((result, index) => index >= currentIndex && result.correctCount === correctCount);
+      const playerPoint = tiedResults.length === 1 ? rankPoint : tiedResults.length === 2 ? Math.max(5, rankPoint / 2) : 5;
+
+      for (const result of tiedResults) {
+        points.set(result.playerId, Math.trunc(playerPoint));
+      }
+
+      currentIndex += tiedResults.length;
+    }
+
+    return points;
+  }
+
+  private calculateRankedBonusPoints(results: Array<{ playerId: string; value: number }>): Map<string, number> {
+    const points = new Map<string, number>();
+    const sortedResults = [...results].sort((firstResult, secondResult) => secondResult.value - firstResult.value);
+    const rankPoints = [30, 20, 10];
+    let currentIndex = 0;
+
+    for (const rankPoint of rankPoints) {
+      if (currentIndex >= sortedResults.length) {
+        break;
+      }
+
+      const value = sortedResults[currentIndex].value;
+      const tiedResults = sortedResults.filter((result, index) => index >= currentIndex && result.value === value);
       const playerPoint = tiedResults.length === 1 ? rankPoint : tiedResults.length === 2 ? Math.max(5, rankPoint / 2) : 5;
 
       for (const result of tiedResults) {

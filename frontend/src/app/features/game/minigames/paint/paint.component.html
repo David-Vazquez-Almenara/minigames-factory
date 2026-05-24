@@ -1,0 +1,87 @@
+<section class="paint-game" aria-label="Minijuego A Pintar">
+  @if (!target()) {
+  <div class="waiting-card">
+    <h2>Preparando lienzo</h2>
+    <p>El host esta eligiendo el objeto.</p>
+  </div>
+  } @else if (phase() === 'voting') {
+  <main class="vote-panel">
+    <header>
+      <p>Vota el dibujo que mas se parece a</p>
+      <h2>{{ target()?.label }}</h2>
+    </header>
+
+    <div class="drawing-grid">
+      @for (submission of votableSubmissions(); track submission.playerId) {
+      <button
+        class="drawing-card"
+        type="button"
+        [class.selected]="votedTargetId() === submission.playerId"
+        [disabled]="hasVoted()"
+        (click)="vote(submission.playerId)"
+      >
+        <img [src]="submission.imageDataUrl" [alt]="'Dibujo de ' + submission.playerName" />
+        <strong>{{ submission.playerName }}</strong>
+      </button>
+      }
+    </div>
+
+    @if (!votableSubmissions().length) {
+    <p class="notice">No hay dibujos votables por ahora.</p>
+    }
+  </main>
+  } @else {
+  <main class="paint-panel">
+    <header class="paint-header">
+      <div>
+        <p>Dibuja este objeto</p>
+        <h2>{{ target()?.label }}</h2>
+      </div>
+      <button class="search-button" type="button" aria-label="Buscar referencia" (click)="openImageSearch()">🌐</button>
+      <aside class="timer-box">
+        <strong>{{ remainingSeconds() }}</strong>
+        <span>seg</span>
+      </aside>
+    </header>
+
+    <div class="toolbar" aria-label="Herramientas de dibujo">
+      <button type="button" [class.active]="tool() === 'brush'" (click)="setTool('brush')">Pincel</button>
+      <button type="button" [class.active]="tool() === 'eraser'" (click)="setTool('eraser')">Goma</button>
+      <button type="button" [class.active]="tool() === 'shape'" (click)="setTool('shape')">Forma</button>
+      <input type="color" [ngModel]="color()" (ngModelChange)="color.set($event)" aria-label="Color del pincel" />
+      <select [ngModel]="shape()" (ngModelChange)="shape.set($event)">
+        <option value="circle">Circulo</option>
+        <option value="square">Cuadrado</option>
+        <option value="triangle">Triangulo</option>
+      </select>
+      <label>
+        Pincel
+        <input type="range" min="4" max="36" [ngModel]="brushSize()" (ngModelChange)="setBrushSize($event)" />
+      </label>
+      <label>
+        Goma
+        <input type="range" min="8" max="60" [ngModel]="eraserSize()" (ngModelChange)="setEraserSize($event)" />
+      </label>
+    </div>
+
+    <canvas
+      #paintCanvas
+      width="760"
+      height="430"
+      (pointerdown)="startDrawing($event)"
+      (pointermove)="paint($event)"
+      (pointerup)="stopDrawing()"
+      (pointerleave)="stopDrawing()"
+    ></canvas>
+
+    <div class="submit-row">
+      <button class="ready-button" type="button" [disabled]="!canSubmit()" (click)="submitDrawing()">✓ Listo</button>
+      <p>{{ submittedCount() }} / {{ totalPlayers() }}</p>
+    </div>
+  </main>
+  }
+
+  @if (errorMessage()) {
+  <p class="error-message" role="alert">{{ errorMessage() }}</p>
+  }
+</section>

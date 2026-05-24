@@ -134,8 +134,31 @@ export interface SpecialRoundPayload {
   preparedByHost?: boolean;
   operations?: MathOperationPayload[];
   submittedPlayerIds?: string[];
+  paintTarget?: PaintTargetPayload | null;
+  paintPhase?: 'preparing' | 'drawing' | 'voting' | 'finished' | null;
+  paintEndsAt?: number | null;
+  paintVoteEndsAt?: number | null;
+  paintSubmissions?: PaintSubmissionPayload[];
+  paintVotes?: PaintVotePayload[];
   progress?: MinigameProgressPayload[];
   results?: MinigameResultPayload[];
+}
+
+export interface PaintTargetPayload {
+  id: string;
+  label: string;
+}
+
+export interface PaintSubmissionPayload {
+  playerId: string;
+  playerName: string;
+  imageDataUrl: string;
+  submittedAt: number;
+}
+
+export interface PaintVotePayload {
+  voterPlayerId: string;
+  targetPlayerId: string;
 }
 
 export interface MathOperationPayload {
@@ -149,6 +172,7 @@ export interface MinigameResultPayload {
   playerName: string;
   correctCount: number;
   answeredCount?: number;
+  votesReceived?: number;
   finishedAt: number | null;
   submitted: boolean;
 }
@@ -169,6 +193,7 @@ export interface ScoreboardEntry {
   position: number;
   minigameCorrectCount?: number;
   minigameAnsweredCount?: number;
+  minigameVoteCount?: number;
 }
 
 export interface ScoreboardPayload {
@@ -430,6 +455,38 @@ export class SocketService {
       this.match.update((currentMatch) =>
         currentMatch && currentMatch.lobbyId === payload.lobbyId
           ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:paint-prepared', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:paint-submission-updated', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:paint-voting-started', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:paint-results-ready', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, specialRound: payload.specialRound }
           : currentMatch,
       );
     });
@@ -736,6 +793,30 @@ export class SocketService {
     return this.emitWithResponse('match:minigame-answer', {
       code,
       ...progress,
+      playerId: this.playerId,
+    });
+  }
+
+  preparePaintMinigame(code: string, paintTarget: PaintTargetPayload): Promise<RoomResponse> {
+    return this.emitWithResponse('match:paint-prepared', {
+      code,
+      paintTarget,
+      hostId: this.playerId,
+    });
+  }
+
+  submitPaintDrawing(code: string, imageDataUrl: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:paint-submit', {
+      code,
+      imageDataUrl,
+      playerId: this.playerId,
+    });
+  }
+
+  submitPaintVote(code: string, targetPlayerId: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:paint-vote', {
+      code,
+      targetPlayerId,
       playerId: this.playerId,
     });
   }

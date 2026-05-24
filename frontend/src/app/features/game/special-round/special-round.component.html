@@ -16,6 +16,8 @@
   <main class="minigame-container">
     @if (specialRound()?.minigameId === 'math-operations') {
     <app-math-operations />
+    } @else if (specialRound()?.minigameId === 'paint') {
+    <app-paint />
     } @else {
     <section class="minigame-placeholder">
       <h2>Minijuego</h2>

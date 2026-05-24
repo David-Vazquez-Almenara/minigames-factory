@@ -1,12 +1,13 @@
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MatchService } from '../../../core/services/match.service';
 import { MathOperationsComponent } from '../minigames/math-operations/math-operations.component';
+import { PaintComponent } from '../minigames/paint/paint.component';
 
 type SpecialStage = 'intro' | 'explanation' | 'game';
 
 @Component({
   selector: 'app-special-round',
-  imports: [MathOperationsComponent],
+  imports: [MathOperationsComponent, PaintComponent],
   templateUrl: './special-round.component.html',
   styleUrl: './special-round.component.scss',
 })

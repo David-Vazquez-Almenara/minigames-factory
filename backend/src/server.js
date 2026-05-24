@@ -33,7 +33,49 @@ const IMAGE_SELECTION_MS = 60000;
 const SPECIAL_QUESTION_PROBABILITY = 1;
 const CUSTOM_QUESTION_EXTRA_MS = 30000;
 const SPECIAL_ROUND_COIN_PROBABILITY = 0.5;
-const DEFAULT_MINIGAME_ID = 'math-operations';
+const PAINT_DRAWING_MS = 60000;
+const PAINT_VOTING_MS = 20000;
+const MINIGAMES = [
+  {
+    id: 'math-operations',
+    title: 'Operaciones matematicas',
+    description:
+      'Resuelve las mismas operaciones que el resto. Cuantas mas aciertes y mas rapido termines, mas puntos podras ganar.',
+  },
+  {
+    id: 'paint',
+    title: 'A Pintar',
+    description:
+      'Dibuja el objeto secreto y vota despues por la obra que mas se parezca. El mas votado gana mas puntos.',
+  },
+];
+const PAINT_TARGETS = [
+  'Manzana',
+  'Castillo',
+  'Cohete',
+  'Guitarra',
+  'Zapato',
+  'Helado',
+  'Sombrero',
+  'Llave',
+  'Barco',
+  'Robot',
+  'Dinosaurio',
+  'Camara',
+  'Pizza',
+  'Bicicleta',
+  'Reloj',
+  'Montana',
+  'Avion',
+  'Lampara',
+  'Corona',
+  'Paraguas',
+  'Fantasma',
+  'Taza',
+  'Balon',
+  'Arbol',
+  'Coche',
+];
 const SPECIAL_QUESTION_OPTION = {
   id: 'special-custom-question',
   text: 'Pregunta especial: escribe tu propia pregunta',
@@ -130,6 +172,35 @@ function normalizeRoomSettings(settings = {}) {
     minigamesOnly: Boolean(settings.minigamesOnly),
     specialRounds: settings.minigamesOnly ? generateAllMinigameRounds(totalRounds) : settings.specialRounds || [],
   };
+}
+
+function chooseMinigame(room) {
+  const previousMinigameId = room.match?.lastMinigameId || '';
+  const candidates =
+    MINIGAMES.length > 1 ? MINIGAMES.filter((minigame) => minigame.id !== previousMinigameId) : MINIGAMES;
+  const selectedMinigame = candidates[Math.floor(Math.random() * candidates.length)] || MINIGAMES[0];
+  room.match.lastMinigameId = selectedMinigame.id;
+  return selectedMinigame;
+}
+
+function toPublicPaintSubmissions(specialRound) {
+  return specialRound?.paintSubmissions
+    ? Array.from(specialRound.paintSubmissions.values()).map((submission) => ({
+        playerId: submission.playerId,
+        playerName: submission.playerName,
+        imageDataUrl: submission.imageDataUrl,
+        submittedAt: submission.submittedAt,
+      }))
+    : [];
+}
+
+function toPublicPaintVotes(specialRound) {
+  return specialRound?.paintVotes
+    ? Array.from(specialRound.paintVotes.entries()).map(([voterPlayerId, targetPlayerId]) => ({
+        voterPlayerId,
+        targetPlayerId,
+      }))
+    : [];
 }
 
 function toLobby(room) {
@@ -229,6 +300,12 @@ function toPublicSpecialRound(specialRound) {
         }))
       : [],
     submittedPlayerIds: specialRound.submissions ? Array.from(specialRound.submissions.keys()) : [],
+    paintTarget: specialRound.paintTarget || null,
+    paintPhase: specialRound.paintPhase || null,
+    paintEndsAt: specialRound.paintEndsAt || null,
+    paintVoteEndsAt: specialRound.paintVoteEndsAt || null,
+    paintSubmissions: toPublicPaintSubmissions(specialRound),
+    paintVotes: toPublicPaintVotes(specialRound),
     progress: specialRound.progress
       ? Array.from(specialRound.progress.values()).map((entry) => ({
           playerId: entry.playerId,
@@ -629,18 +706,24 @@ function startSpecialRound(room, roundNumber) {
     return;
   }
 
+  const selectedMinigame = chooseMinigame(room);
   room.match.phase = 'special-round';
   room.match.specialRound = {
     roundNumber,
-    minigameId: DEFAULT_MINIGAME_ID,
-    title: 'Operaciones matematicas',
-    description:
-      'Resuelve las mismas operaciones que el resto. Cuantas mas aciertes y mas rapido termines, mas puntos podras ganar.',
+    minigameId: selectedMinigame.id,
+    title: selectedMinigame.title,
+    description: selectedMinigame.description,
     preparedByHost: false,
     operations: [],
     submissions: new Map(),
     progress: new Map(),
     results: [],
+    paintTarget: null,
+    paintPhase: selectedMinigame.id === 'paint' ? 'preparing' : null,
+    paintEndsAt: null,
+    paintVoteEndsAt: null,
+    paintSubmissions: new Map(),
+    paintVotes: new Map(),
   };
   io.to(room.code).emit('match:special-round-started', {
     lobbyId: room.code,
@@ -693,6 +776,79 @@ function startMinigameScoreboardPhase(room) {
     roundNumber: room.match.specialRound.roundNumber,
     source: 'minigame',
     results: room.match.specialRound.results,
+  });
+  emitQuestionState(room);
+}
+
+function startPaintVotingPhase(room) {
+  const specialRound = room.match?.specialRound;
+
+  if (!room.match || !specialRound || specialRound.minigameId !== 'paint' || specialRound.paintPhase !== 'drawing') {
+    return;
+  }
+
+  specialRound.paintPhase = 'voting';
+  specialRound.paintVoteEndsAt = Date.now() + PAINT_VOTING_MS;
+  io.to(room.code).emit('match:paint-voting-started', {
+    lobbyId: room.code,
+    specialRound: toPublicSpecialRound(specialRound),
+  });
+  emitQuestionState(room);
+}
+
+function calculatePaintResults(room) {
+  const specialRound = room.match?.specialRound;
+
+  if (!specialRound) {
+    return [];
+  }
+
+  const votesByPlayer = new Map();
+  for (const targetPlayerId of specialRound.paintVotes?.values() || []) {
+    votesByPlayer.set(targetPlayerId, (votesByPlayer.get(targetPlayerId) || 0) + 1);
+  }
+
+  return getActiveMatchPlayers(room).map((player) => ({
+    playerId: player.id,
+    playerName: player.name,
+    votesReceived: votesByPlayer.get(player.id) || 0,
+    correctCount: votesByPlayer.get(player.id) || 0,
+    answeredCount: specialRound.paintSubmissions?.has(player.id) ? 1 : 0,
+    finishedAt: specialRound.paintSubmissions?.get(player.id)?.submittedAt || null,
+    submitted: Boolean(specialRound.paintSubmissions?.has(player.id)),
+  }));
+}
+
+function startPaintScoreboardPhase(room) {
+  const specialRound = room.match?.specialRound;
+
+  if (!room.match || !specialRound || specialRound.minigameId !== 'paint') {
+    return;
+  }
+
+  if (room.match.phase === 'scoreboard' && room.match.scoreboardSource === 'minigame') {
+    return;
+  }
+
+  specialRound.results = calculatePaintResults(room);
+  specialRound.paintPhase = 'finished';
+  room.match.phase = 'scoreboard';
+  room.match.scoreboardSource = 'minigame';
+  room.match.scoreboard = {
+    lobbyId: room.code,
+    roundNumber: specialRound.roundNumber,
+    scores: [],
+  };
+
+  io.to(room.code).emit('match:paint-results-ready', {
+    lobbyId: room.code,
+    specialRound: toPublicSpecialRound(specialRound),
+  });
+  io.to(room.code).emit('match:scoreboard-calculate', {
+    lobbyId: room.code,
+    roundNumber: specialRound.roundNumber,
+    source: 'minigame',
+    results: specialRound.results,
   });
   emitQuestionState(room);
 }
@@ -1597,6 +1753,8 @@ io.on('connection', (socket) => {
             scoreEntry.minigameCorrectCount === undefined ? undefined : Number(scoreEntry.minigameCorrectCount || 0),
           minigameAnsweredCount:
             scoreEntry.minigameAnsweredCount === undefined ? undefined : Number(scoreEntry.minigameAnsweredCount || 0),
+          minigameVoteCount:
+            scoreEntry.minigameVoteCount === undefined ? undefined : Number(scoreEntry.minigameVoteCount || 0),
         }))
         .filter((scoreEntry) => scoreEntry.playerId && scoreEntry.playerName && scoreEntry.position > 0),
     };
@@ -1671,7 +1829,21 @@ io.on('connection', (socket) => {
       return;
     }
 
-    startQuestionBatch(room, room.match.specialRound?.roundNumber || (room.match.questionBatch?.roundNumber || 0) + 1);
+    const specialRoundNumber = room.match.specialRound?.roundNumber || (room.match.questionBatch?.roundNumber || 0) + 1;
+
+    if (room.settings.minigamesOnly) {
+      const maxRounds = Number(room.settings.rounds || 5);
+      const nextRoundNumber = specialRoundNumber + 1;
+
+      if (specialRoundNumber >= maxRounds) {
+        finishQuestionsPhase(room);
+      } else {
+        startSpecialRound(room, nextRoundNumber);
+      }
+    } else {
+      startQuestionBatch(room, specialRoundNumber);
+    }
+
     callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
   });
 
@@ -1858,6 +2030,151 @@ io.on('connection', (socket) => {
     callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
   });
 
+  socket.on('match:paint-prepared', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const hostId = String(payload.hostId || '').trim();
+    const room = gameState.rooms.get(code);
+    const specialRound = room?.match?.specialRound;
+    const rawTarget = payload.paintTarget || {};
+    const label = String(rawTarget.label || '').trim();
+
+    if (!room || !room.match || room.match.phase !== 'special-round' || !specialRound || specialRound.minigameId !== 'paint') {
+      callback?.({ ok: false, reason: 'No hay una ronda de dibujo activa.' });
+      return;
+    }
+
+    if (room.hostId !== hostId) {
+      callback?.({ ok: false, reason: 'Solo el host puede preparar el minijuego.' });
+      return;
+    }
+
+    if (specialRound.preparedByHost) {
+      callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+      return;
+    }
+
+    if (!label) {
+      callback?.({ ok: false, reason: 'El objeto para dibujar es obligatorio.' });
+      return;
+    }
+
+    specialRound.preparedByHost = true;
+    specialRound.paintTarget = {
+      id: String(rawTarget.id || label.toLowerCase().replace(/\s+/g, '-')),
+      label,
+    };
+    specialRound.paintPhase = 'drawing';
+    specialRound.paintEndsAt = Date.now() + PAINT_DRAWING_MS;
+    specialRound.paintVoteEndsAt = null;
+    specialRound.paintSubmissions = new Map();
+    specialRound.paintVotes = new Map();
+    specialRound.results = [];
+
+    io.to(room.code).emit('match:paint-prepared', {
+      lobbyId: room.code,
+      specialRound: toPublicSpecialRound(specialRound),
+    });
+    emitQuestionState(room);
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
+  socket.on('match:paint-submit', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const playerId = String(payload.playerId || '').trim();
+    const imageDataUrl = String(payload.imageDataUrl || '').trim();
+    const room = gameState.rooms.get(code);
+    const player = room?.players.get(playerId);
+    const specialRound = room?.match?.specialRound;
+
+    if (!room || !player || !room.match || room.match.phase !== 'special-round' || !specialRound || specialRound.minigameId !== 'paint') {
+      callback?.({ ok: false, reason: 'No hay una ronda de dibujo activa.' });
+      return;
+    }
+
+    if (specialRound.paintPhase !== 'drawing') {
+      callback?.({ ok: false, reason: 'La fase de dibujo ya no esta activa.' });
+      return;
+    }
+
+    if (!imageDataUrl.startsWith('data:image/')) {
+      callback?.({ ok: false, reason: 'El dibujo no tiene un formato valido.' });
+      return;
+    }
+
+    specialRound.paintSubmissions = specialRound.paintSubmissions || new Map();
+    specialRound.paintSubmissions.set(playerId, {
+      playerId,
+      playerName: player.name,
+      imageDataUrl,
+      submittedAt: Date.now(),
+    });
+
+    const activePlayerIds = getActiveMatchPlayers(room).map((activePlayer) => activePlayer.id);
+    const allSubmitted =
+      activePlayerIds.length > 0 && activePlayerIds.every((activePlayerId) => specialRound.paintSubmissions.has(activePlayerId));
+
+    io.to(room.code).emit('match:paint-submission-updated', {
+      lobbyId: room.code,
+      specialRound: toPublicSpecialRound(specialRound),
+    });
+
+    if (allSubmitted) {
+      startPaintVotingPhase(room);
+    } else {
+      emitQuestionState(room);
+    }
+
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
+  socket.on('match:paint-vote', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const voterPlayerId = String(payload.playerId || '').trim();
+    const targetPlayerId = String(payload.targetPlayerId || '').trim();
+    const room = gameState.rooms.get(code);
+    const player = room?.players.get(voterPlayerId);
+    const specialRound = room?.match?.specialRound;
+
+    if (!room || !player || !room.match || room.match.phase !== 'special-round' || !specialRound || specialRound.minigameId !== 'paint') {
+      callback?.({ ok: false, reason: 'No hay una votacion de dibujo activa.' });
+      return;
+    }
+
+    if (specialRound.paintPhase !== 'voting') {
+      callback?.({ ok: false, reason: 'La votacion todavia no esta activa.' });
+      return;
+    }
+
+    if (voterPlayerId === targetPlayerId) {
+      callback?.({ ok: false, reason: 'No puedes votar tu propio dibujo.' });
+      return;
+    }
+
+    if (!specialRound.paintSubmissions?.has(targetPlayerId)) {
+      callback?.({ ok: false, reason: 'Selecciona un dibujo valido.' });
+      return;
+    }
+
+    specialRound.paintVotes = specialRound.paintVotes || new Map();
+    specialRound.paintVotes.set(voterPlayerId, targetPlayerId);
+
+    const expectedVoterIds = getActiveMatchPlayers(room)
+      .map((activePlayer) => activePlayer.id)
+      .filter((activePlayerId) =>
+        Array.from(specialRound.paintSubmissions.keys()).some((targetId) => targetId !== activePlayerId),
+      );
+    const allVoted =
+      expectedVoterIds.length > 0 && expectedVoterIds.every((activePlayerId) => specialRound.paintVotes.has(activePlayerId));
+
+    emitQuestionState(room);
+
+    if (allVoted) {
+      startPaintScoreboardPhase(room);
+    }
+
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
   socket.on('match:exclude-unready-players', (payload = {}, callback) => {
     const code = String(payload.code || '').trim().toUpperCase();
     const hostId = String(payload.hostId || '').trim();
@@ -1951,6 +2268,18 @@ setInterval(() => {
         if (allVoted || (batch.answerEndsAt && Date.now() >= batch.answerEndsAt)) {
           finalizeCurrentAnswer(room);
         }
+      }
+    }
+
+    if (!room.match?.hostPaused && room.match?.phase === 'special-round' && room.match.specialRound?.minigameId === 'paint') {
+      const specialRound = room.match.specialRound;
+
+      if (specialRound.paintPhase === 'drawing' && specialRound.paintEndsAt && Date.now() >= specialRound.paintEndsAt) {
+        startPaintVotingPhase(room);
+      }
+
+      if (specialRound.paintPhase === 'voting' && specialRound.paintVoteEndsAt && Date.now() >= specialRound.paintVoteEndsAt) {
+        startPaintScoreboardPhase(room);
       }
     }
 

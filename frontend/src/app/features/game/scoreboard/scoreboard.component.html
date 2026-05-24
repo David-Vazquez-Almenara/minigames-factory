@@ -11,7 +11,9 @@
         <strong class="position">{{ row.position }}o</strong>
         <span class="player-name">
           {{ row.playerName }}
-          @if (row.minigameAnsweredCount !== undefined) {
+          @if (row.minigameVoteCount !== undefined) {
+          <small>{{ row.minigameVoteCount || 0 }} votos</small>
+          } @else if (row.minigameAnsweredCount !== undefined) {
           <small>{{ row.minigameCorrectCount || 0 }} / {{ row.minigameAnsweredCount || 0 }} aciertos</small>
           }
         </span>
