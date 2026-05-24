@@ -9,7 +9,12 @@
       @for (row of rows(); track row.playerId) {
       <article class="score-row" [class.score-up]="row.scoreIncreased && scoreAnimationStarted()" [class.rank-gold]="row.position === 1" [class.rank-silver]="row.position === 2" [class.rank-bronze]="row.position === 3" [style.transform]="rowOffset(row)">
         <strong class="position">{{ row.position }}o</strong>
-        <span class="player-name">{{ row.playerName }}</span>
+        <span class="player-name">
+          {{ row.playerName }}
+          @if (row.minigameAnsweredCount !== undefined) {
+          <small>{{ row.minigameCorrectCount || 0 }} / {{ row.minigameAnsweredCount || 0 }} aciertos</small>
+          }
+        </span>
         <strong class="score">{{ row.displayScore }} pts</strong>
       </article>
       }

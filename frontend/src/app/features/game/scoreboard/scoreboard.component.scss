@@ -92,11 +92,21 @@
 }
 
 .player-name {
+  display: grid;
+  gap: 2px;
   overflow: hidden;
   font-size: 1.25rem;
   font-weight: 950;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  small {
+    overflow: hidden;
+    color: #313131;
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .score {

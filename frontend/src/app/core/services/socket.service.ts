@@ -15,6 +15,7 @@ export interface CreateRoomSettings {
   respondQuestionTime: 5 | 10 | 15;
   rounds: number;
   specialRounds: number[];
+  minigamesOnly: boolean;
   themeCategories: string[];
   characterTypes: string[];
 }
@@ -130,6 +131,35 @@ export interface SpecialRoundPayload {
   minigameId: string;
   title: string;
   description: string;
+  preparedByHost?: boolean;
+  operations?: MathOperationPayload[];
+  submittedPlayerIds?: string[];
+  progress?: MinigameProgressPayload[];
+  results?: MinigameResultPayload[];
+}
+
+export interface MathOperationPayload {
+  id: string;
+  prompt: string;
+  answer?: number;
+}
+
+export interface MinigameResultPayload {
+  playerId: string;
+  playerName: string;
+  correctCount: number;
+  answeredCount?: number;
+  finishedAt: number | null;
+  submitted: boolean;
+}
+
+export interface MinigameProgressPayload {
+  playerId: string;
+  playerName: string;
+  correctCount: number;
+  answeredCount: number;
+  completed: boolean;
+  finishedAt: number | null;
 }
 
 export interface ScoreboardEntry {
@@ -137,6 +167,8 @@ export interface ScoreboardEntry {
   playerName: string;
   score: number;
   position: number;
+  minigameCorrectCount?: number;
+  minigameAnsweredCount?: number;
 }
 
 export interface ScoreboardPayload {
@@ -210,7 +242,12 @@ export class SocketService {
   readonly imageSelectionTimerReset = signal<number | null>(null);
   readonly questionBackup = signal<QuestionBackupPayload | null>(null);
   readonly scoreboard = signal<ScoreboardPayload | null>(null);
-  readonly scoreboardCalculateRequest = signal<{ lobbyId: string; roundNumber: number } | null>(null);
+  readonly scoreboardCalculateRequest = signal<{
+    lobbyId: string;
+    roundNumber: number;
+    source?: 'questions' | 'minigame';
+    results?: MinigameResultPayload[];
+  } | null>(null);
   readonly hostPauseDeadline = signal<number | null>(null);
   readonly waitingNextRoundMessage = signal<string | null>(null);
   readonly waitingQuestionBatchMessage = signal<string | null>(null);
@@ -352,9 +389,17 @@ export class SocketService {
       }
     });
 
-    this.socket.on('match:scoreboard-calculate', (payload: { lobbyId: string; roundNumber: number }) => {
+    this.socket.on(
+      'match:scoreboard-calculate',
+      (payload: {
+        lobbyId: string;
+        roundNumber: number;
+        source?: 'questions' | 'minigame';
+        results?: MinigameResultPayload[];
+      }) => {
       this.scoreboardCalculateRequest.set(payload);
-    });
+      },
+    );
 
     this.socket.on('match:scoreboard-sync', (payload: { lobbyId: string; scoreboard: ScoreboardPayload | null }) => {
       this.scoreboard.set(payload.scoreboard);
@@ -377,6 +422,46 @@ export class SocketService {
       this.match.update((currentMatch) =>
         currentMatch && currentMatch.lobbyId === payload.lobbyId
           ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on('match:minigame-prepared', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId
+          ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
+          : currentMatch,
+      );
+    });
+
+    this.socket.on(
+      'match:minigame-submission-updated',
+      (payload: { lobbyId: string; submittedPlayerIds: string[]; totalPlayers: number }) => {
+        this.match.update((currentMatch) =>
+          currentMatch && currentMatch.lobbyId === payload.lobbyId && currentMatch.specialRound
+            ? {
+                ...currentMatch,
+                totalPlayers: payload.totalPlayers,
+                specialRound: {
+                  ...currentMatch.specialRound,
+                  submittedPlayerIds: payload.submittedPlayerIds,
+                },
+              }
+            : currentMatch,
+        );
+      },
+    );
+
+    this.socket.on('match:minigame-progress-updated', (payload: { lobbyId: string; progress: MinigameProgressPayload[] }) => {
+      this.match.update((currentMatch) =>
+        currentMatch && currentMatch.lobbyId === payload.lobbyId && currentMatch.specialRound
+          ? {
+              ...currentMatch,
+              specialRound: {
+                ...currentMatch.specialRound,
+                progress: payload.progress,
+              },
+            }
           : currentMatch,
       );
     });
@@ -619,6 +704,42 @@ export class SocketService {
     });
   }
 
+  prepareMinigame(code: string, operations: MathOperationPayload[]): Promise<RoomResponse> {
+    return this.emitWithResponse('match:minigame-prepared', {
+      code,
+      operations,
+      hostId: this.playerId,
+    });
+  }
+
+  submitMinigameAnswers(code: string, answers: Array<{ operationId: string; answer: number }>): Promise<RoomResponse> {
+    return this.emitWithResponse('match:minigame-submit', {
+      code,
+      answers,
+      playerId: this.playerId,
+    });
+  }
+
+  submitMinigameAnswer(code: string, operationId: string, answer: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:minigame-answer', {
+      code,
+      operationId,
+      answer,
+      playerId: this.playerId,
+    });
+  }
+
+  submitMinigameProgress(
+    code: string,
+    progress: { answeredCount: number; correctCount: number; completed: boolean; finishedAt: number | null },
+  ): Promise<RoomResponse> {
+    return this.emitWithResponse('match:minigame-answer', {
+      code,
+      ...progress,
+      playerId: this.playerId,
+    });
+  }
+
   leaveRoom(code: string): Promise<RoomResponse> {
     this.stopHeartbeat();
     this.clearLobbyNavigation();
@@ -704,6 +825,7 @@ export class SocketService {
         questionTime: lobby.settings.questionDuration,
         rounds: lobby.settings.rounds,
         specialRounds: lobby.settings.specialRounds || [],
+        minigamesOnly: Boolean(lobby.settings.minigamesOnly),
         randomThemePerPlayer: lobby.settings.randomThemePerPlayer,
         randomCharacterTypePerPlayer: lobby.settings.randomCharacterTypePerPlayer,
         respondQuestionTime: lobby.settings.respondQuestionTime,

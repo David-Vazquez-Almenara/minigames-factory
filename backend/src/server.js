@@ -33,6 +33,7 @@ const IMAGE_SELECTION_MS = 60000;
 const SPECIAL_QUESTION_PROBABILITY = 1;
 const CUSTOM_QUESTION_EXTRA_MS = 30000;
 const SPECIAL_ROUND_COIN_PROBABILITY = 0.5;
+const DEFAULT_MINIGAME_ID = 'math-operations';
 const SPECIAL_QUESTION_OPTION = {
   id: 'special-custom-question',
   text: 'Pregunta especial: escribe tu propia pregunta',
@@ -116,6 +117,21 @@ function generateSpecialRounds(totalRounds) {
   return specialRounds;
 }
 
+function generateAllMinigameRounds(totalRounds) {
+  return Array.from({ length: totalRounds + 1 }, (_unused, index) => index);
+}
+
+function normalizeRoomSettings(settings = {}) {
+  const totalRounds = Number(settings.rounds || 5);
+
+  return {
+    ...settings,
+    rounds: totalRounds,
+    minigamesOnly: Boolean(settings.minigamesOnly),
+    specialRounds: settings.minigamesOnly ? generateAllMinigameRounds(totalRounds) : settings.specialRounds || [],
+  };
+}
+
 function toLobby(room) {
   return {
     code: room.code,
@@ -192,7 +208,38 @@ function toMatchState(room) {
     waitingQuestionBatchPlayerIds: Array.from(room.match.waitingQuestionBatchPlayerIds || []),
     scoreboard: room.match.scoreboard || null,
     specialRounds: room.match.specialRounds || [],
-    specialRound: room.match.specialRound || null,
+    specialRound: toPublicSpecialRound(room.match.specialRound),
+  };
+}
+
+function toPublicSpecialRound(specialRound) {
+  if (!specialRound) {
+    return null;
+  }
+
+  const { submissions: _submissions, ...publicRound } = specialRound;
+
+  return {
+    ...publicRound,
+    operations: Array.isArray(specialRound.operations)
+      ? specialRound.operations.map((operation) => ({
+          id: String(operation.id || ''),
+          prompt: String(operation.prompt || ''),
+          answer: Number(operation.answer),
+        }))
+      : [],
+    submittedPlayerIds: specialRound.submissions ? Array.from(specialRound.submissions.keys()) : [],
+    progress: specialRound.progress
+      ? Array.from(specialRound.progress.values()).map((entry) => ({
+          playerId: entry.playerId,
+          playerName: entry.playerName,
+          correctCount: entry.correctCount,
+          answeredCount: entry.answers?.length || 0,
+          completed: Boolean(entry.completed),
+          finishedAt: entry.finishedAt || null,
+        }))
+      : [],
+    results: Array.isArray(specialRound.results) ? specialRound.results : [],
   };
 }
 
@@ -462,7 +509,11 @@ function emitAllImagesReadyIfComplete(room) {
   });
   room.match.characterImages = new Map(selectedImages.map((selection) => [selection.playerId, selection.imageUrl]));
   room.match.phase = 'image-selection-complete';
-  startQuestionBatch(room);
+  if ((room.match.specialRounds || []).includes(0) || (room.match.specialRounds || []).includes(1)) {
+    startSpecialRound(room, room.match.specialRounds.includes(0) ? 0 : 1);
+  } else {
+    startQuestionBatch(room);
+  }
 }
 
 function startQuestionBatch(room, forcedRoundNumber = null) {
@@ -581,14 +632,67 @@ function startSpecialRound(room, roundNumber) {
   room.match.phase = 'special-round';
   room.match.specialRound = {
     roundNumber,
-    minigameId: 'placeholder-minigame',
-    title: 'Minijuego',
+    minigameId: DEFAULT_MINIGAME_ID,
+    title: 'Operaciones matematicas',
     description:
-      'Ronda especial de prueba. En el futuro aqui se cargara un minijuego sincronizado para todos los jugadores.',
+      'Resuelve las mismas operaciones que el resto. Cuantas mas aciertes y mas rapido termines, mas puntos podras ganar.',
+    preparedByHost: false,
+    operations: [],
+    submissions: new Map(),
+    progress: new Map(),
+    results: [],
   };
   io.to(room.code).emit('match:special-round-started', {
     lobbyId: room.code,
-    specialRound: room.match.specialRound,
+    specialRound: toPublicSpecialRound(room.match.specialRound),
+  });
+  emitQuestionState(room);
+}
+
+function calculateMathMinigameResults(room) {
+  const specialRound = room.match?.specialRound;
+
+  if (!specialRound || !Array.isArray(specialRound.operations)) {
+    return [];
+  }
+
+  return getActiveMatchPlayers(room).map((player) => {
+    const progress = specialRound.progress?.get(player.id);
+
+    return {
+      playerId: player.id,
+      playerName: player.name,
+      correctCount: progress?.correctCount || 0,
+      answeredCount: progress?.answers?.length || 0,
+      finishedAt: progress?.finishedAt || null,
+      submitted: Boolean(progress?.answers?.length),
+    };
+  });
+}
+
+function startMinigameScoreboardPhase(room) {
+  if (!room.match || !room.match.specialRound) {
+    return;
+  }
+
+  if (room.match.phase === 'scoreboard' && room.match.scoreboardSource === 'minigame') {
+    return;
+  }
+
+  room.match.specialRound.results = calculateMathMinigameResults(room);
+  room.match.phase = 'scoreboard';
+  room.match.scoreboardSource = 'minigame';
+  room.match.scoreboard = {
+    lobbyId: room.code,
+    roundNumber: room.match.specialRound.roundNumber,
+    scores: [],
+  };
+
+  io.to(room.code).emit('match:scoreboard-calculate', {
+    lobbyId: room.code,
+    roundNumber: room.match.specialRound.roundNumber,
+    source: 'minigame',
+    results: room.match.specialRound.results,
   });
   emitQuestionState(room);
 }
@@ -824,7 +928,7 @@ io.on('connection', (socket) => {
     const room = {
       code,
       hostId: playerId,
-      settings: payload.settings || {},
+      settings: normalizeRoomSettings(payload.settings || {}),
       players: new Map(),
       bannedPlayerIds: new Set(),
       createdAt: new Date().toISOString(),
@@ -1057,7 +1161,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    room.settings = payload.settings || room.settings;
+    room.settings = normalizeRoomSettings(payload.settings || room.settings);
     broadcastLobby(room);
     callback?.({ ok: true, lobby: toLobby(room) });
   });
@@ -1149,9 +1253,10 @@ io.on('connection', (socket) => {
     }
 
     const totalRounds = Number(room.settings.rounds || 5);
-    const specialRounds = generateSpecialRounds(totalRounds);
+    const specialRounds = room.settings.minigamesOnly ? generateAllMinigameRounds(totalRounds) : generateSpecialRounds(totalRounds);
     room.settings = {
       ...room.settings,
+      minigamesOnly: Boolean(room.settings.minigamesOnly),
       specialRounds,
     };
 
@@ -1478,13 +1583,20 @@ io.on('connection', (socket) => {
 
     room.match.scoreboard = {
       lobbyId: code,
-      roundNumber: room.match.questionBatch?.roundNumber || Number(payload.roundNumber || 0),
+      roundNumber:
+        room.match.scoreboardSource === 'minigame'
+          ? room.match.specialRound?.roundNumber || Number(payload.roundNumber || 0)
+          : room.match.questionBatch?.roundNumber || Number(payload.roundNumber || 0),
       scores: scores
         .map((scoreEntry) => ({
           playerId: String(scoreEntry.playerId || ''),
           playerName: String(scoreEntry.playerName || ''),
           score: Number(scoreEntry.score || 0),
           position: Number(scoreEntry.position || 0),
+          minigameCorrectCount:
+            scoreEntry.minigameCorrectCount === undefined ? undefined : Number(scoreEntry.minigameCorrectCount || 0),
+          minigameAnsweredCount:
+            scoreEntry.minigameAnsweredCount === undefined ? undefined : Number(scoreEntry.minigameAnsweredCount || 0),
         }))
         .filter((scoreEntry) => scoreEntry.playerId && scoreEntry.playerName && scoreEntry.position > 0),
     };
@@ -1505,6 +1617,27 @@ io.on('connection', (socket) => {
 
     if (room.hostId !== hostId) {
       callback?.({ ok: false, reason: 'Solo el host puede continuar a la siguiente tanda.' });
+      return;
+    }
+
+    if (room.match.scoreboardSource === 'minigame') {
+      const specialRoundNumber = room.match.specialRound?.roundNumber || (room.match.questionBatch?.roundNumber || 0) + 1;
+      room.match.scoreboardSource = null;
+
+      if (room.settings.minigamesOnly) {
+        const maxRounds = Number(room.settings.rounds || 5);
+        const nextRoundNumber = specialRoundNumber + 1;
+
+        if (specialRoundNumber >= maxRounds) {
+          finishQuestionsPhase(room);
+        } else {
+          startSpecialRound(room, nextRoundNumber);
+        }
+      } else {
+        startQuestionBatch(room, specialRoundNumber);
+      }
+
+      callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
       return;
     }
 
@@ -1539,6 +1672,189 @@ io.on('connection', (socket) => {
     }
 
     startQuestionBatch(room, room.match.specialRound?.roundNumber || (room.match.questionBatch?.roundNumber || 0) + 1);
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
+  socket.on('match:minigame-prepared', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const hostId = String(payload.hostId || '').trim();
+    const room = gameState.rooms.get(code);
+    const specialRound = room?.match?.specialRound;
+    const operations = Array.isArray(payload.operations) ? payload.operations : [];
+
+    if (!room || !room.match || room.match.phase !== 'special-round' || !specialRound) {
+      callback?.({ ok: false, reason: 'No hay un minijuego activo.' });
+      return;
+    }
+
+    if (room.hostId !== hostId) {
+      callback?.({ ok: false, reason: 'Solo el host puede preparar el minijuego.' });
+      return;
+    }
+
+    if (specialRound.preparedByHost) {
+      callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+      return;
+    }
+
+    const sanitizedOperations = operations
+      .map((operation, index) => ({
+        id: String(operation.id || `operation-${index + 1}`),
+        prompt: String(operation.prompt || '').trim(),
+        answer: Number(operation.answer),
+      }))
+      .filter((operation) => operation.id && operation.prompt && Number.isFinite(operation.answer))
+      .slice(0, 7);
+
+    if (sanitizedOperations.length < 5) {
+      callback?.({ ok: false, reason: 'El minijuego necesita entre 5 y 7 operaciones validas.' });
+      return;
+    }
+
+    specialRound.preparedByHost = true;
+    specialRound.operations = sanitizedOperations;
+    specialRound.submissions = new Map();
+    specialRound.progress = new Map();
+    specialRound.results = [];
+
+    io.to(room.code).emit('match:minigame-prepared', {
+      lobbyId: room.code,
+      specialRound: toPublicSpecialRound(specialRound),
+    });
+    emitQuestionState(room);
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
+  socket.on('match:minigame-submit', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const playerId = String(payload.playerId || '').trim();
+    const room = gameState.rooms.get(code);
+    const player = room?.players.get(playerId);
+    const specialRound = room?.match?.specialRound;
+    const answers = Array.isArray(payload.answers) ? payload.answers : [];
+
+    if (!room || !player || !room.match || room.match.phase !== 'special-round' || !specialRound) {
+      callback?.({ ok: false, reason: 'No hay un minijuego activo.' });
+      return;
+    }
+
+    if (!specialRound.preparedByHost || !Array.isArray(specialRound.operations) || !specialRound.operations.length) {
+      callback?.({ ok: false, reason: 'El minijuego todavia se esta preparando.' });
+      return;
+    }
+
+    if (!player.active || room.match.waitingQuestionBatchPlayerIds?.has(playerId)) {
+      callback?.({ ok: false, reason: 'Espera a la siguiente tanda de preguntas.' });
+      return;
+    }
+
+    if (!specialRound.submissions) {
+      specialRound.submissions = new Map();
+    }
+
+    if (specialRound.submissions.has(playerId)) {
+      callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+      return;
+    }
+
+    specialRound.submissions.set(playerId, {
+      playerId,
+      answers: answers.map((answer) => ({
+        operationId: String(answer.operationId || ''),
+        answer: Number(answer.answer),
+      })),
+      finishedAt: Date.now(),
+    });
+
+    const expectedPlayerIds = getActiveMatchPlayers(room).map((activePlayer) => activePlayer.id);
+    const allSubmitted =
+      expectedPlayerIds.length > 0 && expectedPlayerIds.every((activePlayerId) => specialRound.submissions.has(activePlayerId));
+
+    io.to(room.code).emit('match:minigame-submission-updated', {
+      lobbyId: room.code,
+      submittedPlayerIds: Array.from(specialRound.submissions.keys()),
+      totalPlayers: expectedPlayerIds.length,
+    });
+
+    if (allSubmitted) {
+      startMinigameScoreboardPhase(room);
+    } else {
+      emitQuestionState(room);
+    }
+
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
+  socket.on('match:minigame-answer', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const playerId = String(payload.playerId || '').trim();
+    const answeredCount = Math.max(0, Number(payload.answeredCount || 0));
+    const correctCount = Math.max(0, Number(payload.correctCount || 0));
+    const completed = Boolean(payload.completed);
+    const finishedAt = payload.finishedAt ? Number(payload.finishedAt) : null;
+    const room = gameState.rooms.get(code);
+    const player = room?.players.get(playerId);
+    const specialRound = room?.match?.specialRound;
+
+    if (!room || !player || !room.match || room.match.phase !== 'special-round' || !specialRound) {
+      callback?.({ ok: false, reason: 'No hay un minijuego activo.' });
+      return;
+    }
+
+    if (!specialRound.preparedByHost || !Array.isArray(specialRound.operations) || !specialRound.operations.length) {
+      callback?.({ ok: false, reason: 'El minijuego todavia se esta preparando.' });
+      return;
+    }
+
+    if (!Number.isFinite(answeredCount) || !Number.isFinite(correctCount)) {
+      callback?.({ ok: false, reason: 'Progreso de minijuego no valido.' });
+      return;
+    }
+
+    if (!player.active || room.match.waitingQuestionBatchPlayerIds?.has(playerId)) {
+      callback?.({ ok: false, reason: 'Espera a la siguiente tanda de preguntas.' });
+      return;
+    }
+
+    specialRound.progress = specialRound.progress || new Map();
+    const currentProgress = specialRound.progress.get(playerId) || {
+      playerId,
+      playerName: player.name,
+      answers: [],
+      correctCount: 0,
+      completed: false,
+      finishedAt: null,
+    };
+
+    if (currentProgress.completed) {
+      callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+      return;
+    }
+
+    const clampedAnsweredCount = Math.min(answeredCount, specialRound.operations.length);
+    const clampedCorrectCount = Math.min(correctCount, clampedAnsweredCount);
+    currentProgress.answers = Array.from({ length: clampedAnsweredCount }, (_unused, index) => ({
+      operationId: specialRound.operations[index]?.id || `operation-${index + 1}`,
+      answer: null,
+      correct: index < clampedCorrectCount,
+    }));
+    currentProgress.correctCount = clampedCorrectCount;
+    currentProgress.completed = completed || clampedAnsweredCount >= specialRound.operations.length;
+    currentProgress.finishedAt = currentProgress.completed ? finishedAt || Date.now() : null;
+
+    specialRound.progress.set(playerId, currentProgress);
+
+    io.to(room.code).emit('match:minigame-progress-updated', {
+      lobbyId: room.code,
+      progress: toPublicSpecialRound(specialRound).progress,
+    });
+
+    if (currentProgress.completed) {
+      startMinigameScoreboardPhase(room);
+    } else {
+      emitQuestionState(room);
+    }
+
     callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
   });
 

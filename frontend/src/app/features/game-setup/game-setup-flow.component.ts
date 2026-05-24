@@ -47,6 +47,7 @@ export class GameSetupFlowComponent {
     respondQuestionTime: 10,
     rounds: 5,
     specialRounds: [],
+    minigamesOnly: false,
     themeCategories: [],
     characterTypes: [],
   });
@@ -207,6 +208,14 @@ export class GameSetupFlowComponent {
     this.patchSettings({ randomCharacterTypePerPlayer: value });
   }
 
+  updateMinigamesOnly(value: boolean): void {
+    const rounds = this.settings().rounds;
+    this.patchSettings({
+      minigamesOnly: value,
+      specialRounds: value ? this.buildAllMinigameRounds(rounds) : [],
+    });
+  }
+
   updateQuestionDuration(value: string): void {
     this.patchSettings({ questionDuration: Number(value) as 15 | 30 | 60 });
   }
@@ -216,7 +225,11 @@ export class GameSetupFlowComponent {
   }
 
   updateRounds(value: string): void {
-    this.patchSettings({ rounds: Number(value) });
+    const rounds = Number(value);
+    this.patchSettings({
+      rounds,
+      specialRounds: this.settings().minigamesOnly ? this.buildAllMinigameRounds(rounds) : this.settings().specialRounds,
+    });
   }
 
   updateThemeInput(value: string): void {
@@ -473,5 +486,9 @@ export class GameSetupFlowComponent {
       ...currentSettings,
       ...settings,
     }));
+  }
+
+  private buildAllMinigameRounds(totalRounds: number): number[] {
+    return Array.from({ length: Number(totalRounds || 0) + 1 }, (_unused, index) => index);
   }
 }

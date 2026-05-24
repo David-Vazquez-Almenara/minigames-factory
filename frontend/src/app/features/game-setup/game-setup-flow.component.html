@@ -27,6 +27,12 @@
           (change)="updateCustomQuestions($any($event.target).checked)" />
       </label>
 
+      <label class="toggle-row test-toggle">
+        <span>Solo minijuegos (temporal para pruebas)</span>
+        <input type="checkbox" [checked]="settings().minigamesOnly"
+          (change)="updateMinigamesOnly($any($event.target).checked)" />
+      </label>
+
       <label class="toggle-row">
         <span>Tematica aleatoria por jugador</span>
         <input type="checkbox" [checked]="settings().randomThemePerPlayer"
@@ -229,6 +235,12 @@
             (change)="updateCustomQuestions($any($event.target).checked)" />
         </label>
 
+        <label class="toggle-row compact test-toggle">
+          <span>Solo minijuegos (temporal)</span>
+          <input type="checkbox" [checked]="settings().minigamesOnly"
+            (change)="updateMinigamesOnly($any($event.target).checked)" />
+        </label>
+
         <label class="toggle-row compact">
           <span>Tematica aleatoria por jugador</span>
           <input type="checkbox" [checked]="settings().randomThemePerPlayer"
@@ -341,6 +353,9 @@
         <p>Duracion por pregunta: {{ lobby()?.settings?.questionDuration }} segundos</p>
         <p>Tiempo para responder: {{ lobby()?.settings?.respondQuestionTime }} segundos</p>
         <p>Rondas: {{ lobby()?.settings?.rounds }}</p>
+        @if (lobby()?.settings?.minigamesOnly) {
+        <p>Modo de prueba: solo minijuegos</p>
+        }
         <div class="action-row single">
           <button class="readonly-close-button" type="button" (click)="closeLobbySettings()">Cerrar</button>
         </div>

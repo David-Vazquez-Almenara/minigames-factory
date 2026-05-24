@@ -102,6 +102,14 @@
   }
 }
 
+.minigame-container {
+  display: grid;
+  width: min(820px, 100%);
+  justify-items: center;
+  margin-top: 96px;
+  animation: rise-in 420ms ease-out both;
+}
+
 .pacman-timer {
   --timer-progress: 0;
   width: 118px;

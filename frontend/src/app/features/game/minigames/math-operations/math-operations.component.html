@@ -1,0 +1,48 @@
+<section class="math-game" aria-label="Minijuego de operaciones matematicas">
+  @if (!operations().length) {
+  <div class="waiting-card">
+    <h2>Preparando operaciones</h2>
+    <p>El host esta generando la misma tanda para todos.</p>
+    <span class="loader" aria-hidden="true"></span>
+  </div>
+  } @else if (submitted()) {
+  <div class="waiting-card ready">
+    <h2>Minijuego terminado</h2>
+    <p>Has llegado al final. Preparando puntuaciones...</p>
+    <strong>{{ completedCount() }} / {{ totalPlayers() }}</strong>
+  </div>
+  } @else {
+  <div class="math-panel">
+    <header>
+      <p>Operacion {{ currentIndex() + 1 }} de {{ operations().length }}</p>
+      <h2>Operaciones matematicas</h2>
+    </header>
+
+    @if (currentOperation(); as operation) {
+      <label class="operation-card">
+        <span>{{ operation.prompt }} =</span>
+        <input
+          type="number"
+          inputmode="numeric"
+          [value]="currentAnswer()"
+          (input)="updateAnswer($any($event.target).value)"
+          (keyup.enter)="submitAnswer()"
+          aria-label="Respuesta"
+        />
+      </label>
+    }
+
+    <button class="submit-button" type="button" [disabled]="!canSubmit()" (click)="submitAnswer()">
+      {{ loading() ? 'Comprobando...' : 'Responder' }}
+    </button>
+
+    <p class="progress-pill">
+      Aciertos: {{ myProgress().correctCount || 0 }} / {{ myProgress().answeredCount || 0 }}
+    </p>
+  </div>
+  }
+
+  @if (errorMessage()) {
+  <p class="error-message" role="alert">{{ errorMessage() }}</p>
+  }
+</section>

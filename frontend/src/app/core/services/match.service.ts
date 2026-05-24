@@ -3,6 +3,8 @@ import {
   AllImagesReadyPayload,
   LobbyState,
   MatchAssignment,
+  MathOperationPayload,
+  MinigameResultPayload,
   QuestionBackupPayload,
   MatchState,
   RoomResponse,
@@ -107,16 +109,24 @@ export class MatchService {
         return;
       }
 
-      const scoreboardKey = `${request.lobbyId}:${request.roundNumber}:${match.answerResults
-        .map((result) => `${result.ownerPlayerId}-${result.finalAnswer}`)
-        .join('|')}`;
+      const scoreboardKey =
+        request.source === 'minigame'
+          ? `${request.lobbyId}:${request.roundNumber}:minigame:${(request.results || [])
+              .map((result) => `${result.playerId}-${result.correctCount}-${result.finishedAt}`)
+              .join('|')}`
+          : `${request.lobbyId}:${request.roundNumber}:questions:${match.answerResults
+              .map((result) => `${result.ownerPlayerId}-${result.finalAnswer}`)
+              .join('|')}`;
 
       if (scoreboardKey === this.calculatedScoreboardKey()) {
         return;
       }
 
       this.calculatedScoreboardKey.set(scoreboardKey);
-      const scoreboard = this.calculateOfficialScoreboard(lobby, match, request.roundNumber);
+      const scoreboard =
+        request.source === 'minigame'
+          ? this.calculateOfficialMinigameScoreboard(lobby, request.roundNumber, request.results || [])
+          : this.calculateOfficialScoreboard(lobby, match, request.roundNumber);
       this.saveOfficialScoreboard(scoreboard);
       void this.socketService.updateScoreboard(lobby.code, request.roundNumber, scoreboard.scores);
     });
@@ -135,9 +145,19 @@ export class MatchService {
 
   async startMatch(lobby: LobbyState): Promise<RoomResponse> {
     if (this.socketService.isCurrentPlayerHost(lobby)) {
+      const lobbyForSnapshot = lobby.settings.minigamesOnly
+        ? {
+            ...lobby,
+            settings: {
+              ...lobby.settings,
+              specialRounds: this.buildAllMinigameRounds(lobby.settings.rounds),
+            },
+          }
+        : lobby;
+
       this.cleanOldHostMatchStorage(lobby.code);
       this.socketService.saveHostForRoom(lobby.code);
-      this.socketService.prepareHostReconnectSnapshot(lobby);
+      this.socketService.prepareHostReconnectSnapshot(lobbyForSnapshot);
     }
 
     return this.socketService.startMatch(lobby.code);
@@ -173,6 +193,25 @@ export class MatchService {
 
   continueFromSpecialRound(lobbyId: string): Promise<RoomResponse> {
     return this.socketService.continueFromSpecialRound(lobbyId);
+  }
+
+  prepareMinigame(lobbyId: string, operations: MathOperationPayload[]): Promise<RoomResponse> {
+    return this.socketService.prepareMinigame(lobbyId, operations);
+  }
+
+  submitMinigameAnswers(lobbyId: string, answers: Array<{ operationId: string; answer: number }>): Promise<RoomResponse> {
+    return this.socketService.submitMinigameAnswers(lobbyId, answers);
+  }
+
+  submitMinigameAnswer(lobbyId: string, operationId: string, answer: number): Promise<RoomResponse> {
+    return this.socketService.submitMinigameAnswer(lobbyId, operationId, answer);
+  }
+
+  submitMinigameProgress(
+    lobbyId: string,
+    progress: { answeredCount: number; correctCount: number; completed: boolean; finishedAt: number | null },
+  ): Promise<RoomResponse> {
+    return this.socketService.submitMinigameProgress(lobbyId, progress);
   }
 
   saveLocalScoreboardCopy(scoreboard: ScoreboardPayload): void {
@@ -362,6 +401,90 @@ export class MatchService {
     };
   }
 
+  private calculateOfficialMinigameScoreboard(
+    lobby: LobbyState,
+    roundNumber: number,
+    results: MinigameResultPayload[],
+  ): ScoreboardPayload {
+    const previousScoreboard = this.getLocalScoreboardCopy(lobby.code);
+    const previousScores = new Map((previousScoreboard?.scores || []).map((score) => [score.playerId, score.score]));
+    const lobbyOrder = new Map(lobby.players.map((player, index) => [player.id, index]));
+    const bonusPoints = this.calculateMinigameBonusPoints(results);
+    const resultMap = new Map(results.map((result) => [result.playerId, result]));
+
+    const scores = lobby.players.map((player) => ({
+      playerId: player.id,
+      playerName: player.name,
+      score: (previousScores.get(player.id) || 0) + (bonusPoints.get(player.id) || 0),
+      position: 0,
+      minigameCorrectCount: resultMap.get(player.id)?.correctCount || 0,
+      minigameAnsweredCount: resultMap.get(player.id)?.answeredCount || 0,
+    }));
+
+    scores.sort((firstPlayer, secondPlayer) => {
+      if (secondPlayer.score !== firstPlayer.score) {
+        return secondPlayer.score - firstPlayer.score;
+      }
+
+      return (lobbyOrder.get(firstPlayer.playerId) || 0) - (lobbyOrder.get(secondPlayer.playerId) || 0);
+    });
+
+    return {
+      lobbyId: lobby.code,
+      roundNumber,
+      scores: scores.map((score, index) => ({
+        ...score,
+        position: index + 1,
+      })),
+    };
+  }
+
+  private calculateMinigameBonusPoints(results: MinigameResultPayload[]): Map<string, number> {
+    const points = new Map<string, number>();
+    const submittedResults = results.filter((result) => result.submitted || (result.answeredCount || 0) > 0);
+
+    const completedResults = submittedResults.filter((result) => result.finishedAt);
+    completedResults.sort((firstResult, secondResult) => {
+      const timeDifference = Number(firstResult.finishedAt || 0) - Number(secondResult.finishedAt || 0);
+
+      if (timeDifference !== 0) {
+        return timeDifference;
+      }
+
+      return secondResult.correctCount - firstResult.correctCount;
+    });
+
+    const winner = completedResults[0];
+
+    if (winner) {
+      points.set(winner.playerId, 30);
+    }
+
+    const remainingResults = submittedResults
+      .filter((result) => result.playerId !== winner?.playerId)
+      .sort((firstResult, secondResult) => secondResult.correctCount - firstResult.correctCount);
+    const rankPoints = [20, 10];
+    let currentIndex = 0;
+
+    for (const rankPoint of rankPoints) {
+      if (currentIndex >= remainingResults.length) {
+        break;
+      }
+
+      const correctCount = remainingResults[currentIndex].correctCount;
+      const tiedResults = remainingResults.filter((result, index) => index >= currentIndex && result.correctCount === correctCount);
+      const playerPoint = tiedResults.length === 1 ? rankPoint : tiedResults.length === 2 ? Math.max(5, rankPoint / 2) : 5;
+
+      for (const result of tiedResults) {
+        points.set(result.playerId, Math.trunc(playerPoint));
+      }
+
+      currentIndex += tiedResults.length;
+    }
+
+    return points;
+  }
+
   private saveOfficialScoreboard(scoreboard: ScoreboardPayload): void {
     localStorage.setItem(
       HOST_RECONNECT_LOBBY_KEY,
@@ -390,7 +513,9 @@ export class MatchService {
         HOST_RECONNECT_CONFIG_KEY,
         JSON.stringify({
           ...currentValue,
-          specialRounds,
+          specialRounds: currentValue['minigamesOnly']
+            ? this.buildAllMinigameRounds(Number(currentValue['rounds'] || specialRounds.length - 1))
+            : specialRounds,
         }),
       );
     } catch {
@@ -488,5 +613,9 @@ export class MatchService {
     } catch {
       localStorage.removeItem(key);
     }
+  }
+
+  private buildAllMinigameRounds(totalRounds: number): number[] {
+    return Array.from({ length: Number(totalRounds || 0) + 1 }, (_unused, index) => index);
   }
 }

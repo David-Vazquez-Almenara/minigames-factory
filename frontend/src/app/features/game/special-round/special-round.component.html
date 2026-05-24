@@ -13,9 +13,15 @@
   }
 
   @if (stage() === 'game') {
-  <main class="minigame-placeholder">
-    <h2>Minijuego</h2>
-    <p>Placeholder de la ronda especial. Aqui ira el minijuego real mas adelante.</p>
+  <main class="minigame-container">
+    @if (specialRound()?.minigameId === 'math-operations') {
+    <app-math-operations />
+    } @else {
+    <section class="minigame-placeholder">
+      <h2>Minijuego</h2>
+      <p>Placeholder de la ronda especial. Aqui ira el minijuego real mas adelante.</p>
+    </section>
+    }
   </main>
   }
 
