@@ -52,7 +52,10 @@ const PAINT_TARGETS = [
 export class PaintComponent implements AfterViewInit, OnDestroy {
   private readonly matchService = inject(MatchService);
   private readonly canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('paintCanvas');
+  private readonly previewCanvasRef = viewChild<ElementRef<HTMLCanvasElement>>('previewCanvas');
   private context?: CanvasRenderingContext2D;
+  private previewContext?: CanvasRenderingContext2D;
+  private initializedCanvas?: HTMLCanvasElement;
   private drawing = false;
   private lastPoint: { x: number; y: number } | null = null;
   private startPoint: { x: number; y: number } | null = null;
@@ -73,11 +76,12 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
   readonly shape = signal<PaintShape>('circle');
   readonly color = signal('#111111');
   readonly brushSize = signal(10);
-  readonly eraserSize = signal(22);
+  readonly eraserSize = signal(44);
   readonly submitted = signal(false);
   readonly votedTargetId = signal('');
   readonly loading = signal(false);
   readonly errorMessage = signal('');
+  readonly mousePos = signal<{ x: number; y: number } | null>(null);
 
   readonly canvasCursorStyle = computed(() => {
     const t = this.tool();
@@ -86,19 +90,20 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
     const eSize = this.eraserSize();
 
     if (t === 'brush') {
-      const escapedColor = encodeURIComponent(c);
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><circle cx="64" cy="64" r="${bSize / 2}" fill="none" stroke="%23000000" stroke-width="1.5"/><circle cx="64" cy="64" r="${bSize / 2 - 0.5}" fill="${escapedColor}" fill-opacity="0.4"/></svg>`;
-      return `url("data:image/svg+xml;utf8,${svg}") 64 64, crosshair`;
+      const radius = Math.max(2, bSize / 2);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><circle cx="64" cy="64" r="${radius}" fill="none" stroke="#000000" stroke-width="1.5"/><circle cx="64" cy="64" r="${Math.max(1, radius - 0.5)}" fill="${c}" fill-opacity="0.4"/></svg>`;
+      return this.toCursorUrl(svg, 64, 64, 'crosshair');
     }
 
     if (t === 'eraser') {
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><circle cx="64" cy="64" r="${eSize / 2}" fill="none" stroke="%23000000" stroke-width="1.5"/><circle cx="64" cy="64" r="${eSize / 2 - 0.5}" fill="%23ffffff" fill-opacity="0.6"/></svg>`;
-      return `url("data:image/svg+xml;utf8,${svg}") 64 64, cell`;
+      const radius = Math.max(3, eSize / 2);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><circle cx="64" cy="64" r="${radius}" fill="none" stroke="#000000" stroke-width="1.5"/><circle cx="64" cy="64" r="${Math.max(1, radius - 0.5)}" fill="#ffffff" fill-opacity="0.6"/></svg>`;
+      return this.toCursorUrl(svg, 64, 64, 'cell');
     }
 
     if (t === 'floodfill') {
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 2-4 4 2.5 2.5L3 18v3h3l9.5-9.5L14 2z"/><path d="m8.5 11.5 4 4"/></svg>`;
-      return `url("data:image/svg+xml;utf8,${svg}") 3 18, pointer`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 2-4 4 2.5 2.5L3 18v3h3l9.5-9.5L14 2z"/><path d="m8.5 11.5 4 4"/><path d="M17 18c0-1 1-2 1-2s1 1 1 2a1 1 0 0 1-2 0Z" fill="${c}" stroke="#000000"/></svg>`;
+      return this.toCursorUrl(svg, 3, 20, 'pointer');
     }
 
     return 'default';
@@ -143,6 +148,13 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
         this.setupCanvas();
       }
     });
+
+    effect(() => {
+      const previewCanvasEl = this.previewCanvasRef();
+      if (previewCanvasEl) {
+        this.setupPreviewCanvas();
+      }
+    });
   }
 
   ngAfterViewInit(): void {
@@ -151,6 +163,16 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.clearTimer();
+  }
+
+  clearCanvas(): void {
+    const canvas = this.canvasRef()?.nativeElement;
+    if (canvas && this.context && !this.submitted()) {
+      this.context.clearRect(0, 0, canvas.width, canvas.height);
+      this.context.fillStyle = '#ffffff';
+      this.context.fillRect(0, 0, canvas.width, canvas.height);
+      this.clearPreviewCanvas();
+    }
   }
 
   openImageSearch(): void {
@@ -210,14 +232,21 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
     this.lastPoint = null;
     this.startPoint = null;
     this.canvasBackup = null;
+    this.clearPreviewCanvas();
   }
 
   paint(event: PointerEvent): void {
-    if (!this.drawing || !this.context) {
+    if (!this.context) {
       return;
     }
 
     const point = this.getCanvasPoint(event);
+    this.mousePos.set(point);
+    this.drawPreviewCircle(point);
+
+    if (!this.drawing || this.phase() !== 'drawing') {
+      return;
+    }
 
     if (this.tool() === 'eraser') {
       this.context.strokeStyle = '#ffffff';
@@ -233,7 +262,7 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
       }
       this.context.lineTo(point.x, point.y);
       this.context.stroke();
-      
+
       this.lastPoint = point;
       return;
     }
@@ -264,7 +293,7 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
     }
     this.context.lineTo(point.x, point.y);
     this.context.stroke();
-    
+
     this.lastPoint = point;
   }
 
@@ -341,9 +370,29 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    if (this.initializedCanvas === canvas && this.context === context) {
+      return;
+    }
+
+    this.initializedCanvas = canvas;
     this.context = context;
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
+    this.setupPreviewCanvas();
+  }
+
+  private setupPreviewCanvas(): void {
+    const canvas = this.canvasRef()?.nativeElement;
+    const previewCanvas = this.previewCanvasRef()?.nativeElement;
+
+    if (!canvas || !previewCanvas) {
+      return;
+    }
+
+    previewCanvas.width = canvas.width;
+    previewCanvas.height = canvas.height;
+    this.previewContext = previewCanvas.getContext('2d') || undefined;
+    this.clearPreviewCanvas();
   }
 
   private drawShapeFromPoints(startPoint: { x: number; y: number }, endPoint: { x: number; y: number }): void {
@@ -385,7 +434,7 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
 
     const width = canvas.width;
     const height = canvas.height;
-    
+
     const sX = Math.floor(startX);
     const sY = Math.floor(startY);
     if (sX < 0 || sX >= width || sY < 0 || sY >= height) {
@@ -407,12 +456,7 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
     const targetA = data[pixelPos + 3];
 
     // If already the target fill color, return
-    if (
-      targetR === fillRGB.r &&
-      targetG === fillRGB.g &&
-      targetB === fillRGB.b &&
-      targetA === 255
-    ) {
+    if (targetR === fillRGB.r && targetG === fillRGB.g && targetB === fillRGB.b && targetA === 255) {
       return;
     }
 
@@ -438,7 +482,8 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
       const b = data[currentPixelPos + 2];
       const a = data[currentPixelPos + 3];
 
-      const colorDistance = Math.abs(r - targetR) + Math.abs(g - targetG) + Math.abs(b - targetB) + Math.abs(a - targetA);
+      const colorDistance =
+        Math.abs(r - targetR) + Math.abs(g - targetG) + Math.abs(b - targetB) + Math.abs(a - targetA);
 
       if (colorDistance <= matchThreshold) {
         data[currentPixelPos] = fillRGB.r;
@@ -537,5 +582,48 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
 
     clearInterval(this.timer);
     this.timer = undefined;
+  }
+
+  private drawPreviewCircle(point: { x: number; y: number }): void {
+    if (!this.previewContext) {
+      return;
+    }
+
+    const tool = this.tool();
+    const ctx = this.previewContext;
+    this.clearPreviewCanvas();
+
+    if (tool !== 'brush' && tool !== 'eraser') {
+      return;
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    if (tool === 'brush') {
+      ctx.arc(point.x, point.y, this.brushSize() / 2, 0, Math.PI * 2);
+      ctx.strokeStyle = this.color();
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else if (tool === 'eraser') {
+      ctx.arc(point.x, point.y, this.eraserSize() / 2, 0, Math.PI * 2);
+      ctx.strokeStyle = '#000';
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  private clearPreviewCanvas(): void {
+    const previewCanvas = this.previewCanvasRef()?.nativeElement;
+
+    if (previewCanvas && this.previewContext) {
+      this.previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+    }
+  }
+
+  private toCursorUrl(svg: string, x: number, y: number, fallback: string): string {
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${x} ${y}, ${fallback}`;
   }
 }

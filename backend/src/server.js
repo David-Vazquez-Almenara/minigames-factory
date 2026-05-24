@@ -122,6 +122,11 @@ const FALLBACK_CHARACTER_TYPES = [
   'Profesional',
 ];
 
+function pickRandomListValue(values, fallbackValues) {
+  const candidates = Array.isArray(values) && values.length ? values : fallbackValues;
+  return candidates[Math.floor(Math.random() * candidates.length)] || fallbackValues[0] || '';
+}
+
 function generateRoomCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -935,13 +940,9 @@ function buildAssignments(room) {
   const settings = room.settings || {};
 
   players.forEach((player, index) => {
-    const theme = settings.randomThemePerPlayer
-      ? FALLBACK_THEMES[Math.floor(Math.random() * FALLBACK_THEMES.length)]
-      : settings.themeCategories?.[index % settings.themeCategories.length] || FALLBACK_THEMES[index % FALLBACK_THEMES.length];
-    const characterType = settings.randomCharacterTypePerPlayer
-      ? FALLBACK_CHARACTER_TYPES[Math.floor(Math.random() * FALLBACK_CHARACTER_TYPES.length)]
-      : settings.characterTypes?.[index % settings.characterTypes.length] ||
-        FALLBACK_CHARACTER_TYPES[index % FALLBACK_CHARACTER_TYPES.length];
+    const promptType = Math.random() < 0.5 ? 'theme' : 'characterType';
+    const theme = pickRandomListValue(settings.themeCategories, FALLBACK_THEMES);
+    const characterType = pickRandomListValue(settings.characterTypes, FALLBACK_CHARACTER_TYPES);
 
     assignments.set(player.id, {
       playerId: player.id,
@@ -949,6 +950,8 @@ function buildAssignments(room) {
       targetPlayerName: shuffledTargets[index].name,
       theme,
       characterType,
+      promptType,
+      promptLabel: promptType === 'theme' ? theme : characterType,
     });
   });
 

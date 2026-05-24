@@ -1,4 +1,29 @@
 <section class="scoreboard-screen" aria-label="Resultados de la tanda">
+  @if (showWinner()) {
+  <main
+    class="winner-showcase"
+    [class.leaving]="winnerLeaving()"
+    [class.math-winner]="!winnerHasImages()"
+    [class.no-winner]="noWinnerMessage()"
+    aria-live="polite"
+  >
+    <p>{{ winnerTitle() }}</p>
+    <h1>{{ winnerNames() }}</h1>
+
+    @if (winners().length) {
+    <div class="winner-grid" [class.metric-only]="!winnerHasImages()">
+      @for (winner of winners(); track winner.playerId) {
+      <article class="winner-card">
+        @if (winner.imageDataUrl) {
+        <img [src]="winner.imageDataUrl" [alt]="'Dibujo ganador de ' + winner.playerName" />
+        }
+        <strong>{{ winner.metricLabel }}</strong>
+      </article>
+      }
+    </div>
+    }
+  </main>
+  } @else {
   <main class="scoreboard-panel">
     <header>
       <p>Tanda {{ scoreboard()?.roundNumber || match()?.questionRoundNumber || 1 }}</p>
@@ -7,18 +32,32 @@
 
     <div class="score-list" [class.positions-settled]="positionsSettled()">
       @for (row of rows(); track row.playerId) {
-      <article class="score-row" [class.score-up]="row.scoreIncreased && scoreAnimationStarted()" [class.rank-gold]="row.position === 1" [class.rank-silver]="row.position === 2" [class.rank-bronze]="row.position === 3" [style.transform]="rowOffset(row)">
-        <strong class="position">{{ row.position }}o</strong>
-        <span class="player-name">
-          {{ row.playerName }}
-          @if (row.minigameVoteCount !== undefined) {
-          <small>{{ row.minigameVoteCount || 0 }} votos</small>
-          } @else if (row.minigameAnsweredCount !== undefined) {
-          <small>{{ row.minigameCorrectCount || 0 }} / {{ row.minigameAnsweredCount || 0 }} aciertos</small>
-          }
-        </span>
-        <strong class="score">{{ row.displayScore }} pts</strong>
-      </article>
+      <div class="score-row-shell">
+        <article
+          class="score-row"
+          [class.score-up]="row.scoreIncreased && scoreAnimationStarted()"
+          [class.rank-gold]="row.position === 1"
+          [class.rank-silver]="row.position === 2"
+          [class.rank-bronze]="row.position === 3"
+          [style.transform]="rowOffset(row)"
+          [style.opacity]="rowOpacity(row)"
+        >
+          <strong class="position">{{ row.position }}o</strong>
+          <span class="player-name">
+            {{ row.playerName }}
+            @if (row.minigameVoteCount !== undefined) {
+            <small>{{ row.minigameVoteCount || 0 }} votos</small>
+            } @else if (row.minigameAnsweredCount !== undefined) {
+            <small>{{ row.minigameCorrectCount || 0 }} / {{ row.minigameAnsweredCount || 0 }} aciertos</small>
+            }
+          </span>
+          <strong class="score">{{ row.displayScore }} pts</strong>
+        </article>
+
+        @if (scoreAnimationStarted() && row.scoreDelta > 0) {
+        <strong class="score-delta">+{{ row.scoreDelta }}</strong>
+        }
+      </div>
       }
     </div>
 
@@ -27,8 +66,9 @@
     }
 
   </main>
+  }
 
-  @if (isHost()) {
+  @if (isHost() && !showWinner()) {
   <button class="continue-button" type="button" [disabled]="!canContinue()" (click)="continueToNextBatch()">
     {{ loading() ? 'Continuando...' : 'Continuar' }}
   </button>

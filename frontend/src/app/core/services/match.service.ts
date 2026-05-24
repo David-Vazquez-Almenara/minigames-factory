@@ -457,17 +457,14 @@ export class MatchService {
     const points = new Map<string, number>();
 
     if (results.some((result) => result.votesReceived !== undefined)) {
-      return this.calculateRankedBonusPoints(
-        results
-          .filter((result) => result.submitted)
-          .map((result) => ({
-            playerId: result.playerId,
-            value: result.votesReceived || 0,
-          })),
-      );
+      return this.calculatePaintWinnerBonusPoints(results);
     }
 
     const submittedResults = results.filter((result) => result.submitted || (result.answeredCount || 0) > 0);
+
+    if (!submittedResults.length || Math.max(...submittedResults.map((result) => result.correctCount || 0)) <= 0) {
+      return points;
+    }
 
     const completedResults = submittedResults.filter((result) => result.finishedAt);
     completedResults.sort((firstResult, secondResult) => {
@@ -506,6 +503,30 @@ export class MatchService {
       }
 
       currentIndex += tiedResults.length;
+    }
+
+    return points;
+  }
+
+  private calculatePaintWinnerBonusPoints(results: MinigameResultPayload[]): Map<string, number> {
+    const points = new Map<string, number>();
+    const submittedResults = results.filter((result) => result.submitted && result.votesReceived !== undefined);
+
+    if (!submittedResults.length) {
+      return points;
+    }
+
+    const maxVotes = Math.max(...submittedResults.map((result) => result.votesReceived || 0));
+    const winners = submittedResults.filter((result) => (result.votesReceived || 0) === maxVotes);
+
+    if (!winners.length) {
+      return points;
+    }
+
+    const winnerPoints = winners.length === 1 ? 30 : winners.length === 2 ? 15 : 10;
+
+    for (const winner of winners) {
+      points.set(winner.playerId, winnerPoints);
     }
 
     return points;

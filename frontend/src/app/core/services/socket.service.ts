@@ -42,6 +42,8 @@ export interface MatchAssignment {
   targetPlayerName: string;
   theme: string;
   characterType: string;
+  promptType?: 'theme' | 'characterType';
+  promptLabel?: string;
 }
 
 export interface MatchSelection {

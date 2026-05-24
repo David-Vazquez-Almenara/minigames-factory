@@ -1,9 +1,9 @@
 <section class="paint-game" aria-label="Minijuego A Pintar">
   @if (target()) {
-    <aside class="timer-box screen-top-right">
-      <strong>{{ remainingSeconds() }}</strong>
-      <span>seg</span>
-    </aside>
+  <aside class="timer-box screen-top-right">
+    <strong>{{ remainingSeconds() }}</strong>
+    <span>seg</span>
+  </aside>
   }
 
   @if (!target()) {
@@ -39,40 +39,41 @@
   </main>
   } @else {
   <main class="paint-panel">
+    <button class="clear-button" type="button" [disabled]="submitted()" (click)="clearCanvas()">Limpiar hoja</button>
+
     <header class="paint-header">
       <div class="target-container">
         <p class="target-subtitle">Dibuja este objeto</p>
         <div class="target-title-row">
           <h2 class="target-word">{{ target()?.label }}</h2>
-          <button class="search-button-inline" type="button" aria-label="Buscar referencia" (click)="openImageSearch()" title="Buscar en Google Imágenes">
-            <span>🔍</span>
+          <button
+            class="search-button-inline"
+            type="button"
+            aria-label="Buscar referencia"
+            (click)="openImageSearch()"
+            title="Buscar en Google Imagenes"
+          >
+            <span>Ref</span>
           </button>
         </div>
       </div>
     </header>
 
     <div class="toolbar" [class.hide-tools]="submitted()" aria-label="Herramientas de dibujo">
-      <!-- 1. Pincel -->
       <button type="button" [class.active]="tool() === 'brush'" (click)="setTool('brush')">Pincel</button>
-      <!-- 2. Selector RGB -->
       <input type="color" [ngModel]="color()" (ngModelChange)="color.set($event)" aria-label="Color del pincel" />
-      
-      <!-- Cubo de Pintura -->
+
       <button type="button" [class.active]="tool() === 'floodfill'" (click)="setTool('floodfill')" title="Cubo de pintura">Cubo</button>
-      
-      <!-- 3. Goma -->
+
       <button type="button" [class.active]="tool() === 'eraser'" (click)="setTool('eraser')">Goma</button>
-      
-      <!-- 4. Selección de forma -->
+
       <button type="button" [class.active]="tool() === 'shape'" (click)="setTool('shape')">Forma</button>
-      <!-- 5. Selector de qué forma queremos -->
       <select [ngModel]="shape()" (ngModelChange)="shape.set($event)">
         <option value="circle">Circulo</option>
         <option value="square">Cuadrado</option>
         <option value="triangle">Triangulo</option>
       </select>
-      
-      <!-- 6. Slicers (brush/eraser sizes) -->
+
       <label>
         Pincel
         <input type="range" min="4" max="36" [ngModel]="brushSize()" (ngModelChange)="setBrushSize($event)" />
@@ -83,20 +84,23 @@
       </label>
     </div>
 
-    <canvas
-      #paintCanvas
-      [style.cursor]="canvasCursorStyle()"
-      [class]="'paint-canvas ' + tool()"
-      width="760"
-      height="430"
-      (pointerdown)="startDrawing($event)"
-      (pointermove)="paint($event)"
-      (pointerup)="stopDrawing()"
-      (pointerleave)="stopDrawing()"
-    ></canvas>
+    <div class="canvas-shell">
+      <canvas
+        #paintCanvas
+        [style.cursor]="canvasCursorStyle()"
+        [class]="'paint-canvas ' + tool()"
+        width="860"
+        height="470"
+        (pointerdown)="startDrawing($event)"
+        (pointermove)="paint($event)"
+        (pointerup)="stopDrawing()"
+        (pointerleave)="stopDrawing()"
+      ></canvas>
+      <canvas #previewCanvas class="preview-canvas" width="860" height="470" aria-hidden="true"></canvas>
+    </div>
 
     <div class="submit-row">
-      <button class="ready-button" type="button" [disabled]="!canSubmit()" (click)="submitDrawing()">✓ Listo</button>
+      <button class="ready-button" type="button" [disabled]="!canSubmit()" (click)="submitDrawing()">Listo</button>
       <p>{{ submittedCount() }} / {{ totalPlayers() }}</p>
     </div>
   </main>

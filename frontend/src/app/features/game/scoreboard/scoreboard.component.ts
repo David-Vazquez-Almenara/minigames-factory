@@ -1,11 +1,20 @@
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MatchService } from '../../../core/services/match.service';
-import { ScoreboardEntry } from '../../../core/services/socket.service';
+import { PaintSubmissionPayload, ScoreboardEntry } from '../../../core/services/socket.service';
 
 interface AnimatedScoreboardEntry extends ScoreboardEntry {
   displayScore: number;
+  scoreDelta: number;
   previousPosition: number;
   scoreIncreased: boolean;
+  moving: boolean;
+}
+
+interface MinigameWinner {
+  playerId: string;
+  playerName: string;
+  metricLabel: string;
+  imageDataUrl?: string;
 }
 
 @Component({
@@ -24,10 +33,19 @@ export class ScoreboardComponent implements OnDestroy {
   readonly rows = signal<AnimatedScoreboardEntry[]>([]);
   readonly positionsSettled = signal(false);
   readonly scoreAnimationStarted = signal(false);
+  readonly showWinner = signal(false);
+  readonly winnerLeaving = signal(false);
+  readonly winners = signal<MinigameWinner[]>([]);
+  readonly noWinnerMessage = signal('');
   readonly loading = signal(false);
   readonly errorMessage = signal('');
 
-  readonly canContinue = computed(() => Boolean(this.isHost() && this.scoreboard() && this.positionsSettled() && !this.loading()));
+  readonly canContinue = computed(() =>
+    Boolean(this.isHost() && this.scoreboard() && this.positionsSettled() && !this.showWinner() && !this.loading()),
+  );
+  readonly winnerTitle = computed(() => (this.noWinnerMessage() ? 'Sin ganador' : this.winners().length > 1 ? 'Ganadores' : 'Ganador'));
+  readonly winnerNames = computed(() => this.noWinnerMessage() || this.winners().map((winner) => winner.playerName).join(', '));
+  readonly winnerHasImages = computed(() => this.winners().some((winner) => Boolean(winner.imageDataUrl)));
 
   constructor() {
     effect(() => {
@@ -80,6 +98,10 @@ export class ScoreboardComponent implements OnDestroy {
     this.clearAnimationTimers();
     this.positionsSettled.set(false);
     this.scoreAnimationStarted.set(false);
+    this.showWinner.set(false);
+    this.winnerLeaving.set(false);
+    this.winners.set([]);
+    this.noWinnerMessage.set('');
     this.errorMessage.set('');
 
     const previousScoreboard = this.matchService.getLocalScoreboardCopy(scoreboard.lobbyId);
@@ -93,16 +115,46 @@ export class ScoreboardComponent implements OnDestroy {
           position: previous?.position || row.position,
           previousPosition: previous?.position || row.position,
           displayScore: previous?.score || 0,
+          scoreDelta: Math.max(0, row.score - (previous?.score || 0)),
           scoreIncreased: row.score > (previous?.score || 0),
+          moving: false,
         };
       })
       .sort((firstRow, secondRow) => firstRow.previousPosition - secondRow.previousPosition);
 
     this.rows.set(initialRows);
+
+    if (!nextRows.length) {
+      return;
+    }
+
+    const noWinnerMessage = this.getMinigameNoWinnerMessage();
+    const winners = this.getMinigameWinners();
+
+    if (noWinnerMessage || winners.length) {
+      this.winners.set(winners);
+      this.noWinnerMessage.set(noWinnerMessage);
+      this.showWinner.set(true);
+
+      const exitTimer = setTimeout(() => this.winnerLeaving.set(true), 3200);
+      const scoreboardTimer = setTimeout(() => {
+        this.showWinner.set(false);
+        this.winnerLeaving.set(false);
+        this.startScoreDelay(nextRows, 250);
+      }, 3900);
+
+      this.animationTimers.push(exitTimer, scoreboardTimer);
+      return;
+    }
+
+    this.startScoreDelay(nextRows, 1500);
+  }
+
+  private startScoreDelay(nextRows: ScoreboardEntry[], delayMs: number): void {
     const scoreDelayTimer = setTimeout(() => {
       this.scoreAnimationStarted.set(true);
       this.animateScores(nextRows);
-    }, 1500);
+    }, delayMs);
     this.animationTimers.push(scoreDelayTimer);
   }
 
@@ -137,25 +189,53 @@ export class ScoreboardComponent implements OnDestroy {
   }
 
   private finishPositionAnimation(nextRows: ScoreboardEntry[]): void {
+    const currentRows = this.rows();
+    const hasPositionChanges = nextRows.some((row) =>
+      currentRows.some((currentRow) => currentRow.playerId === row.playerId && currentRow.previousPosition !== row.position),
+    );
+
+    if (!hasPositionChanges) {
+      this.rows.set(
+        nextRows.map((row) => {
+          const currentRow = currentRows.find((entry) => entry.playerId === row.playerId);
+
+          return {
+            ...row,
+            previousPosition: row.position,
+            displayScore: row.score,
+            scoreDelta: currentRow?.scoreDelta || 0,
+            scoreIncreased: false,
+            moving: false,
+          };
+        }),
+      );
+      this.positionsSettled.set(true);
+      this.saveCurrentScoreboardCopy();
+      return;
+    }
+
     const positionTimer = setTimeout(() => {
+      const currentRows = this.rows();
       this.rows.set(
         nextRows.map((row) => ({
           ...row,
-          previousPosition: this.rows().find((currentRow) => currentRow.playerId === row.playerId)?.previousPosition || row.position,
+          previousPosition: currentRows.find((currentRow) => currentRow.playerId === row.playerId)?.previousPosition || row.position,
           displayScore: row.score,
+          scoreDelta: currentRows.find((currentRow) => currentRow.playerId === row.playerId)?.scoreDelta || 0,
           scoreIncreased: false,
+          moving: currentRows.some(
+            (currentRow) => currentRow.playerId === row.playerId && currentRow.previousPosition !== row.position,
+          ),
         })),
       );
+
       const settleTimer = setTimeout(() => {
         this.positionsSettled.set(true);
+        this.rows.update((currentRows) => currentRows.map((row) => ({ ...row, previousPosition: row.position, moving: false })));
       }, 40);
       this.animationTimers.push(settleTimer);
 
-      const scoreboard = this.scoreboard();
-
-      if (scoreboard) {
-        this.matchService.saveLocalScoreboardCopy(scoreboard);
-      }
+      this.saveCurrentScoreboardCopy();
     }, 420);
 
     this.animationTimers.push(positionTimer);
@@ -169,6 +249,10 @@ export class ScoreboardComponent implements OnDestroy {
     return `translateY(${(row.previousPosition - row.position) * 80}px)`;
   }
 
+  rowOpacity(row: AnimatedScoreboardEntry): string {
+    return !this.positionsSettled() && row.moving ? '0.35' : '1';
+  }
+
   private clearAnimationTimers(): void {
     for (const timer of this.animationTimers) {
       clearTimeout(timer);
@@ -176,5 +260,109 @@ export class ScoreboardComponent implements OnDestroy {
     }
 
     this.animationTimers = [];
+  }
+
+  private saveCurrentScoreboardCopy(): void {
+    const scoreboard = this.scoreboard();
+
+    if (scoreboard) {
+      this.matchService.saveLocalScoreboardCopy(scoreboard);
+    }
+  }
+
+  private getMinigameNoWinnerMessage(): string {
+    const specialRound = this.match()?.specialRound;
+
+    if (specialRound?.minigameId !== 'math-operations' || !Array.isArray(specialRound.results)) {
+      return '';
+    }
+
+    const submittedResults = specialRound.results.filter((result) => result.submitted || (result.answeredCount || 0) > 0);
+    const maxCorrectCount = submittedResults.length
+      ? Math.max(...submittedResults.map((result) => result.correctCount || 0))
+      : 0;
+
+    return maxCorrectCount <= 0 ? 'Nadie ha acertado ninguna pregunta' : '';
+  }
+
+  private getMinigameWinners(): MinigameWinner[] {
+    const specialRound = this.match()?.specialRound;
+
+    if (!specialRound || !Array.isArray(specialRound.results)) {
+      return [];
+    }
+
+    if (specialRound.minigameId === 'paint') {
+      return this.getPaintWinners();
+    }
+
+    if (specialRound.minigameId === 'math-operations') {
+      return this.getMathWinners();
+    }
+
+    return [];
+  }
+
+  private getPaintWinners(): MinigameWinner[] {
+    const specialRound = this.match()?.specialRound;
+
+    if (specialRound?.minigameId !== 'paint' || !Array.isArray(specialRound.results)) {
+      return [];
+    }
+
+    const submittedResults = specialRound.results.filter(
+      (result) => result.submitted && result.votesReceived !== undefined,
+    );
+
+    if (!submittedResults.length) {
+      return [];
+    }
+
+    const maxVotes = Math.max(...submittedResults.map((result) => result.votesReceived || 0));
+    const submissionsByPlayer = new Map(
+      (specialRound.paintSubmissions || []).map((submission: PaintSubmissionPayload) => [submission.playerId, submission]),
+    );
+
+    return submittedResults
+      .filter((result) => (result.votesReceived || 0) === maxVotes)
+      .map((result) => {
+        const submission = submissionsByPlayer.get(result.playerId);
+
+        return {
+          playerId: result.playerId,
+          playerName: submission?.playerName || result.playerName,
+          metricLabel: `${result.votesReceived || 0} votos`,
+          imageDataUrl: submission?.imageDataUrl || '',
+        };
+      })
+      .filter((winner) => winner.imageDataUrl);
+  }
+
+  private getMathWinners(): MinigameWinner[] {
+    const specialRound = this.match()?.specialRound;
+
+    if (specialRound?.minigameId !== 'math-operations' || !Array.isArray(specialRound.results)) {
+      return [];
+    }
+
+    const submittedResults = specialRound.results.filter((result) => result.submitted || (result.answeredCount || 0) > 0);
+
+    if (!submittedResults.length) {
+      return [];
+    }
+
+    const maxCorrectCount = Math.max(...submittedResults.map((result) => result.correctCount || 0));
+
+    if (maxCorrectCount <= 0) {
+      return [];
+    }
+
+    return submittedResults
+      .filter((result) => (result.correctCount || 0) === maxCorrectCount)
+      .map((result) => ({
+        playerId: result.playerId,
+        playerName: result.playerName,
+        metricLabel: `${result.correctCount || 0} aciertos`,
+      }));
   }
 }

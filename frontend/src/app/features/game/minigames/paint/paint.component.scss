@@ -1,6 +1,6 @@
 :host {
   display: block;
-  width: min(920px, 100%);
+  width: min(1080px, 100%);
 }
 
 .paint-game,
@@ -21,6 +21,11 @@
   background-color: #fff7ec;
   border: 4px solid #000;
   border-radius: 22px;
+}
+
+.paint-panel {
+  position: relative;
+  padding-top: 22px;
 }
 
 .paint-header {
@@ -86,6 +91,7 @@
 }
 
 .toolbar button,
+.clear-button,
 .ready-button,
 .drawing-card {
   color: #000;
@@ -95,6 +101,28 @@
   border: 3px solid #000;
   border-radius: 14px;
   cursor: pointer;
+}
+
+.clear-button {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  min-height: 42px;
+  padding: 8px 12px;
+  background-color: #fff;
+  box-shadow: 0 3px 0 #000;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 #000;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #000;
+  }
 }
 
 .timer-box {
@@ -147,8 +175,8 @@
 
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-wrap: nowrap;
+  gap: 8px;
   align-items: center;
   justify-content: center;
   width: 100%;
@@ -175,11 +203,11 @@
   button,
   select,
   input[type='color'] {
-    min-height: 42px;
+    min-height: 38px;
   }
 
   button {
-    padding: 8px 12px;
+    padding: 7px 10px;
     background-color: #fff;
     box-shadow: 0 3px 0 #000;
     transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -200,7 +228,7 @@
   }
 
   select {
-    padding: 8px 10px;
+    padding: 7px 8px;
     color: #000;
     font: inherit;
     font-weight: 900;
@@ -215,8 +243,8 @@
     border-radius: 12px;
     background: #fff;
     cursor: pointer;
-    width: 48px;
-    height: 42px;
+    width: 44px;
+    height: 38px;
     padding: 2px;
     box-shadow: 0 3px 0 #000;
     transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -242,23 +270,43 @@
   label {
     display: grid;
     gap: 2px;
-    font-size: 0.8rem;
+    min-width: 118px;
+    font-size: 0.74rem;
     font-weight: 950;
 
     input[type='range'] {
+      width: 118px;
       cursor: pointer;
     }
   }
 }
 
-canvas.paint-canvas {
-  width: min(100%, 760px);
-  height: auto;
-  touch-action: none;
+.canvas-shell {
+  position: relative;
+  width: min(100%, 860px);
+  aspect-ratio: 86 / 47;
+  overflow: hidden;
   background-color: #fff;
   border: 4px solid #000;
   border-radius: 18px;
   box-shadow: 0 6px 0 #000;
+}
+
+.canvas-shell canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+canvas.paint-canvas {
+  touch-action: none;
+  background-color: #fff;
+}
+
+.preview-canvas {
+  pointer-events: none;
 }
 
 .submit-row {
@@ -285,6 +333,7 @@ canvas.paint-canvas {
 }
 
 .ready-button:disabled,
+.clear-button:disabled,
 .drawing-card:disabled {
   cursor: no-drop;
   opacity: 0.7;
@@ -353,6 +402,20 @@ canvas.paint-canvas {
   .paint-panel,
   .vote-panel {
     padding: 14px;
+  }
+
+  .paint-panel {
+    padding-top: 64px;
+  }
+
+  .clear-button {
+    top: 12px;
+    left: 12px;
+    min-height: 38px;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
   }
 
   .paint-header {

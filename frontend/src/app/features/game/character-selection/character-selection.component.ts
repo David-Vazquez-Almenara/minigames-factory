@@ -40,6 +40,25 @@ export class CharacterSelectionComponent implements OnDestroy {
   readonly verificationPlayers = signal<Array<{ id: string; name: string }>>([]);
 
   readonly readyLabel = computed(() => `${this.readyCount()} / ${this.totalPlayers()}`);
+  readonly assignmentPrompt = computed(() => {
+    const assignment = this.assignment();
+
+    if (!assignment) {
+      return null;
+    }
+
+    if (assignment.promptType && assignment.promptLabel) {
+      return {
+        label: assignment.promptType === 'theme' ? 'Tematica' : 'Tipo de personaje',
+        value: assignment.promptLabel,
+      };
+    }
+
+    return {
+      label: assignment.theme ? 'Tematica' : 'Tipo de personaje',
+      value: assignment.theme || assignment.characterType,
+    };
+  });
   readonly canSubmit = computed(
     () =>
       this.imageValid() &&

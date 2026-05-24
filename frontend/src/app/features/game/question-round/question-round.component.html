@@ -64,14 +64,11 @@
     <p class="error-message" role="alert">{{ errorMessage() }}</p>
     }
 
-    <button
-      class="ready-button"
-      type="button"
-      [disabled]="!canSubmitQuestion()"
-      (click)="submitQuestion()"
-    >
+    @if (!questionSubmitted()) {
+    <button class="ready-button" type="button" [disabled]="!canSubmitQuestion()" (click)="submitQuestion()">
       {{ loading() ? 'Guardando...' : customQuestionEditing() ? 'Confirmar pregunta' : 'Listo' }}
     </button>
+    }
 
     @if (customQuestionModalOpen()) {
     <div class="custom-question-backdrop" role="dialog" aria-modal="true" aria-labelledby="custom-question-title" (click)="closeCustomQuestionModal()">

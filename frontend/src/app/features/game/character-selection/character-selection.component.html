@@ -19,10 +19,11 @@
     <header>
       <p>Elige el personaje de</p>
       <h1>{{ currentAssignment.targetPlayerName }}</h1>
+      @if (assignmentPrompt(); as prompt) {
       <div class="assignment-tags">
-        <span>Tematica: {{ currentAssignment.theme }}</span>
-        <span>Tipo de personaje: {{ currentAssignment.characterType }}</span>
+        <span>{{ prompt.label }}: {{ prompt.value }}</span>
       </div>
+      }
     </header>
 
     <div class="image-preview" [class.has-image]="previewUrl()">
