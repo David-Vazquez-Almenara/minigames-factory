@@ -12,7 +12,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { MatchService } from '../../../../core/services/match.service';
 
-type PaintTool = 'brush' | 'eraser' | 'shape';
+type PaintTool = 'brush' | 'eraser' | 'shape' | 'floodfill';
 type PaintShape = 'circle' | 'square' | 'triangle';
 
 const PAINT_TARGETS = [
@@ -54,6 +54,9 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
   private readonly canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('paintCanvas');
   private context?: CanvasRenderingContext2D;
   private drawing = false;
+  private lastPoint: { x: number; y: number } | null = null;
+  private startPoint: { x: number; y: number } | null = null;
+  private canvasBackup: ImageData | null = null;
   private preparedRoundKey = '';
   private submittedRoundKey = '';
   private timer?: ReturnType<typeof setInterval>;
@@ -75,6 +78,31 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
   readonly votedTargetId = signal('');
   readonly loading = signal(false);
   readonly errorMessage = signal('');
+
+  readonly canvasCursorStyle = computed(() => {
+    const t = this.tool();
+    const c = this.color();
+    const bSize = this.brushSize();
+    const eSize = this.eraserSize();
+
+    if (t === 'brush') {
+      const escapedColor = encodeURIComponent(c);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><circle cx="64" cy="64" r="${bSize / 2}" fill="none" stroke="%23000000" stroke-width="1.5"/><circle cx="64" cy="64" r="${bSize / 2 - 0.5}" fill="${escapedColor}" fill-opacity="0.4"/></svg>`;
+      return `url("data:image/svg+xml;utf8,${svg}") 64 64, crosshair`;
+    }
+
+    if (t === 'eraser') {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><circle cx="64" cy="64" r="${eSize / 2}" fill="none" stroke="%23000000" stroke-width="1.5"/><circle cx="64" cy="64" r="${eSize / 2 - 0.5}" fill="%23ffffff" fill-opacity="0.6"/></svg>`;
+      return `url("data:image/svg+xml;utf8,${svg}") 64 64, cell`;
+    }
+
+    if (t === 'floodfill') {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 2-4 4 2.5 2.5L3 18v3h3l9.5-9.5L14 2z"/><path d="m8.5 11.5 4 4"/></svg>`;
+      return `url("data:image/svg+xml;utf8,${svg}") 3 18, pointer`;
+    }
+
+    return 'default';
+  });
 
   readonly submittedCount = computed(() => this.submissions().length);
   readonly totalPlayers = computed(() => this.match()?.totalPlayers || 0);
@@ -107,6 +135,13 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
       const deadline = phase === 'drawing' ? this.specialRound()?.paintEndsAt : this.specialRound()?.paintVoteEndsAt;
 
       this.syncTimer(deadline || null);
+    });
+
+    effect(() => {
+      const canvasEl = this.canvasRef();
+      if (canvasEl) {
+        this.setupCanvas();
+      }
     });
   }
 
@@ -149,12 +184,32 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    const point = this.getCanvasPoint(event);
+
+    if (this.tool() === 'floodfill') {
+      this.floodFill(point.x, point.y, this.color());
+      return;
+    }
+
     this.drawing = true;
-    this.paint(event);
+    this.lastPoint = point;
+
+    if (this.tool() === 'shape') {
+      this.startPoint = point;
+      const canvas = this.canvasRef()?.nativeElement;
+      if (canvas && this.context) {
+        this.canvasBackup = this.context.getImageData(0, 0, canvas.width, canvas.height);
+      }
+    } else {
+      this.paint(event);
+    }
   }
 
   stopDrawing(): void {
     this.drawing = false;
+    this.lastPoint = null;
+    this.startPoint = null;
+    this.canvasBackup = null;
   }
 
   paint(event: PointerEvent): void {
@@ -165,25 +220,52 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
     const point = this.getCanvasPoint(event);
 
     if (this.tool() === 'eraser') {
-      this.context.clearRect(
-        point.x - this.eraserSize() / 2,
-        point.y - this.eraserSize() / 2,
-        this.eraserSize(),
-        this.eraserSize(),
-      );
+      this.context.strokeStyle = '#ffffff';
+      this.context.lineWidth = this.eraserSize();
+      this.context.lineCap = 'round';
+      this.context.lineJoin = 'round';
+
+      this.context.beginPath();
+      if (this.lastPoint) {
+        this.context.moveTo(this.lastPoint.x, this.lastPoint.y);
+      } else {
+        this.context.moveTo(point.x, point.y);
+      }
+      this.context.lineTo(point.x, point.y);
+      this.context.stroke();
+      
+      this.lastPoint = point;
       return;
     }
-
-    this.context.fillStyle = this.color();
 
     if (this.tool() === 'shape') {
-      this.drawShape(point.x, point.y);
+      if (this.startPoint && this.canvasBackup) {
+        this.context.putImageData(this.canvasBackup, 0, 0);
+        this.context.fillStyle = this.color();
+        this.drawShapeFromPoints(this.startPoint, point);
+      }
       return;
     }
 
+    if (this.tool() === 'floodfill') {
+      return;
+    }
+
+    this.context.strokeStyle = this.color();
+    this.context.lineWidth = this.brushSize();
+    this.context.lineCap = 'round';
+    this.context.lineJoin = 'round';
+
     this.context.beginPath();
-    this.context.arc(point.x, point.y, this.brushSize() / 2, 0, Math.PI * 2);
-    this.context.fill();
+    if (this.lastPoint) {
+      this.context.moveTo(this.lastPoint.x, this.lastPoint.y);
+    } else {
+      this.context.moveTo(point.x, point.y);
+    }
+    this.context.lineTo(point.x, point.y);
+    this.context.stroke();
+    
+    this.lastPoint = point;
   }
 
   async submitDrawing(): Promise<void> {
@@ -264,31 +346,150 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
     context.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  private drawShape(x: number, y: number): void {
+  private drawShapeFromPoints(startPoint: { x: number; y: number }, endPoint: { x: number; y: number }): void {
     if (!this.context) {
       return;
     }
 
-    const size = this.brushSize() * 2;
+    const shapeType = this.shape();
 
-    if (this.shape() === 'square') {
-      this.context.fillRect(x - size / 2, y - size / 2, size, size);
+    if (shapeType === 'square') {
+      const width = endPoint.x - startPoint.x;
+      const height = endPoint.y - startPoint.y;
+      this.context.fillRect(startPoint.x, startPoint.y, width, height);
       return;
     }
 
-    if (this.shape() === 'triangle') {
+    if (shapeType === 'triangle') {
       this.context.beginPath();
-      this.context.moveTo(x, y - size / 2);
-      this.context.lineTo(x - size / 2, y + size / 2);
-      this.context.lineTo(x + size / 2, y + size / 2);
+      this.context.moveTo((startPoint.x + endPoint.x) / 2, startPoint.y);
+      this.context.lineTo(startPoint.x, endPoint.y);
+      this.context.lineTo(endPoint.x, endPoint.y);
       this.context.closePath();
       this.context.fill();
       return;
     }
 
+    // circle
+    const radius = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2));
     this.context.beginPath();
-    this.context.arc(x, y, size / 2, 0, Math.PI * 2);
+    this.context.arc(startPoint.x, startPoint.y, radius, 0, Math.PI * 2);
     this.context.fill();
+  }
+
+  private floodFill(startX: number, startY: number, fillColorHex: string): void {
+    const canvas = this.canvasRef()?.nativeElement;
+    if (!canvas || !this.context) {
+      return;
+    }
+
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    const sX = Math.floor(startX);
+    const sY = Math.floor(startY);
+    if (sX < 0 || sX >= width || sY < 0 || sY >= height) {
+      return;
+    }
+
+    const imageData = this.context.getImageData(0, 0, width, height);
+    const data = imageData.data;
+
+    const fillRGB = this.hexToRgb(fillColorHex);
+    if (!fillRGB) {
+      return;
+    }
+
+    const pixelPos = (sY * width + sX) * 4;
+    const targetR = data[pixelPos];
+    const targetG = data[pixelPos + 1];
+    const targetB = data[pixelPos + 2];
+    const targetA = data[pixelPos + 3];
+
+    // If already the target fill color, return
+    if (
+      targetR === fillRGB.r &&
+      targetG === fillRGB.g &&
+      targetB === fillRGB.b &&
+      targetA === 255
+    ) {
+      return;
+    }
+
+    const queue = new Int32Array(width * height);
+    const visited = new Uint8Array(width * height);
+    let head = 0;
+    let tail = 0;
+
+    const startIdx = sY * width + sX;
+    queue[tail++] = startIdx;
+    visited[startIdx] = 1;
+
+    const matchThreshold = 25;
+
+    while (head < tail) {
+      const currIdx = queue[head++];
+      const currX = currIdx % width;
+      const currY = Math.floor(currIdx / width);
+
+      const currentPixelPos = currIdx * 4;
+      const r = data[currentPixelPos];
+      const g = data[currentPixelPos + 1];
+      const b = data[currentPixelPos + 2];
+      const a = data[currentPixelPos + 3];
+
+      const colorDistance = Math.abs(r - targetR) + Math.abs(g - targetG) + Math.abs(b - targetB) + Math.abs(a - targetA);
+
+      if (colorDistance <= matchThreshold) {
+        data[currentPixelPos] = fillRGB.r;
+        data[currentPixelPos + 1] = fillRGB.g;
+        data[currentPixelPos + 2] = fillRGB.b;
+        data[currentPixelPos + 3] = 255;
+
+        // 4-connected check
+        if (currX > 0) {
+          const nextIdx = currIdx - 1;
+          if (!visited[nextIdx]) {
+            visited[nextIdx] = 1;
+            queue[tail++] = nextIdx;
+          }
+        }
+        if (currX < width - 1) {
+          const nextIdx = currIdx + 1;
+          if (!visited[nextIdx]) {
+            visited[nextIdx] = 1;
+            queue[tail++] = nextIdx;
+          }
+        }
+        if (currY > 0) {
+          const nextIdx = currIdx - width;
+          if (!visited[nextIdx]) {
+            visited[nextIdx] = 1;
+            queue[tail++] = nextIdx;
+          }
+        }
+        if (currY < height - 1) {
+          const nextIdx = currIdx + width;
+          if (!visited[nextIdx]) {
+            visited[nextIdx] = 1;
+            queue[tail++] = nextIdx;
+          }
+        }
+      }
+    }
+
+    this.context.putImageData(imageData, 0, 0);
+  }
+
+  private hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
+        }
+      : null;
   }
 
   private getCanvasPoint(event: PointerEvent): { x: number; y: number } {
