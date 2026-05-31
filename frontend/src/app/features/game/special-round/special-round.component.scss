@@ -197,3 +197,33 @@
     background-position: 0 50%;
   }
 }
+
+.exit-test-button {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  min-width: 180px;
+  min-height: 56px;
+  padding: 12px 18px;
+  color: #fff;
+  font: inherit;
+  font-weight: 950;
+  background-color: #ff4757;
+  border: 3px solid #000;
+  border-radius: 16px;
+  cursor: pointer;
+  z-index: 1000;
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 0 #000;
+
+  &:hover {
+    transform: scale(1.05) translateY(-2px);
+    background-color: #ff6b81;
+    box-shadow: 0 6px 0 #000;
+  }
+
+  &:active {
+    transform: scale(0.98) translateY(2px);
+    box-shadow: 0 2px 0 #000;
+  }
+}

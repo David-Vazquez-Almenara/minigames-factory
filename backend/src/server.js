@@ -7,7 +7,7 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
-const LOCAL_DEV_PORT = 3000;
+const LOCAL_DEV_PORT = 8080;
 const isLocalDev = process.env.npm_lifecycle_event === 'dev';
 const PORT = isLocalDev ? LOCAL_DEV_PORT : process.env.PORT || LOCAL_DEV_PORT;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:4200,http://127.0.0.1:4200';
@@ -35,6 +35,7 @@ const CUSTOM_QUESTION_EXTRA_MS = 30000;
 const SPECIAL_ROUND_COIN_PROBABILITY = 0.5;
 const PAINT_DRAWING_MS = 60000;
 const PAINT_VOTING_MS = 20000;
+// Minigames stay registered centrally so the server can coordinate one shared choice for every client.
 const MINIGAMES = [
   {
     id: 'math-operations',
@@ -48,33 +49,6 @@ const MINIGAMES = [
     description:
       'Dibuja el objeto secreto y vota despues por la obra que mas se parezca. El mas votado gana mas puntos.',
   },
-];
-const PAINT_TARGETS = [
-  'Manzana',
-  'Castillo',
-  'Cohete',
-  'Guitarra',
-  'Zapato',
-  'Helado',
-  'Sombrero',
-  'Llave',
-  'Barco',
-  'Robot',
-  'Dinosaurio',
-  'Camara',
-  'Pizza',
-  'Bicicleta',
-  'Reloj',
-  'Montana',
-  'Avion',
-  'Lampara',
-  'Corona',
-  'Paraguas',
-  'Fantasma',
-  'Taza',
-  'Balon',
-  'Arbol',
-  'Coche',
 ];
 const SPECIAL_QUESTION_OPTION = {
   id: 'special-custom-question',
@@ -179,7 +153,7 @@ function normalizeRoomSettings(settings = {}) {
   };
 }
 
-function chooseMinigame(room) {
+function selectRandomMinigame(room) {
   const previousMinigameId = room.match?.lastMinigameId || '';
   const candidates =
     MINIGAMES.length > 1 ? MINIGAMES.filter((minigame) => minigame.id !== previousMinigameId) : MINIGAMES;
@@ -191,20 +165,20 @@ function chooseMinigame(room) {
 function toPublicPaintSubmissions(specialRound) {
   return specialRound?.paintSubmissions
     ? Array.from(specialRound.paintSubmissions.values()).map((submission) => ({
-        playerId: submission.playerId,
-        playerName: submission.playerName,
-        imageDataUrl: submission.imageDataUrl,
-        submittedAt: submission.submittedAt,
-      }))
+      playerId: submission.playerId,
+      playerName: submission.playerName,
+      imageDataUrl: submission.imageDataUrl,
+      submittedAt: submission.submittedAt,
+    }))
     : [];
 }
 
 function toPublicPaintVotes(specialRound) {
   return specialRound?.paintVotes
     ? Array.from(specialRound.paintVotes.entries()).map(([voterPlayerId, targetPlayerId]) => ({
-        voterPlayerId,
-        targetPlayerId,
-      }))
+      voterPlayerId,
+      targetPlayerId,
+    }))
     : [];
 }
 
@@ -256,17 +230,17 @@ function toMatchState(room) {
     questionSelectionEndsAt: room.match.questionBatch?.questionSelectionEndsAt || null,
     selectedQuestions: room.match.questionBatch
       ? Array.from(room.match.questionBatch.selections.entries()).map(([playerId, question]) => ({
-          playerId,
-          questionId: question.questionId,
-          question: question.question,
-          questionType: question.questionType,
-        }))
+        playerId,
+        questionId: question.questionId,
+        question: question.question,
+        questionType: question.questionType,
+      }))
       : [],
     questionOptionsByPlayer: room.match.questionBatch
       ? Array.from(room.match.questionBatch.optionsByPlayer.entries()).map(([playerId, options]) => ({
-          playerId,
-          options,
-        }))
+        playerId,
+        options,
+      }))
       : [],
     questionHistory: room.match.questionHistory || [],
     customQuestionEditingPlayerIds: room.match.questionBatch
@@ -274,9 +248,9 @@ function toMatchState(room) {
       : [],
     customQuestionDeadlineByPlayer: room.match.questionBatch
       ? Array.from(room.match.questionBatch.customEditingDeadlines.entries()).map(([playerId, deadline]) => ({
-          playerId,
-          deadline,
-        }))
+        playerId,
+        deadline,
+      }))
       : [],
     currentAnswer: getCurrentAnswerPayload(room),
     answerEndsAt: room.match.questionBatch?.answerEndsAt || null,
@@ -299,10 +273,10 @@ function toPublicSpecialRound(specialRound) {
     ...publicRound,
     operations: Array.isArray(specialRound.operations)
       ? specialRound.operations.map((operation) => ({
-          id: String(operation.id || ''),
-          prompt: String(operation.prompt || ''),
-          answer: Number(operation.answer),
-        }))
+        id: String(operation.id || ''),
+        prompt: String(operation.prompt || ''),
+        answer: Number(operation.answer),
+      }))
       : [],
     submittedPlayerIds: specialRound.submissions ? Array.from(specialRound.submissions.keys()) : [],
     paintTarget: specialRound.paintTarget || null,
@@ -313,13 +287,13 @@ function toPublicSpecialRound(specialRound) {
     paintVotes: toPublicPaintVotes(specialRound),
     progress: specialRound.progress
       ? Array.from(specialRound.progress.values()).map((entry) => ({
-          playerId: entry.playerId,
-          playerName: entry.playerName,
-          correctCount: entry.correctCount,
-          answeredCount: entry.answers?.length || 0,
-          completed: Boolean(entry.completed),
-          finishedAt: entry.finishedAt || null,
-        }))
+        playerId: entry.playerId,
+        playerName: entry.playerName,
+        correctCount: entry.correctCount,
+        answeredCount: entry.answers?.length || 0,
+        completed: Boolean(entry.completed),
+        finishedAt: entry.finishedAt || null,
+      }))
       : [],
     results: Array.isArray(specialRound.results) ? specialRound.results : [],
   };
@@ -711,7 +685,7 @@ function startSpecialRound(room, roundNumber) {
     return;
   }
 
-  const selectedMinigame = chooseMinigame(room);
+  const selectedMinigame = selectRandomMinigame(room);
   room.match.phase = 'special-round';
   room.match.specialRound = {
     roundNumber,
@@ -1030,7 +1004,7 @@ function upsertPlayer(room, socket, playerId, playerName) {
     id: playerId,
     socketId: socket.id,
     name: playerName,
-      joinedAt: new Date().toISOString(),
+    joinedAt: new Date().toISOString(),
     lastSeen: now,
     missedPresenceChecks: 0,
     currentUrl: '',

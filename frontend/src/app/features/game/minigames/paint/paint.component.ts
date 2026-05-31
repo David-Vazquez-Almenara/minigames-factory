@@ -10,38 +10,10 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatchService } from '../../../../core/services/match.service';
+import { MinigamesService } from '../../../../core/services/minigames.service';
 
 type PaintTool = 'brush' | 'eraser' | 'shape' | 'floodfill';
 type PaintShape = 'circle' | 'square' | 'triangle';
-
-const PAINT_TARGETS = [
-  'Manzana',
-  'Castillo',
-  'Cohete',
-  'Guitarra',
-  'Zapato',
-  'Helado',
-  'Sombrero',
-  'Llave',
-  'Barco',
-  'Robot',
-  'Dinosaurio',
-  'Camara',
-  'Pizza',
-  'Bicicleta',
-  'Reloj',
-  'Montana',
-  'Avion',
-  'Lampara',
-  'Corona',
-  'Paraguas',
-  'Fantasma',
-  'Taza',
-  'Balon',
-  'Arbol',
-  'Coche',
-];
 
 @Component({
   selector: 'app-paint',
@@ -50,7 +22,7 @@ const PAINT_TARGETS = [
   styleUrl: './paint.component.scss',
 })
 export class PaintComponent implements AfterViewInit, OnDestroy {
-  private readonly matchService = inject(MatchService);
+  private readonly minigamesService = inject(MinigamesService);
   private readonly canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('paintCanvas');
   private readonly previewCanvasRef = viewChild<ElementRef<HTMLCanvasElement>>('previewCanvas');
   private context?: CanvasRenderingContext2D;
@@ -64,9 +36,9 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
   private submittedRoundKey = '';
   private timer?: ReturnType<typeof setInterval>;
 
-  readonly match = this.matchService.match;
-  readonly isHost = this.matchService.isHost;
-  readonly currentPlayerId = this.matchService.currentPlayerId;
+  readonly match = this.minigamesService.match;
+  readonly isHost = this.minigamesService.isHost;
+  readonly currentPlayerId = this.minigamesService.currentPlayerId;
   readonly specialRound = computed(() => this.match()?.specialRound || null);
   readonly target = computed(() => this.specialRound()?.paintTarget || null);
   readonly submissions = computed(() => this.specialRound()?.paintSubmissions || []);
@@ -314,7 +286,7 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
 
     this.submittedRoundKey = submitKey;
     this.loading.set(true);
-    const response = await this.matchService.submitPaintDrawing(lobbyId, canvas.toDataURL('image/png'));
+    const response = await this.minigamesService.submitPaintDrawing(lobbyId, canvas.toDataURL('image/png'));
     this.loading.set(false);
 
     if (!response.ok) {
@@ -334,7 +306,7 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
     }
 
     this.loading.set(true);
-    const response = await this.matchService.submitPaintVote(lobbyId, targetPlayerId);
+    const response = await this.minigamesService.submitPaintVote(lobbyId, targetPlayerId);
     this.loading.set(false);
 
     if (!response.ok) {
@@ -346,11 +318,7 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
   }
 
   private async preparePaint(lobbyId: string): Promise<void> {
-    const label = PAINT_TARGETS[Math.floor(Math.random() * PAINT_TARGETS.length)];
-    const response = await this.matchService.preparePaintMinigame(lobbyId, {
-      id: label.toLowerCase().replace(/\s+/g, '-'),
-      label,
-    });
+    const response = await this.minigamesService.preparePaintMinigame(lobbyId);
 
     if (!response.ok) {
       this.errorMessage.set(response.reason || 'No se pudo preparar A Pintar.');

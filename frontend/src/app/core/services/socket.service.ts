@@ -919,6 +919,13 @@ export class SocketService {
   }
 
   private emitWithResponse(eventName: string, payload: unknown): Promise<RoomResponse> {
+    const rawPayload = payload as any;
+    const roomCode = rawPayload?.code || rawPayload?.lobbyId;
+
+    if (roomCode === 'TEST_ROOM') {
+      return this.handleTestRoomEmit(eventName, rawPayload);
+    }
+
     this.connect();
 
     return new Promise((resolve) => {
@@ -931,27 +938,307 @@ export class SocketService {
       }
 
       this.socket.emit(eventName, payload, (response: RoomResponse) => {
-      if (response.ok && response.lobby) {
-        this.lobby.set(response.lobby);
-        this.startHeartbeat(response.lobby.code);
-      }
+        if (response.ok && response.lobby) {
+          this.lobby.set(response.lobby);
+          this.startHeartbeat(response.lobby.code);
+        }
 
-      if (response.ok && response.match) {
-        this.match.set(response.match);
-      }
+        if (response.ok && response.match) {
+          this.match.set(response.match);
+        }
 
-      if (response.ok && response.waitingNextRound) {
-        this.waitingNextRoundMessage.set('No seleccionaste imagen a tiempo. Espera a la siguiente ronda.');
-      }
+        if (response.ok && response.waitingNextRound) {
+          this.waitingNextRoundMessage.set('No seleccionaste imagen a tiempo. Espera a la siguiente ronda.');
+        }
 
-      if (response.ok && response.waitingQuestionBatch) {
-        this.waitingQuestionBatchMessage.set('Espera a la siguiente tanda de preguntas.');
-      }
+        if (response.ok && response.waitingQuestionBatch) {
+          this.waitingQuestionBatchMessage.set('Espera a la siguiente tanda de preguntas.');
+        }
 
-      resolve(response);
-    });
+        resolve(response);
+      });
     });
   }
+
+  private handleTestRoomEmit(eventName: string, payload: any): Promise<RoomResponse> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const match = this.match();
+        const lobby = this.lobby();
+        if (!match || !lobby) {
+          resolve({ ok: false, reason: 'No hay partida de test activa.' });
+          return;
+        }
+
+        const userPlayerId = this.playerId;
+        const specialRound = match.specialRound;
+
+        if (eventName === 'room:leave' || eventName === 'match:special-round-continue' || eventName === 'match:scoreboard-continue') {
+          this.clearMatch();
+          this.lobby.set(null);
+          resolve({ ok: true });
+          return;
+        }
+
+        if (eventName === 'match:paint-prepared') {
+          const target = payload.paintTarget;
+          
+          const sofiaDrawing = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" style="background:%23fff0f5"><circle cx="200" cy="200" r="80" fill="%23ff6b6b"/><text x="200" y="210" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="white">Sofia (AI)</text></svg>`;
+          const mateoDrawing = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" style="background:%23e6f7ff"><rect x="100" y="100" width="200" height="200" fill="%231890ff" rx="20"/><text x="200" y="210" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="white">Mateo (AI)</text></svg>`;
+
+          const mockSubmissions = [
+            { playerId: 'sofia-ai', playerName: 'Sofia (AI)', imageDataUrl: sofiaDrawing, submittedAt: Date.now() },
+            { playerId: 'mateo-ai', playerName: 'Mateo (AI)', imageDataUrl: mateoDrawing, submittedAt: Date.now() }
+          ];
+
+          const updatedSpecialRound = {
+            ...specialRound!,
+            preparedByHost: true,
+            paintTarget: target,
+            paintPhase: 'drawing' as const,
+            paintEndsAt: Date.now() + 60000,
+            paintVoteEndsAt: null,
+            paintSubmissions: mockSubmissions,
+            paintVotes: [],
+            results: []
+          };
+
+          const updatedMatch = {
+            ...match,
+            specialRound: updatedSpecialRound
+          };
+
+          this.match.set(updatedMatch);
+          resolve({ ok: true, lobby, match: updatedMatch });
+          return;
+        }
+
+        if (eventName === 'match:paint-submit') {
+          const userDrawing = payload.imageDataUrl;
+          
+          const newSubmission = {
+            playerId: userPlayerId,
+            playerName: 'Jugador (Tú)',
+            imageDataUrl: userDrawing,
+            submittedAt: Date.now()
+          };
+
+          const existingSubmissions = specialRound?.paintSubmissions || [];
+          const updatedSubmissions = [...existingSubmissions, newSubmission];
+
+          const updatedSpecialRound = {
+            ...specialRound!,
+            paintPhase: 'voting' as const,
+            paintVoteEndsAt: Date.now() + 30000,
+            paintSubmissions: updatedSubmissions
+          };
+
+          const updatedMatch = {
+            ...match,
+            specialRound: updatedSpecialRound
+          };
+
+          this.match.set(updatedMatch);
+          resolve({ ok: true, lobby, match: updatedMatch });
+          return;
+        }
+
+        if (eventName === 'match:paint-vote') {
+          const targetPlayerId = payload.targetPlayerId;
+
+          const mockVotes = [
+            { voterPlayerId: userPlayerId, targetPlayerId },
+            { voterPlayerId: 'sofia-ai', targetPlayerId: userPlayerId },
+            { voterPlayerId: 'mateo-ai', targetPlayerId: 'sofia-ai' }
+          ];
+
+          const voteCounts = new Map<string, number>();
+          voteCounts.set(userPlayerId, 0);
+          voteCounts.set('sofia-ai', 0);
+          voteCounts.set('mateo-ai', 0);
+
+          for (const vote of mockVotes) {
+            const currentCount = voteCounts.get(vote.targetPlayerId) || 0;
+            voteCounts.set(vote.targetPlayerId, currentCount + 1);
+          }
+
+          const results = [
+            { playerId: userPlayerId, playerName: 'Jugador (Tú)', correctCount: 0, votesReceived: voteCounts.get(userPlayerId) || 0, finishedAt: null, submitted: true },
+            { playerId: 'sofia-ai', playerName: 'Sofia (AI)', correctCount: 0, votesReceived: voteCounts.get('sofia-ai') || 0, finishedAt: null, submitted: true },
+            { playerId: 'mateo-ai', playerName: 'Mateo (AI)', correctCount: 0, votesReceived: voteCounts.get('mateo-ai') || 0, finishedAt: null, submitted: true }
+          ];
+
+          const updatedSpecialRound = {
+            ...specialRound!,
+            paintPhase: 'finished' as const,
+            paintVotes: mockVotes,
+            results: results
+          };
+          
+          const scores = [
+            { playerId: userPlayerId, playerName: 'Jugador (Tú)', score: 30, position: 1, minigameCorrectCount: 0, minigameAnsweredCount: 0, minigameVoteCount: voteCounts.get(userPlayerId) || 0 },
+            { playerId: 'sofia-ai', playerName: 'Sofia (AI)', score: 30, position: 1, minigameCorrectCount: 0, minigameAnsweredCount: 0, minigameVoteCount: voteCounts.get('sofia-ai') || 0 },
+            { playerId: 'mateo-ai', playerName: 'Mateo (AI)', score: 0, position: 3, minigameCorrectCount: 0, minigameAnsweredCount: 0, minigameVoteCount: voteCounts.get('mateo-ai') || 0 }
+          ];
+
+          const scoreboard = {
+            lobbyId: 'TEST_ROOM',
+            roundNumber: 1,
+            scores: scores.sort((a, b) => b.score - a.score)
+          };
+
+          const updatedMatch = {
+            ...match,
+            phase: 'scoreboard' as const,
+            scoreboardSource: 'minigame' as any,
+            specialRound: updatedSpecialRound,
+            scoreboard: scoreboard
+          };
+
+          this.scoreboard.set(scoreboard);
+          this.match.set(updatedMatch);
+          resolve({ ok: true, lobby, match: updatedMatch });
+          return;
+        }
+
+        if (eventName === 'match:minigame-prepared') {
+          const operations = payload.operations;
+
+          const updatedSpecialRound = {
+            ...specialRound!,
+            preparedByHost: true,
+            operations,
+            submissions: [],
+            progress: [],
+            results: []
+          };
+
+          const updatedMatch = {
+            ...match,
+            specialRound: updatedSpecialRound
+          };
+
+          this.match.set(updatedMatch);
+          resolve({ ok: true, lobby, match: updatedMatch });
+          return;
+        }
+
+        if (eventName === 'match:minigame-answer') {
+          const progress = {
+            playerId: userPlayerId,
+            playerName: 'Jugador (Tú)',
+            correctCount: payload.correctCount || 0,
+            answeredCount: payload.answeredCount || 0,
+            completed: Boolean(payload.completed),
+            finishedAt: payload.finishedAt || null
+          };
+
+          const currentProgressList = specialRound?.progress || [];
+          const otherProgressList = currentProgressList.filter(p => p.playerId !== userPlayerId);
+          const updatedProgressList = [...otherProgressList, progress];
+
+          if (progress.completed) {
+            const sofiaProgress = {
+              playerId: 'sofia-ai',
+              playerName: 'Sofia (AI)',
+              correctCount: 5,
+              answeredCount: 5,
+              completed: true,
+              finishedAt: Date.now() + 12000
+            };
+            const mateoProgress = {
+              playerId: 'mateo-ai',
+              playerName: 'Mateo (AI)',
+              correctCount: 4,
+              answeredCount: 5,
+              completed: true,
+              finishedAt: Date.now() + 15000
+            };
+
+            const finalProgressList = [...updatedProgressList, sofiaProgress, mateoProgress];
+
+            const results = finalProgressList.map(p => ({
+              playerId: p.playerId,
+              playerName: p.playerName,
+              correctCount: p.correctCount,
+              answeredCount: p.answeredCount,
+              finishedAt: p.finishedAt,
+              submitted: true
+            }));
+
+            const sortedResults = [...results].sort((a, b) => {
+              if (b.correctCount !== a.correctCount) {
+                return b.correctCount - a.correctCount;
+              }
+              return (a.finishedAt || 0) - (b.finishedAt || 0);
+            });
+
+            const pointsMap = new Map<string, number>();
+            if (sortedResults[0]) pointsMap.set(sortedResults[0].playerId, 30);
+            if (sortedResults[1]) pointsMap.set(sortedResults[1].playerId, 20);
+            if (sortedResults[2]) pointsMap.set(sortedResults[2].playerId, 10);
+
+            const scores = results.map((r, index) => ({
+              playerId: r.playerId,
+              playerName: r.playerName,
+              score: pointsMap.get(r.playerId) || 0,
+              position: 0,
+              minigameCorrectCount: r.correctCount,
+              minigameAnsweredCount: r.answeredCount,
+              minigameVoteCount: undefined
+            }));
+
+            scores.sort((a, b) => b.score - a.score);
+            scores.forEach((s, idx) => {
+              s.position = idx + 1;
+            });
+
+            const scoreboard = {
+              lobbyId: 'TEST_ROOM',
+              roundNumber: 1,
+              scores
+            };
+
+            const updatedSpecialRound = {
+              ...specialRound!,
+              progress: finalProgressList,
+              results
+            };
+
+            const updatedMatch = {
+              ...match,
+              phase: 'scoreboard' as const,
+              scoreboardSource: 'minigame' as any,
+              specialRound: updatedSpecialRound,
+              scoreboard
+            };
+
+            this.scoreboard.set(scoreboard);
+            this.match.set(updatedMatch);
+            resolve({ ok: true, lobby, match: updatedMatch });
+            return;
+          } else {
+            const updatedSpecialRound = {
+              ...specialRound!,
+              progress: updatedProgressList
+            };
+
+            const updatedMatch = {
+              ...match,
+              specialRound: updatedSpecialRound
+            };
+
+            this.match.set(updatedMatch);
+            resolve({ ok: true, lobby, match: updatedMatch });
+            return;
+          }
+        }
+
+        resolve({ ok: true });
+      }, 50);
+    });
+  }
+
 
   private startHeartbeat(code: string): void {
     this.stopHeartbeat();

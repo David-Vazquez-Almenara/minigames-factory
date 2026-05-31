@@ -26,27 +26,41 @@
       <button class="menu-button button-one" type="button" (click)="createRoom()">Crear Partida</button>
       <button class="menu-button button-two" type="button" (click)="joinRoom()">Unirse a Partida</button>
       <button class="menu-button button-three" type="button" (click)="openSettings()">Configuracion</button>
+      <button class="menu-button button-four" type="button" (click)="openMinigameSelect(true)">Seleccionar
+        Minijuego</button>
     </div>
   </section>
 
+
+
+
+  <div *ngIf="showMinigameSelect" id="minigameSelectPanel">
+
+    <div class="bg" (click)="openMinigameSelect(false)"></div>
+
+    <div class="minigameMenu">
+      <h2>Selecciona tu minijuego</h2>
+      <button class="menu-button" type="button" (click)="startPaintTest()">¡A pintar!</button>
+      <button class="menu-button" type="button" (click)="startMathTest()">Operaciones matematicas</button>
+    </div>
+  </div>
+
+
+
   @if (setupMode(); as mode) {
-    <app-game-setup-flow
-      [mode]="mode"
-      [initialRoomCode]="setupRoomCode()"
-      [autoJoinAfterName]="setupAutoJoin()"
-      (closed)="closeSetup()"
-    />
+  <app-game-setup-flow [mode]="mode" [initialRoomCode]="setupRoomCode()" [autoJoinAfterName]="setupAutoJoin()"
+    (closed)="closeSetup()" />
   }
 
   @if (showSettings()) {
-    <app-settings-modal (closed)="closeSettings()" />
+  <app-settings-modal (closed)="closeSettings()" />
   }
 
   @if (backendSleeping()) {
-    <app-backend-wake-overlay />
+  <app-backend-wake-overlay />
   }
 
   @if (match()) {
-    <app-game-screen />
+  <app-game-screen />
   }
 </main>

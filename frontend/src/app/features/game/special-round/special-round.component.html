@@ -36,4 +36,10 @@
     {{ loading() ? 'Continuando...' : 'Continuar' }}
   </button>
   }
+
+  @if (match()?.lobbyId === 'TEST_ROOM') {
+  <button class="exit-test-button" type="button" (click)="exitTest()">
+    Salir del Test
+  </button>
+  }
 </section>

@@ -3,16 +3,13 @@ import {
   AllImagesReadyPayload,
   LobbyState,
   MatchAssignment,
-  MathOperationPayload,
-  PaintTargetPayload,
-  MinigameResultPayload,
   QuestionBackupPayload,
   MatchState,
   RoomResponse,
-  ScoreboardEntry,
   ScoreboardPayload,
   SocketService,
 } from './socket.service';
+import { MinigamesService } from './minigames.service';
 
 const MATCH_DATA_KEY = 'matchData';
 const QUESTION_BACKUP_KEY = 'questionRoundBackup';
@@ -32,6 +29,7 @@ interface ImageValidationResult {
 @Injectable({ providedIn: 'root' })
 export class MatchService {
   private readonly socketService = inject(SocketService);
+  private readonly minigamesService = inject(MinigamesService);
   private readonly savedMatchDataLobbyId = signal<string | null>(null);
   private readonly calculatedScoreboardKey = signal('');
 
@@ -126,7 +124,12 @@ export class MatchService {
       this.calculatedScoreboardKey.set(scoreboardKey);
       const scoreboard =
         request.source === 'minigame'
-          ? this.calculateOfficialMinigameScoreboard(lobby, request.roundNumber, request.results || [])
+          ? this.minigamesService.calculateOfficialMinigameScoreboard(
+              lobby,
+              request.roundNumber,
+              request.results || [],
+              this.getLocalScoreboardCopy(lobby.code),
+            )
           : this.calculateOfficialScoreboard(lobby, match, request.roundNumber);
       this.saveOfficialScoreboard(scoreboard);
       void this.socketService.updateScoreboard(lobby.code, request.roundNumber, scoreboard.scores);
@@ -194,37 +197,6 @@ export class MatchService {
 
   continueFromSpecialRound(lobbyId: string): Promise<RoomResponse> {
     return this.socketService.continueFromSpecialRound(lobbyId);
-  }
-
-  prepareMinigame(lobbyId: string, operations: MathOperationPayload[]): Promise<RoomResponse> {
-    return this.socketService.prepareMinigame(lobbyId, operations);
-  }
-
-  submitMinigameAnswers(lobbyId: string, answers: Array<{ operationId: string; answer: number }>): Promise<RoomResponse> {
-    return this.socketService.submitMinigameAnswers(lobbyId, answers);
-  }
-
-  submitMinigameAnswer(lobbyId: string, operationId: string, answer: number): Promise<RoomResponse> {
-    return this.socketService.submitMinigameAnswer(lobbyId, operationId, answer);
-  }
-
-  submitMinigameProgress(
-    lobbyId: string,
-    progress: { answeredCount: number; correctCount: number; completed: boolean; finishedAt: number | null },
-  ): Promise<RoomResponse> {
-    return this.socketService.submitMinigameProgress(lobbyId, progress);
-  }
-
-  preparePaintMinigame(lobbyId: string, paintTarget: PaintTargetPayload): Promise<RoomResponse> {
-    return this.socketService.preparePaintMinigame(lobbyId, paintTarget);
-  }
-
-  submitPaintDrawing(lobbyId: string, imageDataUrl: string): Promise<RoomResponse> {
-    return this.socketService.submitPaintDrawing(lobbyId, imageDataUrl);
-  }
-
-  submitPaintVote(lobbyId: string, targetPlayerId: string): Promise<RoomResponse> {
-    return this.socketService.submitPaintVote(lobbyId, targetPlayerId);
   }
 
   saveLocalScoreboardCopy(scoreboard: ScoreboardPayload): void {
@@ -412,149 +384,6 @@ export class MatchService {
         position: index + 1,
       })),
     };
-  }
-
-  private calculateOfficialMinigameScoreboard(
-    lobby: LobbyState,
-    roundNumber: number,
-    results: MinigameResultPayload[],
-  ): ScoreboardPayload {
-    const previousScoreboard = this.getLocalScoreboardCopy(lobby.code);
-    const previousScores = new Map((previousScoreboard?.scores || []).map((score) => [score.playerId, score.score]));
-    const lobbyOrder = new Map(lobby.players.map((player, index) => [player.id, index]));
-    const bonusPoints = this.calculateMinigameBonusPoints(results);
-    const resultMap = new Map(results.map((result) => [result.playerId, result]));
-
-    const scores = lobby.players.map((player) => ({
-      playerId: player.id,
-      playerName: player.name,
-      score: (previousScores.get(player.id) || 0) + (bonusPoints.get(player.id) || 0),
-      position: 0,
-      minigameCorrectCount: resultMap.get(player.id)?.correctCount || 0,
-      minigameAnsweredCount: resultMap.get(player.id)?.answeredCount || 0,
-      minigameVoteCount: resultMap.get(player.id)?.votesReceived,
-    }));
-
-    scores.sort((firstPlayer, secondPlayer) => {
-      if (secondPlayer.score !== firstPlayer.score) {
-        return secondPlayer.score - firstPlayer.score;
-      }
-
-      return (lobbyOrder.get(firstPlayer.playerId) || 0) - (lobbyOrder.get(secondPlayer.playerId) || 0);
-    });
-
-    return {
-      lobbyId: lobby.code,
-      roundNumber,
-      scores: scores.map((score, index) => ({
-        ...score,
-        position: index + 1,
-      })),
-    };
-  }
-
-  private calculateMinigameBonusPoints(results: MinigameResultPayload[]): Map<string, number> {
-    const points = new Map<string, number>();
-
-    if (results.some((result) => result.votesReceived !== undefined)) {
-      return this.calculatePaintWinnerBonusPoints(results);
-    }
-
-    const submittedResults = results.filter((result) => result.submitted || (result.answeredCount || 0) > 0);
-
-    if (!submittedResults.length || Math.max(...submittedResults.map((result) => result.correctCount || 0)) <= 0) {
-      return points;
-    }
-
-    const completedResults = submittedResults.filter((result) => result.finishedAt);
-    completedResults.sort((firstResult, secondResult) => {
-      const timeDifference = Number(firstResult.finishedAt || 0) - Number(secondResult.finishedAt || 0);
-
-      if (timeDifference !== 0) {
-        return timeDifference;
-      }
-
-      return secondResult.correctCount - firstResult.correctCount;
-    });
-
-    const winner = completedResults[0];
-
-    if (winner) {
-      points.set(winner.playerId, 30);
-    }
-
-    const remainingResults = submittedResults
-      .filter((result) => result.playerId !== winner?.playerId)
-      .sort((firstResult, secondResult) => secondResult.correctCount - firstResult.correctCount);
-    const rankPoints = [20, 10];
-    let currentIndex = 0;
-
-    for (const rankPoint of rankPoints) {
-      if (currentIndex >= remainingResults.length) {
-        break;
-      }
-
-      const correctCount = remainingResults[currentIndex].correctCount;
-      const tiedResults = remainingResults.filter((result, index) => index >= currentIndex && result.correctCount === correctCount);
-      const playerPoint = tiedResults.length === 1 ? rankPoint : tiedResults.length === 2 ? Math.max(5, rankPoint / 2) : 5;
-
-      for (const result of tiedResults) {
-        points.set(result.playerId, Math.trunc(playerPoint));
-      }
-
-      currentIndex += tiedResults.length;
-    }
-
-    return points;
-  }
-
-  private calculatePaintWinnerBonusPoints(results: MinigameResultPayload[]): Map<string, number> {
-    const points = new Map<string, number>();
-    const submittedResults = results.filter((result) => result.submitted && result.votesReceived !== undefined);
-
-    if (!submittedResults.length) {
-      return points;
-    }
-
-    const maxVotes = Math.max(...submittedResults.map((result) => result.votesReceived || 0));
-    const winners = submittedResults.filter((result) => (result.votesReceived || 0) === maxVotes);
-
-    if (!winners.length) {
-      return points;
-    }
-
-    const winnerPoints = winners.length === 1 ? 30 : winners.length === 2 ? 15 : 10;
-
-    for (const winner of winners) {
-      points.set(winner.playerId, winnerPoints);
-    }
-
-    return points;
-  }
-
-  private calculateRankedBonusPoints(results: Array<{ playerId: string; value: number }>): Map<string, number> {
-    const points = new Map<string, number>();
-    const sortedResults = [...results].sort((firstResult, secondResult) => secondResult.value - firstResult.value);
-    const rankPoints = [30, 20, 10];
-    let currentIndex = 0;
-
-    for (const rankPoint of rankPoints) {
-      if (currentIndex >= sortedResults.length) {
-        break;
-      }
-
-      const value = sortedResults[currentIndex].value;
-      const tiedResults = sortedResults.filter((result, index) => index >= currentIndex && result.value === value);
-      const playerPoint = tiedResults.length === 1 ? rankPoint : tiedResults.length === 2 ? Math.max(5, rankPoint / 2) : 5;
-
-      for (const result of tiedResults) {
-        points.set(result.playerId, Math.trunc(playerPoint));
-      }
-
-      currentIndex += tiedResults.length;
-    }
-
-    return points;
   }
 
   private saveOfficialScoreboard(scoreboard: ScoreboardPayload): void {

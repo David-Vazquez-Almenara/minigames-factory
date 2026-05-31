@@ -65,6 +65,10 @@ export class SpecialRoundComponent implements OnDestroy {
     }
   }
 
+  exitTest(): void {
+    this.matchService.clearMatchState();
+  }
+
   private startIntroSequence(): void {
     this.clearTimers();
     this.stage.set('intro');

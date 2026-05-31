@@ -127,6 +127,10 @@ h1 {
   animation-delay: 1220ms, 1680ms;
 }
 
+.button-four {
+  animation-delay: 1420ms, 1880ms;
+}
+
 .high-contrast {
   color: #000;
   background-color: #fff;
@@ -163,6 +167,7 @@ h1 {
 }
 
 @keyframes gentle-bounce {
+
   0%,
   100% {
     transform: translateY(0);
@@ -199,4 +204,53 @@ h1 {
     min-height: 64px;
     font-size: 1.18rem;
   }
+}
+
+
+
+
+
+
+
+
+
+
+// SELECTOR DE MINIJUEGOS
+
+
+#minigameSelectPanel {
+
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: all;
+  z-index: 999;
+}
+
+#minigameSelectPanel .bg {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  height: 100%;
+  width: 100%;
+  background-color: #00000050;
+}
+
+.minigameMenu {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  width: min(420px, 100%);
+  padding: 20px;
+  background-color: #fff;
+  border: 3px solid #000;
+  border-radius: 18px;
+  z-index: 9999;
+
 }
