@@ -1,11 +1,4 @@
 <section class="paint-game" aria-label="Minijuego A Pintar">
-  @if (target()) {
-  <aside class="timer-box screen-top-right">
-    <strong>{{ remainingSeconds() }}</strong>
-    <span>seg</span>
-  </aside>
-  }
-
   @if (!target()) {
   <div class="waiting-card">
     <h2>Preparando lienzo</h2>

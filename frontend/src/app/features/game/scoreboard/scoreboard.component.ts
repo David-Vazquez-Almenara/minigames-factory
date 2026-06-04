@@ -1,6 +1,8 @@
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MatchService } from '../../../core/services/match.service';
-import { PaintSubmissionPayload, ScoreboardEntry } from '../../../core/services/socket.service';
+import { ScoreboardEntry } from '../../../core/services/socket.service';
+import { MinigameService } from '../minigames/shared/minigame.service';
+import { MinigameWinner } from '../minigames/shared/minigame.models';
 
 interface AnimatedScoreboardEntry extends ScoreboardEntry {
   displayScore: number;
@@ -10,13 +12,6 @@ interface AnimatedScoreboardEntry extends ScoreboardEntry {
   moving: boolean;
 }
 
-interface MinigameWinner {
-  playerId: string;
-  playerName: string;
-  metricLabel: string;
-  imageDataUrl?: string;
-}
-
 @Component({
   selector: 'app-scoreboard',
   templateUrl: './scoreboard.component.html',
@@ -24,6 +19,7 @@ interface MinigameWinner {
 })
 export class ScoreboardComponent implements OnDestroy {
   private readonly matchService = inject(MatchService);
+  private readonly minigameService = inject(MinigameService);
   private animationTimers: Array<ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>> = [];
   private loadedScoreboardKey = '';
 
@@ -128,8 +124,7 @@ export class ScoreboardComponent implements OnDestroy {
       return;
     }
 
-    const noWinnerMessage = this.getMinigameNoWinnerMessage();
-    const winners = this.getMinigameWinners();
+    const { noWinnerMessage, winners } = this.minigameService.getScoreboardPresentation();
 
     if (noWinnerMessage || winners.length) {
       this.winners.set(winners);
@@ -270,99 +265,4 @@ export class ScoreboardComponent implements OnDestroy {
     }
   }
 
-  private getMinigameNoWinnerMessage(): string {
-    const specialRound = this.match()?.specialRound;
-
-    if (specialRound?.minigameId !== 'math-operations' || !Array.isArray(specialRound.results)) {
-      return '';
-    }
-
-    const submittedResults = specialRound.results.filter((result) => result.submitted || (result.answeredCount || 0) > 0);
-    const maxCorrectCount = submittedResults.length
-      ? Math.max(...submittedResults.map((result) => result.correctCount || 0))
-      : 0;
-
-    return maxCorrectCount <= 0 ? 'Nadie ha acertado ninguna pregunta' : '';
-  }
-
-  private getMinigameWinners(): MinigameWinner[] {
-    const specialRound = this.match()?.specialRound;
-
-    if (!specialRound || !Array.isArray(specialRound.results)) {
-      return [];
-    }
-
-    if (specialRound.minigameId === 'paint') {
-      return this.getPaintWinners();
-    }
-
-    if (specialRound.minigameId === 'math-operations') {
-      return this.getMathWinners();
-    }
-
-    return [];
-  }
-
-  private getPaintWinners(): MinigameWinner[] {
-    const specialRound = this.match()?.specialRound;
-
-    if (specialRound?.minigameId !== 'paint' || !Array.isArray(specialRound.results)) {
-      return [];
-    }
-
-    const submittedResults = specialRound.results.filter(
-      (result) => result.submitted && result.votesReceived !== undefined,
-    );
-
-    if (!submittedResults.length) {
-      return [];
-    }
-
-    const maxVotes = Math.max(...submittedResults.map((result) => result.votesReceived || 0));
-    const submissionsByPlayer = new Map(
-      (specialRound.paintSubmissions || []).map((submission: PaintSubmissionPayload) => [submission.playerId, submission]),
-    );
-
-    return submittedResults
-      .filter((result) => (result.votesReceived || 0) === maxVotes)
-      .map((result) => {
-        const submission = submissionsByPlayer.get(result.playerId);
-
-        return {
-          playerId: result.playerId,
-          playerName: submission?.playerName || result.playerName,
-          metricLabel: `${result.votesReceived || 0} votos`,
-          imageDataUrl: submission?.imageDataUrl || '',
-        };
-      })
-      .filter((winner) => winner.imageDataUrl);
-  }
-
-  private getMathWinners(): MinigameWinner[] {
-    const specialRound = this.match()?.specialRound;
-
-    if (specialRound?.minigameId !== 'math-operations' || !Array.isArray(specialRound.results)) {
-      return [];
-    }
-
-    const submittedResults = specialRound.results.filter((result) => result.submitted || (result.answeredCount || 0) > 0);
-
-    if (!submittedResults.length) {
-      return [];
-    }
-
-    const maxCorrectCount = Math.max(...submittedResults.map((result) => result.correctCount || 0));
-
-    if (maxCorrectCount <= 0) {
-      return [];
-    }
-
-    return submittedResults
-      .filter((result) => (result.correctCount || 0) === maxCorrectCount)
-      .map((result) => ({
-        playerId: result.playerId,
-        playerName: result.playerName,
-        metricLabel: `${result.correctCount || 0} aciertos`,
-      }));
-  }
 }

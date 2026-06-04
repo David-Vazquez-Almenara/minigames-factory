@@ -9,7 +9,7 @@ import {
   ScoreboardPayload,
   SocketService,
 } from './socket.service';
-import { MinigamesService } from './minigames.service';
+import { MinigameService } from '../../features/game/minigames/shared/minigame.service';
 
 const MATCH_DATA_KEY = 'matchData';
 const QUESTION_BACKUP_KEY = 'questionRoundBackup';
@@ -29,7 +29,7 @@ interface ImageValidationResult {
 @Injectable({ providedIn: 'root' })
 export class MatchService {
   private readonly socketService = inject(SocketService);
-  private readonly minigamesService = inject(MinigamesService);
+  private readonly minigameService = inject(MinigameService);
   private readonly savedMatchDataLobbyId = signal<string | null>(null);
   private readonly calculatedScoreboardKey = signal('');
 
@@ -124,7 +124,7 @@ export class MatchService {
       this.calculatedScoreboardKey.set(scoreboardKey);
       const scoreboard =
         request.source === 'minigame'
-          ? this.minigamesService.calculateOfficialMinigameScoreboard(
+          ? this.minigameService.calculateOfficialMinigameScoreboard(
               lobby,
               request.roundNumber,
               request.results || [],

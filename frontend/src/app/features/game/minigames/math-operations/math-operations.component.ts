@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MathOperation, MinigamesService } from '../../../../core/services/minigames.service';
+import { MathOperation, MinigameService } from '../shared/minigame.service';
 
 @Component({
   selector: 'app-math-operations',
@@ -9,15 +9,14 @@ import { MathOperation, MinigamesService } from '../../../../core/services/minig
   styleUrl: './math-operations.component.scss',
 })
 export class MathOperationsComponent {
-  private readonly minigamesService = inject(MinigamesService);
-  private preparedRoundKey = '';
+  private readonly minigameService = inject(MinigameService);
   private activeRoundKey = '';
   private answeredOperations = new Set<string>();
 
-  readonly match = this.minigamesService.match;
-  readonly isHost = this.minigamesService.isHost;
-  readonly currentPlayerId = this.minigamesService.currentPlayerId;
-  readonly operations = computed(() => this.match()?.specialRound?.operations || []);
+  readonly match = this.minigameService.match;
+  readonly currentPlayerId = this.minigameService.currentPlayerId;
+  readonly gameInfo = computed(() => this.minigameService.receiveGameData());
+  readonly operations = computed(() => (this.gameInfo()?.payload as MathOperation[] | undefined) || []);
   readonly localAnsweredCount = signal(0);
   readonly localCorrectCount = signal(0);
   readonly myProgress = computed(() => {
@@ -43,24 +42,6 @@ export class MathOperationsComponent {
   });
 
   constructor() {
-    effect(() => {
-      const match = this.match();
-      const specialRound = match?.specialRound;
-
-      if (!match || !specialRound || !this.isHost()) {
-        return;
-      }
-
-      const roundKey = `${match.lobbyId}:${specialRound.roundNumber}:${specialRound.minigameId}`;
-
-      if (this.preparedRoundKey === roundKey || specialRound.preparedByHost || specialRound.operations?.length) {
-        return;
-      }
-
-      this.preparedRoundKey = roundKey;
-      void this.prepareMathOperations(match.lobbyId);
-    });
-
     effect(() => {
       if (this.myProgress()?.completed) {
         this.submitted.set(true);
@@ -119,19 +100,11 @@ export class MathOperationsComponent {
       this.submitted.set(true);
     }
 
-    void this.minigamesService.submitMinigameProgress(lobbyId, {
+    void this.minigameService.submitProgress({
       answeredCount: this.localAnsweredCount(),
       correctCount: this.localCorrectCount(),
       completed,
       finishedAt,
     });
-  }
-
-  private async prepareMathOperations(lobbyId: string): Promise<void> {
-    const response = await this.minigamesService.prepareMathOperationsMinigame(lobbyId);
-
-    if (!response.ok) {
-      this.errorMessage.set(response.reason || 'No se pudo preparar el minijuego.');
-    }
   }
 }

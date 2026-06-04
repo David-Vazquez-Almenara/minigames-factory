@@ -10,7 +10,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MinigamesService } from '../../../../core/services/minigames.service';
+import { PaintTargetPayload } from '../../../../core/services/socket.service';
+import { MinigameService } from '../shared/minigame.service';
 
 type PaintTool = 'brush' | 'eraser' | 'shape' | 'floodfill';
 type PaintShape = 'circle' | 'square' | 'triangle';
@@ -22,7 +23,7 @@ type PaintShape = 'circle' | 'square' | 'triangle';
   styleUrl: './paint.component.scss',
 })
 export class PaintComponent implements AfterViewInit, OnDestroy {
-  private readonly minigamesService = inject(MinigamesService);
+  private readonly minigameService = inject(MinigameService);
   private readonly canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('paintCanvas');
   private readonly previewCanvasRef = viewChild<ElementRef<HTMLCanvasElement>>('previewCanvas');
   private context?: CanvasRenderingContext2D;
@@ -32,15 +33,14 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
   private lastPoint: { x: number; y: number } | null = null;
   private startPoint: { x: number; y: number } | null = null;
   private canvasBackup: ImageData | null = null;
-  private preparedRoundKey = '';
   private submittedRoundKey = '';
   private timer?: ReturnType<typeof setInterval>;
 
-  readonly match = this.minigamesService.match;
-  readonly isHost = this.minigamesService.isHost;
-  readonly currentPlayerId = this.minigamesService.currentPlayerId;
+  readonly match = this.minigameService.match;
+  readonly currentPlayerId = this.minigameService.currentPlayerId;
+  readonly gameInfo = computed(() => this.minigameService.receiveGameData());
   readonly specialRound = computed(() => this.match()?.specialRound || null);
-  readonly target = computed(() => this.specialRound()?.paintTarget || null);
+  readonly target = computed(() => (this.gameInfo()?.payload as PaintTargetPayload | null | undefined) || null);
   readonly submissions = computed(() => this.specialRound()?.paintSubmissions || []);
   readonly phase = computed(() => this.specialRound()?.paintPhase || 'preparing');
   readonly remainingSeconds = signal(60);
@@ -89,24 +89,6 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
   readonly canSubmit = computed(() => this.phase() === 'drawing' && !this.submitted() && !this.loading());
 
   constructor() {
-    effect(() => {
-      const match = this.match();
-      const specialRound = match?.specialRound;
-
-      if (!match || !specialRound || specialRound.minigameId !== 'paint' || !this.isHost()) {
-        return;
-      }
-
-      const roundKey = `${match.lobbyId}:${specialRound.roundNumber}:${specialRound.minigameId}`;
-
-      if (this.preparedRoundKey === roundKey || specialRound.preparedByHost || specialRound.paintTarget) {
-        return;
-      }
-
-      this.preparedRoundKey = roundKey;
-      void this.preparePaint(match.lobbyId);
-    });
-
     effect(() => {
       const phase = this.phase();
       const deadline = phase === 'drawing' ? this.specialRound()?.paintEndsAt : this.specialRound()?.paintVoteEndsAt;
@@ -286,7 +268,7 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
 
     this.submittedRoundKey = submitKey;
     this.loading.set(true);
-    const response = await this.minigamesService.submitPaintDrawing(lobbyId, canvas.toDataURL('image/png'));
+    const response = await this.minigameService.submitPaintDrawing(lobbyId, canvas.toDataURL('image/png'));
     this.loading.set(false);
 
     if (!response.ok) {
@@ -306,7 +288,7 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
     }
 
     this.loading.set(true);
-    const response = await this.minigamesService.submitPaintVote(lobbyId, targetPlayerId);
+    const response = await this.minigameService.submitPaintVote(lobbyId, targetPlayerId);
     this.loading.set(false);
 
     if (!response.ok) {
@@ -315,14 +297,6 @@ export class PaintComponent implements AfterViewInit, OnDestroy {
     }
 
     this.votedTargetId.set(targetPlayerId);
-  }
-
-  private async preparePaint(lobbyId: string): Promise<void> {
-    const response = await this.minigamesService.preparePaintMinigame(lobbyId);
-
-    if (!response.ok) {
-      this.errorMessage.set(response.reason || 'No se pudo preparar A Pintar.');
-    }
   }
 
   private setupCanvas(): void {
