@@ -1,0 +1,120 @@
+================================================================================
+ANÁLISIS DE REFACTORIZACIÓN Y CENTRALIZACIÓN DE MINIJUEGOS
+================================================================================
+
+Este documento contiene un análisis detallado sobre cómo se estructuran y ejecutan actualmente los minijuegos en la aplicación (tanto en el backend como en el frontend) y propone una estrategia de refactorización limpia y centralizada mediante archivos de configuración JSON.
+
+--------------------------------------------------------------------------------
+1. ANÁLISIS DEL ESTADO ACTUAL (CÓMO FUNCIONA HOY)
+--------------------------------------------------------------------------------
+
+Actualmente, añadir o modificar un minijuego requiere tocar múltiples archivos dispersos en distintas capas del proyecto:
+
+A. BACKEND (server.js):
+   - Los minijuegos se definen de forma estática en un array `MINIGAMES` con su `id`, `title` y `description`.
+   - El ciclo de vida de los minijuegos (preparación de datos, control de fases del juego, envío de dibujos, votos y finalización) está acoplado en funciones específicas de socket dentro de `server.js` (como `startSpecialRound`, `startPaintVotingPhase`, etc.).
+   - La duración del temporizador de cada fase (p. ej., `PAINT_DRAWING_MS = 60000`, `PAINT_VOTING_MS = 20000`) se define de forma global e inflexible arriba del servidor en variables hardcodeadas.
+
+B. REGISTRO FRONTEND (minigame.registry.ts):
+   - Existe un array de configuraciones (`MINIGAME_DEFINITIONS`) donde se asocia la `id` de backend con la clase del componente de Angular (`component: PaintComponent`), además de duplicar datos del backend como el título, la descripción y los segundos de duración (`durationSeconds: 60`).
+
+C. SERVICIO FRONTEND (minigame.service.ts):
+   - El servicio inyecta y se comunica directamente con `SocketService`.
+   - Contiene lógica de preparación cableada e inflexible para cada minijuego en `sendGameData(info)` y en los métodos específicos de generación de payloads (como `generateMathOperationsMinigame` o `selectRandomObject`).
+   - El cálculo de puntuaciones del scoreboard final tiene acoplamiento directo por minijuego (evalúa si es `math-operations` o `paint` para decidir qué fórmula/regla de puntuación aplicar).
+
+D. CONTENEDOR (minigame-container.component.ts/.html):
+   - Actúa como host visual. Lee los datos en tiempo real mediante efectos reactivos y carga el componente dinámicamente usando `<ng-component-outlet>`.
+   - Se encarga de la cuenta atrás y el flujo del tiempo leyendo los campos `paintEndsAt` / `paintVoteEndsAt`.
+
+--------------------------------------------------------------------------------
+2. EL DISEÑO OBJETIVO (LO QUE SE QUIERE HACER)
+--------------------------------------------------------------------------------
+
+La meta es conseguir que crear y desplegar un minijuego nuevo sea tan sencillo como:
+1. Crear el nuevo Componente Angular duplicando la plantilla.
+2. Registrar la relación [ID -> Componente Class] en un archivo de configuración en el frontend.
+3. Configurar el minijuego (ID, título, descripción y tiempo + objeto con configuraciones extra que el host debe mandar [como secuencias o cosas asi] ) en un JSON en el backend.
+Y que a partir de ahí, toda la orquestación (fases, timers, renderizado, scoreboard, y el modo debug) funcione sola sin tocar el código central.
+
+--------------------------------------------------------------------------------
+3. PROPUESTA DETALLADA DE PROCEDIMIENTO PARA LA REFACTORIZACIÓN
+--------------------------------------------------------------------------------
+
+Para lograr esta centralización sin romper el resto de la aplicación, debemos proceder mediante las siguientes fases:
+
+FASE 1: CENTRALIZACIÓN Y CONFIGURACIÓN EN EL BACKEND (JSON)
+----------------------------------------------------------
+- Crear un archivo JSON de configuración en el backend, por ejemplo: `backend/src/config/minigames.json`.
+  Ejemplo de estructura JSON:
+  ```json
+  [
+    {
+      "id": "math-operations",
+      "title": "Operaciones matemáticas",
+      "description": "Resuelve operaciones...",
+      "durationSeconds": 60,
+      "requiresPreparation": true,
+      "minigameData": {
+        "operaciones": ["2+2", "1+5", "10/3", "8*7", "1/0", "8*5", "1*2+3-2-1"] 
+      },
+      "phases": ["playing"]
+    },
+    {
+      "id": "paint",
+      "title": "A Pintar",
+      "description": "Dibuja el objeto secreto...",
+      "durationSeconds": 60,
+      "requiresPreparation": true,
+      "minigameData": {
+        "tematica": "fruta"
+      }
+      "phases": ["playing", "voting"]
+    },
+    {
+      "id": "plantilla",
+      "title": "Plantilla de Minijuego",
+      "description": "Descripción de la plantilla",
+      "durationSeconds": 60,
+      "requiresPreparation": false,
+      "minigameData": {
+        "Datos de minijuego usado en el JS": "Esto es un dato que se usa en el minijuego y todos los jugadores tendran"}
+      "phases": ["playing"]
+    }
+  ]
+  ```
+- En `server.js`, cargar este JSON dinámicamente y reemplazar el array `MINIGAMES` hardcodeado.
+- Generalizar el temporizador en el servidor: En lugar de usar variables individuales como `PAINT_DRAWING_MS` o `PAINT_VOTING_MS`, el servidor determinará la duración de la fase leyendo el valor de `durationSeconds` configurado en el JSON de minijuegos para la fase correspondiente.
+
+FASE 2: CENTRALIZACIÓN DE LA ASIGNACIÓN EN EL FRONTEND (JSON / REGISTRO)
+----------------------------------------------------------------------
+- Reducir `minigame.registry.ts` a un mapa simple o JSON de mapeo de componente por ID, eliminando la duplicación de datos de texto (título, descripción, etc.) ya que estos los proveerá el backend:
+  ```typescript
+  import { Type } from '@angular/core';
+  import { MathOperationsComponent } from '../math-operations/math-operations.component';
+  import { PaintComponent } from '../paint/paint.component';
+  import { PlantillaMinijuegoComponent } from '../plantilla-minijuego/plantilla-minijuego.component';
+
+  export const MINIGAME_COMPONENTS: Record<string, Type<any>> = {
+    //ID del backend: Componente
+    'math-operations': MathOperationsComponent,
+    'paint': PaintComponent,
+    'plantilla': PlantillaMinijuegoComponent
+  };
+  ```
+- Modificar el `minigame-container` para que resuelva la propiedad `title`, `description` y `durationSeconds` directamente a partir del payload enviado por el socket, y use `MINIGAME_COMPONENTS[minigameId]` para cargar el componente dinámico.
+
+FASE 3: ABSTRACCIÓN Y GENERALIZACIÓN DEL SERVICIO FRONTEND (LÓGICA)
+------------------------------------------------------------------
+- Refactorizar `MinigameService` para que los métodos de envío de datos como `sendGameData` no utilicen bloques `if (info.id === 'xxx')`. En su lugar:
+  - Crear interfaces genéricas y permitir que cada minijuego registre un "adaptador de preparación" o simplemente pase su carga útil genérica.
+  - La lógica del Scoreboard debe ser modularizada. En lugar de evaluar la id del minijuego con ifs gigantes, cada minijuego en el front puede registrar una función para el cálculo de sus puntos, o usar un motor de cálculo por defecto que asigne puntos basados en la posición de finalización / porcentaje de aciertos del progreso enviado.
+
+FASE 4: IMPLEMENTACIÓN DEL MODO DEBUG DE PRUEBA COMPLETA
+------------------------------------------------------
+- Para permitir probar el minijuego de forma totalmente real con el contenedor y el scoreboard pero de manera local y monousuario, mejoraremos la función de prueba de menú (`startTemplateTest()`, etc.):
+  - El simulador creará un escenario mock de `MatchState` y `LobbyState` local (sin mandar paquetes de sockets remotos).
+  - El temporizador del contenedor funcionará basándose en el tiempo del sistema local.
+  - Al hacer click en "Terminar minijuego", la simulación actualizará el estado de la ronda a la fase de Scoreboard de forma inmediata.
+  - Se mostrará la pantalla de Scoreboard con el único jugador involucrado y sus puntos acumulados en la sesión de prueba, asegurando que todo el ciclo de vida (intro -> explicación -> juego -> fin -> scoreboard) pueda ser visualizado y validado en menos de un minuto.
+================================================================================

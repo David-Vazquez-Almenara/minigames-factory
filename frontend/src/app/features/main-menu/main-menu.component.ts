@@ -253,4 +253,77 @@ export class MainMenuComponent implements OnInit {
     this.socketService.match.set(mockMatch);
     this.showMinigameSelect = false;
   }
+
+  startTemplateTest(): void {
+    const userPlayerId = this.socketService.playerId;
+
+    const mockLobby: LobbyState = {
+      code: 'TEST_ROOM',
+      hostId: userPlayerId,
+      players: [
+        { id: userPlayerId, name: 'Jugador (Tú)', joinedAt: new Date().toISOString(), active: true, ready: true },
+        { id: 'sofia-ai', name: 'Sofia (AI)', joinedAt: new Date().toISOString(), active: true, ready: true },
+        { id: 'mateo-ai', name: 'Mateo (AI)', joinedAt: new Date().toISOString(), active: true, ready: true }
+      ],
+      settings: {
+        customQuestionsEnabled: false,
+        randomThemePerPlayer: false,
+        randomCharacterTypePerPlayer: false,
+        questionDuration: 30,
+        respondQuestionTime: 10,
+        rounds: 5,
+        specialRounds: [1],
+        minigamesOnly: true,
+        themeCategories: [],
+        characterTypes: []
+      },
+      createdAt: new Date().toISOString()
+    };
+
+    const mockMatch: MatchState = {
+      lobbyId: 'TEST_ROOM',
+      phase: 'special-round',
+      totalPlayers: 3,
+      assignments: [],
+      readySelections: [],
+      readyCount: 3,
+      hostPaused: false,
+      hostPauseDeadline: null,
+      countdownEndsAt: 0,
+      imageSelectionEndsAt: 0,
+      waitingPlayerIds: [],
+      questionRoundNumber: 1,
+      questionSelectionEndsAt: null,
+      selectedQuestions: [],
+      questionOptionsByPlayer: [],
+      questionHistory: [],
+      customQuestionEditingPlayerIds: [],
+      customQuestionDeadlineByPlayer: [],
+      currentAnswer: null,
+      answerEndsAt: null,
+      answerResults: [],
+      waitingQuestionBatchPlayerIds: [],
+      scoreboard: null,
+      specialRounds: [1],
+      specialRound: {
+        roundNumber: 1,
+        minigameId: 'plantilla',
+        title: 'Plantilla de Minijuego',
+        description: 'Pulsa el boton en el centro para sumar puntos y probar la plantilla.',
+        preparedByHost: false,
+        paintTarget: null,
+        paintPhase: null,
+        paintEndsAt: null,
+        paintVoteEndsAt: null,
+        paintSubmissions: [],
+        paintVotes: [],
+        progress: [],
+        results: []
+      }
+    };
+
+    this.socketService.lobby.set(mockLobby);
+    this.socketService.match.set(mockMatch);
+    this.showMinigameSelect = false;
+  }
 }

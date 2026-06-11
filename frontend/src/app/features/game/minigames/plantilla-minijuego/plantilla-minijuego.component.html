@@ -1,0 +1,27 @@
+<div class="plantilla-container">
+  <!-- 1. Cabecera con Info Estática del Minijuego -->
+  <header class="game-header">
+    <h2>{{ gameInfo?.id || 'Plantilla Minijuego' }}</h2>
+    <p>¡Pulsa el botón del centro lo más rápido posible!</p>
+  </header>
+
+  <!-- 2. Área de Juego Principal -->
+  <main class="game-area">
+    <div class="score-display">
+      <span>Puntos actuales: </span>
+      <strong class="score-number">{{ score() }}</strong>
+    </div>
+
+    <!-- Botón del centro para la lógica interactiva -->
+    <button class="action-btn" (click)="incrementScore()">
+      ¡PÚLSAME!
+    </button>
+  </main>
+
+  <!-- 3. Controles o Footer de Prueba -->
+  <footer class="game-footer">
+    <button class="finish-btn" (click)="finishGame()">
+      Terminar minijuego
+    </button>
+  </footer>
+</div>

@@ -49,6 +49,12 @@ const MINIGAMES = [
     description:
       'Dibuja el objeto secreto y vota despues por la obra que mas se parezca. El mas votado gana mas puntos.',
   },
+  {
+    id: 'plantilla',
+    title: 'Plantilla',
+    description:
+      'Plantilla para futuros minijuegos',
+  }
 ];
 const SPECIAL_QUESTION_OPTION = {
   id: 'special-custom-question',

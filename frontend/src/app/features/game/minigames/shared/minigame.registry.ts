@@ -1,5 +1,6 @@
 import { MathOperationsComponent } from '../math-operations/math-operations.component';
 import { PaintComponent } from '../paint/paint.component';
+import { PlantillaMinijuegoComponent } from '../plantilla-minijuego/plantilla-minijuego.component';
 import { MinigameDefinition } from './minigame.models';
 
 export const MINIGAME_DEFINITIONS: MinigameDefinition[] = [
@@ -18,6 +19,14 @@ export const MINIGAME_DEFINITIONS: MinigameDefinition[] = [
       'Dibuja el objeto secreto y vota despues por la obra que mas se parezca. El mas votado gana mas puntos.',
     durationSeconds: 60,
     component: PaintComponent,
+  },
+  {
+    id: 'plantilla',
+    title: 'Platilla',
+    description:
+      'Plantilla.',
+    durationSeconds: 60,
+    component: PlantillaMinijuegoComponent,
   },
 ];
 
