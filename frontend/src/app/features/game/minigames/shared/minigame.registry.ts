@@ -3,8 +3,16 @@ import { MathOperationsComponent } from '../math-operations/math-operations.comp
 import { PaintComponent } from '../paint/paint.component';
 import { PlantillaMinijuegoComponent } from '../plantilla-minijuego/plantilla-minijuego.component';
 
+
+/*
+ ⚠️  Los minijuegos 'math-operations' y 'paint' tienen lógica especial
+      en el service (legada). No borrar sus entradas del registry.
+ */
 export const MINIGAME_COMPONENTS: Record<string, Type<any>> = {
+  // ── Legacy (no modificar su lógica en minigame.service.ts) ──
   'math-operations': MathOperationsComponent,
-  'paint': PaintComponent,
+  'paint':           PaintComponent,
+
+  // ── Minijuegos genéricos (añadir aquí los nuevos) ──────────
   'plantilla': PlantillaMinijuegoComponent,
 };

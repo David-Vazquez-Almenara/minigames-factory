@@ -799,6 +799,13 @@ export class SocketService {
     });
   }
 
+  prepareGenericMinigame(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:minigame-generic-prepared', {
+      code,
+      hostId: this.playerId,
+    });
+  }
+
   preparePaintMinigame(code: string, paintTarget: PaintTargetPayload): Promise<RoomResponse> {
     return this.emitWithResponse('match:paint-prepared', {
       code,
@@ -1096,6 +1103,24 @@ export class SocketService {
           };
 
           this.scoreboard.set(scoreboard);
+          this.match.set(updatedMatch);
+          resolve({ ok: true, lobby, match: updatedMatch });
+          return;
+        }
+
+        if (eventName === 'match:minigame-generic-prepared') {
+          const updatedSpecialRound = {
+            ...specialRound!,
+            preparedByHost: true,
+            progress: [],
+            results: [],
+          };
+
+          const updatedMatch = {
+            ...match,
+            specialRound: updatedSpecialRound,
+          };
+
           this.match.set(updatedMatch);
           resolve({ ok: true, lobby, match: updatedMatch });
           return;

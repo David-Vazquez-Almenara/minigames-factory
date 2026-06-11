@@ -3,75 +3,140 @@ import { CommonModule } from '@angular/common';
 import { MinigameService } from '../shared/minigame.service';
 import { MinigameProgress } from '../shared/minigame.models';
 
+// ============================================================
+// PLANTILLA DE MINIJUEGO
+// ============================================================
+// Cómo usar esta plantilla para crear un nuevo minijuego:
+//
+//   1. Copia la carpeta `plantilla-minijuego/` entera.
+//   2. Renombra los archivos, la clase y el selector.
+//   3. Añade el componente a minigame.registry.ts:
+//        import { MiNuevoComponent } from '../mi-nuevo/mi-nuevo.component';
+//        export const MINIGAME_COMPONENTS = {
+//          ...
+//          'mi-nuevo': MiNuevoComponent,
+//        };
+//   4. ¡Listo! El service lo detecta automáticamente.
+//      No hay que tocar minigame.service.ts para nada más.
+//
+// ----------------------------------------------------------------
+// Qué llega a gameInfo (via minigameService.receiveGameData()):
+// {
+//   id: "plantilla",
+//   time: 60,    // segundos totales del minijuego
+//   payload: {
+//     roundNumber: 1, // ronda del juego principal
+//     minigameId: "plantilla",
+//     title: "Plantilla de Minijuego",
+//     description: "...",
+//     preparedByHost: true | false,   // si el host ya preparó la ronda
+//     progress: [],   // progreso de jugadores (completo solo para el host)
+//     results: [],   // resultados finales  (completo solo para el host)
+//   },
+//   metadata: {
+//     title: "Plantilla de Minijuego",
+//     description: "...",
+//     roundNumber: 1,
+//     preparedByHost: true | false,
+//   }
+// }
+// ============================================================
+
+
 @Component({
   selector: 'app-plantilla-minijuego',
   standalone: true,
   imports: [CommonModule],
   templateUrl: './plantilla-minijuego.component.html',
-  styleUrl: './plantilla-minijuego.component.css'
+  styleUrl: './plantilla-minijuego.component.css',
 })
 export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
 
 
 
-  // ==========================================
-  // 1. ZONA DE INYECCIONES Y SERVICIOS
-  // ==========================================
+//=========================================================
+//            DATOS ESTATICOS DEL MINIJUEGO
+//=========================================================
+
+  // SERVICIO // ⚠️ NO TOCAR
   private readonly minigameService = inject(MinigameService);
+
+
+
+  // DATOS DEL MINIJUEGO (solo lectura, llegan del servidor)  // ⚠️ NO TOCAR
   
-
-
-  // ==========================================
-  // 2. ZONA DE VARIABLES/ESTADO "ESTÁTICO"
-  // ==========================================
-  // Lógica y variables del contenedor o compartidas que se inician al cargar
-  // el juego pero que no cambian en su estructura de control.
+  /** Configuración completa del minijuego activo. */
   readonly gameInfo = this.minigameService.receiveGameData();
+
+  /** ID del jugador actual; útil para calcular puntos propios. */
   readonly currentPlayerId = this.minigameService.currentPlayerId;
 
+  /** Payload tipado con los datos específicos de este minijuego. */
+  get payload() {
+    return this.gameInfo?.payload as {
+      roundNumber:    number;
+      minigameId:     string;
+      title:          string;
+      description:    string;
+      preparedByHost: boolean;
+      progress:       unknown[];
+      results:        unknown[];
+      time:           number;
+    } | undefined;
+  }
+
+
+    // VARIABLES ESTATICAS
+    points = 0;
+    readonly finished = signal(false);
+    roundTime = this.payload?.time ?? 60;
+ //=========================================================
+
+
+
+ 
+//                     [ ZONA EDITABLE ]
+// ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇  ⬇
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  //=========================================================
+  //                LÓGICA DEL MINIJUEGO
+  //=========================================================
+
   ngOnInit(): void {
-    // Aquí puedes inicializar timers de cuenta atrás, música o configuraciones locales usando gameInfo.
-    console.log('Minijuego cargado con datos:', this.gameInfo);
+    console.log('Minijuego cargado con datos:', JSON.parse(JSON.stringify(this.gameInfo)));
+  
+  
   }
-
-  ngOnDestroy(): void {
-    // Limpieza de suscripciones, intervalos o timeouts locales si los hay.
-  }
-
-
-
-  // ==========================================
-  // 3. ZONA DE VARIABLES DE ESTADO (LOCAL)
-  // ==========================================
-  // Coloca aquí las variables específicas de la lógica de tu minijuego.
-  points = 0;
+  ngOnDestroy(): void {}
 
 
 
 
+  pulsar(): void {
+    if (this.finished()) return;
 
+    this.points += 1;
 
-
-
-
-
-
-  // ==========================================
-  // 4. ZONA DE LÓGICA DEL MINIJUEGO
-  // ==========================================
-  // Aquí va toda la interacción del HTML y la comunicación al MinigameService.
-
-  /**
-   * Incrementa la puntuación y reporta el progreso en tiempo real al servicio.
-   */
-
-
-  pulsar(){
-        this.points = this.points + 1;
-
-    if(this.points >= 10){
+    if (this.points >= 10) {
       this.finishMinigame();
-    }else{
+    } else {
       this.updateProgress();
     }
   }
@@ -81,58 +146,50 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
 
 
 
-  // ================================================
-  // 5. ZONA de actualizaciones para el servicio (Maneja puntos )
-  // ================================================
 
-  updateProgress(completed?: boolean): void {
+
+
+
+
+
+
+//  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  
+//                     [ ZONA EDITABLE ]
+
+
+  //=========================================================
+  //        LÓGICA DE PROGRESO Y PUNTUACIÓN ESTATICA
+  //=========================================================
+
+  updateProgress(completed = false): void {
     const progress: MinigameProgress = {
-      answeredCount: this.points, // Respuestas o clics realizados
-      correctCount: this.points,  // Respuestas o clics válidos/correctos
-      completed: completed || false,            // ¿Ha terminado el minijuego para este jugador?
-      finishedAt: null             // Timestamp de cuándo terminó (si aplica)
+      answeredCount: this.points,
+      correctCount:  this.points,
+      completed,
+      finishedAt: completed ? Date.now() : null,
     };
 
-    this.minigameService.submitProgress(progress)
-      .then(res => {
-        if (!res.ok) {
-          console.error('Error al reportar progreso:', res.reason);
-        }
-      });
+    this.minigameService.submitProgress(progress).then((res) => {
+      if (!res.ok) console.error('Error al reportar progreso:', res.reason);
+    });
   }
+  
+  // Llamar a finishMinigame() cuando el jugador termina
 
-
-
-
-
-
-
-
-
-  // ================================================
-  // 5. ZONA DE finalizacion DEL MINIJUEGO "ESTATICO"
-  // ================================================
-
-  /**
-   *Funcion que al ejecutarse finaliza el minijuego para el jugador, reportando el progreso final y cualquier resultado necesario para parar el juego al resto de jugadores y en el caso de ser el host, obtener los datos de los jugadores.  
-   */
-
-  //Creo que con esto acaba para todo el mundo la ronda, pero asegurate con siguiedo el siguiente comentario:
-   //Haz algo "simple", que con una fincion de "finishMinigame" o algo asi, vaya todo solo y mande al scoreboard y demás, sin necesidad de tener que programarlo todo a mano, para que sea más fácil de implementar y no se tenga que estar pendiente de cada fase del juego, sino que con esa función ya se encargue de todo el proceso de datos y finalización del minijuego.
   finishMinigame(): void {
-    this.updateProgress(true); // Reporta el progreso final indicando que el minijuego ha terminado para este jugador.
-    
-    // Si el jugador es el host, recopila puntos, calcula scoreboard y manda al resto al scoreboard.
-  if (this.minigameService.isHost()) {        
+    if (this.finished()) return;
+    this.finished.set(true);
+
+    this.updateProgress(true); //finishedAt = true
+
+    if (this.minigameService.isHost()) {
+      void this.minigameService.submitPoints([
+        { playerId: this.minigameService.currentPlayerId, points: this.points * 3 },
+      ]);
+    }
   }
+
+
+
+
 }
-}
-
-
-
-
-
-
-
-
-

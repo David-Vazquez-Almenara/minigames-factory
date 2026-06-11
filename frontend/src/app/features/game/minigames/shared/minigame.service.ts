@@ -16,38 +16,22 @@ import {
   MinigameScoreboardPresentation,
   MinigameWinner,
 } from './minigame.models';
+import { MINIGAME_COMPONENTS } from './minigame.registry';
 
 export interface MathOperation extends MathOperationPayload {
   answer: number;
 }
 
 const OBJECT_SELECTION_POOL = [
-  'Manzana',
-  'Castillo',
-  'Cohete',
-  'Guitarra',
-  'Zapato',
-  'Helado',
-  'Sombrero',
-  'Llave',
-  'Barco',
-  'Robot',
-  'Dinosaurio',
-  'Camara',
-  'Pizza',
-  'Bicicleta',
-  'Reloj',
-  'Montana',
-  'Avion',
-  'Lampara',
-  'Corona',
-  'Paraguas',
-  'Fantasma',
-  'Taza',
-  'Balon',
-  'Arbol',
-  'Coche',
+  'Manzana', 'Castillo', 'Cohete', 'Guitarra', 'Zapato', 'Helado',
+  'Sombrero', 'Llave', 'Barco', 'Robot', 'Dinosaurio', 'Camara',
+  'Pizza', 'Bicicleta', 'Reloj', 'Montana', 'Avion', 'Lampara',
+  'Corona', 'Paraguas', 'Fantasma', 'Taza', 'Balon', 'Arbol', 'Coche',
 ];
+
+// IDs de minijuegos legacy que tienen lógica especial de preparación en el host.
+// Cualquier ID fuera de esta lista se trata como minijuego genérico del registry.
+const LEGACY_MINIGAME_IDS = new Set(['math-operations', 'paint']);
 
 @Injectable({ providedIn: 'root' })
 export class MinigameService {
@@ -64,26 +48,27 @@ export class MinigameService {
     const matchPhase = this.match()?.phase;
     const specialRound = this.currentRound();
 
-    if (matchPhase === 'scoreboard') {
-      return 'scoreboard';
-    }
-
-    if (specialRound?.paintPhase === 'voting') {
-      return 'voting';
-    }
-
-    if (specialRound?.paintPhase === 'finished') {
-      return 'finished';
-    }
-
-    if (!specialRound?.preparedByHost) {
-      return 'preparing';
-    }
+    if (matchPhase === 'scoreboard') return 'scoreboard';
+    if (specialRound?.paintPhase === 'voting') return 'voting';
+    if (specialRound?.paintPhase === 'finished') return 'finished';
+    if (!specialRound?.preparedByHost) return 'preparing';
 
     return 'playing';
   });
   readonly currentInfo = computed<MinigameInfo | null>(() => this.buildCurrentInfo());
 
+  // ---------------------------------------------------------------------------
+  // API PÚBLICA
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Envía al resto de jugadores la configuración generada por el host.
+   *
+   * — Legacy math-operations: payload es un array de operaciones.
+   * — Legacy paint:           payload tiene la forma { id, label } (PaintTargetPayload).
+   * — Minijuegos del registry: no necesitan preparación especial en el servidor;
+   *   el specialRound ya tiene los metadatos suficientes. Se devuelve ok:true directamente.
+   */
   sendGameData(info: MinigameInfo): Promise<RoomResponse> {
     const lobbyId = this.match()?.lobbyId || this.lobby()?.code || '';
 
@@ -91,15 +76,18 @@ export class MinigameService {
       return Promise.resolve({ ok: false, reason: 'No hay lobby activo para enviar datos del minijuego.' });
     }
 
+    // Legacy math-operations
     if (Array.isArray(info.payload)) {
       return this.socketService.prepareMinigame(lobbyId, info.payload as MathOperationPayload[]);
     }
 
+    // Legacy paint
     if (info.payload && typeof info.payload === 'object' && 'label' in info.payload) {
       return this.socketService.preparePaintMinigame(lobbyId, info.payload as PaintTargetPayload);
     }
 
-    return Promise.resolve({ ok: true });
+    // Minijuegos genéricos del registry: marcan preparedByHost en servidor sin operations.
+    return this.socketService.prepareGenericMinigame(lobbyId);
   }
 
   receiveGameData(): MinigameInfo | null {
@@ -137,12 +125,9 @@ export class MinigameService {
       position: 0,
     }));
 
-    scores.sort((firstPlayer, secondPlayer) => {
-      if (secondPlayer.score !== firstPlayer.score) {
-        return secondPlayer.score - firstPlayer.score;
-      }
-
-      return (lobbyOrder.get(firstPlayer.playerId) || 0) - (lobbyOrder.get(secondPlayer.playerId) || 0);
+    scores.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return (lobbyOrder.get(a.playerId) || 0) - (lobbyOrder.get(b.playerId) || 0);
     });
 
     return this.socketService.updateScoreboard(
@@ -168,6 +153,10 @@ export class MinigameService {
     return this.socketService.continueFromSpecialRound(lobbyId);
   }
 
+  /**
+   * Arranca un minijuego en modo test local con jugadores mock,
+   * sin necesidad de un lobby real.
+   */
   startMinigame(info: MinigameInfo): void {
     const userPlayerId = this.currentPlayerId;
     const mockLobby: LobbyState = {
@@ -187,8 +176,8 @@ export class MinigameService {
       },
       players: [
         { id: userPlayerId, name: 'Jugador (Tu)', joinedAt: new Date().toISOString(), active: true, ready: true },
-        { id: 'sofia-ai', name: 'Sofia (AI)', joinedAt: new Date().toISOString(), active: true, ready: true },
-        { id: 'mateo-ai', name: 'Mateo (AI)', joinedAt: new Date().toISOString(), active: true, ready: true },
+        { id: 'sofia-ai',  name: 'Sofia (AI)',   joinedAt: new Date().toISOString(), active: true, ready: true },
+        { id: 'mateo-ai',  name: 'Mateo (AI)',   joinedAt: new Date().toISOString(), active: true, ready: true },
       ],
       createdAt: new Date().toISOString(),
     };
@@ -241,16 +230,83 @@ export class MinigameService {
     void this.sendGameData(info);
   }
 
+  // ---------------------------------------------------------------------------
+  // PREPARACIÓN DE MINIJUEGOS
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Genera la configuración inicial del minijuego activo cuando el cliente es host.
+   *
+   * — Para minijuegos legacy (math-operations, paint) usa sus generadores específicos.
+   * — Para cualquier ID registrada en MINIGAME_COMPONENTS construye automáticamente
+   *   un payload genérico con los datos del specialRound. No hace falta tocar este
+   *   método al añadir un nuevo minijuego al registry.
+   */
+  buildHostGameInfo(): MinigameInfo | null {
+    const specialRound = this.currentRound();
+    if (!specialRound) return null;
+
+    const legacyGenerators: Record<string, () => unknown> = {
+      'math-operations': () => this.generateMathOperationsMinigame(),
+      'paint':           () => this.selectRandomObject(),
+    };
+
+    const legacyGenerator = legacyGenerators[specialRound.minigameId];
+
+    const payload = legacyGenerator
+      ? legacyGenerator()
+      : this.buildGenericPayload(specialRound);
+
+    return {
+      id: specialRound.minigameId,
+      time: 60,
+      payload,
+      metadata: {
+        title: specialRound.title,
+        description: specialRound.description,
+        roundNumber: specialRound.roundNumber,
+        preparedByHost: specialRound.preparedByHost,
+      },
+    };
+  }
+
+  /**
+   * Prepara un minijuego por su ID.
+   *
+   * — Si es un minijuego legacy, delega a su adaptador específico.
+   * — Si está registrado en MINIGAME_COMPONENTS, lo prepara automáticamente
+   *   sin necesidad de un método dedicado por minijuego.
+   * — Si el ID es desconocido, lo avisa en consola y resuelve ok:true.
+   */
+  prepareMinigameById(lobbyId: string, minigameId: string): Promise<RoomResponse> {
+    if (minigameId === 'math-operations') {
+      return this.prepareMathOperationsMinigame(lobbyId);
+    }
+
+    if (minigameId === 'paint') {
+      return this.preparePaintMinigame(lobbyId);
+    }
+
+    if (minigameId in MINIGAME_COMPONENTS) {
+      // Minijuego del registry: no necesita preparación especial en servidor.
+      // El specialRound ya contiene title, description, roundNumber, etc.
+      return this.sendGameData({ id: minigameId, time: 60, payload: {} });
+    }
+
+    console.warn(`[MinigameService] ID de minijuego desconocido: "${minigameId}". No está registrado en MINIGAME_COMPONENTS.`);
+    return Promise.resolve({ ok: true });
+  }
+
+  // ---------------------------------------------------------------------------
+  // ADAPTADORES LEGACY — NO MODIFICAR sin revisar el impacto
+  // ---------------------------------------------------------------------------
+
   prepareMathOperationsMinigame(lobbyId: string): Promise<RoomResponse> {
     return this.sendGameData({
       id: 'math-operations',
       time: 60,
       payload: this.generateMathOperationsMinigame(),
     });
-  }
-
-  submitMinigameProgress(lobbyId: string, progress: MinigameProgress): Promise<RoomResponse> {
-    return this.socketService.submitMinigameProgress(lobbyId, progress);
   }
 
   preparePaintMinigame(lobbyId: string): Promise<RoomResponse> {
@@ -261,13 +317,8 @@ export class MinigameService {
     });
   }
 
-
-  preparePlantillaMinigame(lobbyId: string): Promise<RoomResponse> {
-    return this.sendGameData({
-      id: 'plantilla',
-      time: 60,
-      payload: {}
-    });
+  submitMinigameProgress(lobbyId: string, progress: MinigameProgress): Promise<RoomResponse> {
+    return this.socketService.submitMinigameProgress(lobbyId, progress);
   }
 
   submitPaintDrawing(lobbyId: string, imageDataUrl: string): Promise<RoomResponse> {
@@ -278,33 +329,9 @@ export class MinigameService {
     return this.socketService.submitPaintVote(lobbyId, targetPlayerId);
   }
 
-  buildHostGameInfo(): MinigameInfo | null {
-    const specialRound = this.currentRound();
-
-    if (!specialRound) {
-      return null;
-    }
-
-    const generatorMap: Record<string, () => any> = {
-      'math-operations': () => this.generateMathOperationsMinigame(),
-      'paint': () => this.selectRandomObject(),
-      'plantilla': () => this.preparePlantillaMinigame('lobbyId'),
-    };
-
-    const generator = generatorMap[specialRound.minigameId];
-    const payload = generator ? generator() : undefined;
-
-    return {
-      id: specialRound.minigameId,
-      time: 60,
-      payload,
-      metadata: {
-        title: specialRound.title,
-        description: specialRound.description,
-        roundNumber: specialRound.roundNumber,
-      },
-    };
-  }
+  // ---------------------------------------------------------------------------
+  // SCOREBOARD
+  // ---------------------------------------------------------------------------
 
   calculateOfficialMinigameScoreboard(
     lobby: LobbyState,
@@ -312,36 +339,30 @@ export class MinigameService {
     results: MinigameResultPayload[],
     previousScoreboard: ScoreboardPayload | null,
   ): ScoreboardPayload {
-    const previousScores = new Map((previousScoreboard?.scores || []).map((score) => [score.playerId, score.score]));
-    const lobbyOrder = new Map(lobby.players.map((player, index) => [player.id, index]));
-    const bonusPoints = this.calculateMinigameBonusPoints(results);
-    const resultMap = new Map(results.map((result) => [result.playerId, result]));
+    const previousScores = new Map((previousScoreboard?.scores || []).map((s) => [s.playerId, s.score]));
+    const lobbyOrder    = new Map(lobby.players.map((p, i) => [p.id, i]));
+    const bonusPoints   = this.calculateMinigameBonusPoints(results);
+    const resultMap     = new Map(results.map((r) => [r.playerId, r]));
 
     const scores = lobby.players.map((player) => ({
       playerId: player.id,
       playerName: player.name,
       score: (previousScores.get(player.id) || 0) + (bonusPoints.get(player.id) || 0),
       position: 0,
-      minigameCorrectCount: resultMap.get(player.id)?.correctCount || 0,
-      minigameAnsweredCount: resultMap.get(player.id)?.answeredCount || 0,
-      minigameVoteCount: resultMap.get(player.id)?.votesReceived,
+      minigameCorrectCount:  resultMap.get(player.id)?.correctCount   || 0,
+      minigameAnsweredCount: resultMap.get(player.id)?.answeredCount  || 0,
+      minigameVoteCount:     resultMap.get(player.id)?.votesReceived,
     }));
 
-    scores.sort((firstPlayer, secondPlayer) => {
-      if (secondPlayer.score !== firstPlayer.score) {
-        return secondPlayer.score - firstPlayer.score;
-      }
-
-      return (lobbyOrder.get(firstPlayer.playerId) || 0) - (lobbyOrder.get(secondPlayer.playerId) || 0);
+    scores.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return (lobbyOrder.get(a.playerId) || 0) - (lobbyOrder.get(b.playerId) || 0);
     });
 
     return {
       lobbyId: lobby.code,
       roundNumber,
-      scores: scores.map((score, index) => ({
-        ...score,
-        position: index + 1,
-      })),
+      scores: scores.map((s, i) => ({ ...s, position: i + 1 })),
     };
   }
 
@@ -353,64 +374,61 @@ export class MinigameService {
     }
 
     const submittedResults = specialRound.results.filter(
-      (result) => result.submitted || (result.answeredCount || 0) > 0,
+      (r) => r.submitted || (r.answeredCount || 0) > 0,
     );
 
     if (!submittedResults.length) {
       return { winners: [], noWinnerMessage: '' };
     }
 
-    const isVotingMinigame = submittedResults.some(
-      (result) => result.votesReceived !== undefined,
-    );
+    const isVotingMinigame = submittedResults.some((r) => r.votesReceived !== undefined);
 
     if (isVotingMinigame) {
-      const maxVotes = Math.max(...submittedResults.map((result) => result.votesReceived || 0));
+      const maxVotes = Math.max(...submittedResults.map((r) => r.votesReceived || 0));
       const submissionsByPlayer = new Map(
         (specialRound.paintSubmissions || []).map((sub: PaintSubmissionPayload) => [sub.playerId, sub]),
       );
 
       const winners: MinigameWinner[] = submittedResults
-        .filter((result) => (result.votesReceived || 0) === maxVotes)
-        .map((result) => {
-          const submission = submissionsByPlayer.get(result.playerId);
-
+        .filter((r) => (r.votesReceived || 0) === maxVotes)
+        .map((r) => {
+          const submission = submissionsByPlayer.get(r.playerId);
           return {
-            playerId: result.playerId,
-            playerName: submission?.playerName || result.playerName,
-            metricLabel: `${result.votesReceived || 0} votos`,
+            playerId:     r.playerId,
+            playerName:   submission?.playerName || r.playerName,
+            metricLabel:  `${r.votesReceived || 0} votos`,
             imageDataUrl: submission?.imageDataUrl || '',
           };
         })
-        .filter((winner) => winner.imageDataUrl);
-
-      return { winners, noWinnerMessage: '' };
-    } else {
-      const maxCorrectCount = Math.max(...submittedResults.map((result) => result.correctCount || 0));
-
-      if (maxCorrectCount <= 0) {
-        return { winners: [], noWinnerMessage: 'Nadie ha acertado ninguna pregunta' };
-      }
-
-      const winners = submittedResults
-        .filter((result) => (result.correctCount || 0) === maxCorrectCount)
-        .map((result) => ({
-          playerId: result.playerId,
-          playerName: result.playerName,
-          metricLabel: `${result.correctCount || 0} aciertos`,
-        }));
+        .filter((w) => w.imageDataUrl);
 
       return { winners, noWinnerMessage: '' };
     }
+
+    const maxCorrectCount = Math.max(...submittedResults.map((r) => r.correctCount || 0));
+
+    if (maxCorrectCount <= 0) {
+      return { winners: [], noWinnerMessage: 'Nadie ha acertado ninguna pregunta' };
+    }
+
+    const winners = submittedResults
+      .filter((r) => (r.correctCount || 0) === maxCorrectCount)
+      .map((r) => ({
+        playerId:    r.playerId,
+        playerName:  r.playerName,
+        metricLabel: `${r.correctCount || 0} aciertos`,
+      }));
+
+    return { winners, noWinnerMessage: '' };
   }
+
+  // ---------------------------------------------------------------------------
+  // GENERADORES (math-operations y paint)
+  // ---------------------------------------------------------------------------
 
   selectRandomObject(): PaintTargetPayload {
     const label = OBJECT_SELECTION_POOL[Math.floor(Math.random() * OBJECT_SELECTION_POOL.length)] || OBJECT_SELECTION_POOL[0];
-
-    return {
-      id: label.toLowerCase().replace(/\s+/g, '-'),
-      label,
-    };
+    return { id: label.toLowerCase().replace(/\s+/g, '-'), label };
   }
 
   generateMathOperationsMinigame(): MathOperation[] {
@@ -423,27 +441,32 @@ export class MinigameService {
       () => this.generateParenthesisOperation(),
     ];
 
-    return Array.from({ length: operationCount }, (_unused, index) => {
-      const operation = generators[index % generators.length]();
-      return {
-        ...operation,
-        id: `math-${index + 1}-${crypto.randomUUID().slice(0, 8)}`,
-      };
-    }).sort(() => Math.random() - 0.5);
+    return Array.from({ length: operationCount }, (_, i) => ({
+      ...generators[i % generators.length](),
+      id: `math-${i + 1}-${crypto.randomUUID().slice(0, 8)}`,
+    })).sort(() => Math.random() - 0.5);
   }
 
+  // ---------------------------------------------------------------------------
+  // PRIVADOS
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Construye el info del minijuego activo a partir del specialRound del servidor.
+   * Los minijuegos legacy tienen campos propios; el resto reciben el specialRound
+   * completo como payload genérico.
+   */
   private buildCurrentInfo(): MinigameInfo | null {
     const specialRound = this.currentRound();
+    if (!specialRound) return null;
 
-    if (!specialRound) {
-      return null;
-    }
-
-    let payload: any = specialRound;
+    let payload: unknown;
     if (specialRound.minigameId === 'math-operations') {
       payload = specialRound.operations || [];
     } else if (specialRound.minigameId === 'paint') {
       payload = specialRound.paintTarget;
+    } else {
+      payload = this.buildGenericPayload(specialRound);
     }
 
     return {
@@ -451,174 +474,138 @@ export class MinigameService {
       time: 60,
       payload,
       metadata: {
-        title: specialRound.title,
-        description: specialRound.description,
-        roundNumber: specialRound.roundNumber,
-        preparedByHost: specialRound.preparedByHost,
-        paintPhase: specialRound.paintPhase,
-        paintEndsAt: specialRound.paintEndsAt,
+        title:           specialRound.title,
+        description:     specialRound.description,
+        roundNumber:     specialRound.roundNumber,
+        preparedByHost:  specialRound.preparedByHost,
+        paintPhase:      specialRound.paintPhase,
+        paintEndsAt:     specialRound.paintEndsAt,
         paintVoteEndsAt: specialRound.paintVoteEndsAt,
       },
     };
   }
 
+  /**
+   * Payload genérico para cualquier minijuego que no sea legacy.
+   * Contiene todo lo que un componente del registry puede necesitar.
+   */
+  private buildGenericPayload(specialRound: NonNullable<ReturnType<typeof this.currentRound>>) {
+    return {
+      roundNumber:    specialRound.roundNumber,
+      minigameId:     specialRound.minigameId,
+      title:          specialRound.title,
+      description:    specialRound.description,
+      preparedByHost: specialRound.preparedByHost,
+      progress:       specialRound.progress ?? [],
+      results:        specialRound.results  ?? [],
+    };
+  }
+
   private getLocalScoreboardCopy(lobbyId: string): ScoreboardPayload | null {
     try {
-      const parsedValue = JSON.parse(localStorage.getItem('quien-soy-online-scoreboard') || 'null') as ScoreboardPayload | null;
-
-      if (parsedValue?.lobbyId !== lobbyId || !Array.isArray(parsedValue.scores)) {
-        return null;
-      }
-
-      return parsedValue;
+      const parsed = JSON.parse(localStorage.getItem('quien-soy-online-scoreboard') || 'null') as ScoreboardPayload | null;
+      if (parsed?.lobbyId !== lobbyId || !Array.isArray(parsed.scores)) return null;
+      return parsed;
     } catch {
       return null;
     }
   }
 
   private calculateMinigameBonusPoints(results: MinigameResultPayload[]): Map<string, number> {
-    if (results.some((result) => result.votesReceived !== undefined)) {
+    if (results.some((r) => r.votesReceived !== undefined)) {
       return this.calculatePaintWinnerBonusPoints(results);
     }
-
     return this.calculateMathOperationsBonusPoints(results);
   }
 
   private calculateMathOperationsBonusPoints(results: MinigameResultPayload[]): Map<string, number> {
     const points = new Map<string, number>();
-    const submittedResults = results.filter((result) => result.submitted || (result.answeredCount || 0) > 0);
+    const submitted = results.filter((r) => r.submitted || (r.answeredCount || 0) > 0);
 
-    if (!submittedResults.length || Math.max(...submittedResults.map((result) => result.correctCount || 0)) <= 0) {
+    if (!submitted.length || Math.max(...submitted.map((r) => r.correctCount || 0)) <= 0) {
       return points;
     }
 
-    const completedResults = submittedResults.filter((result) => result.finishedAt);
-    completedResults.sort((firstResult, secondResult) => {
-      const timeDifference = Number(firstResult.finishedAt || 0) - Number(secondResult.finishedAt || 0);
-
-      if (timeDifference !== 0) {
-        return timeDifference;
-      }
-
-      return secondResult.correctCount - firstResult.correctCount;
+    const completed = [...submitted.filter((r) => r.finishedAt)].sort((a, b) => {
+      const diff = Number(a.finishedAt || 0) - Number(b.finishedAt || 0);
+      return diff !== 0 ? diff : b.correctCount - a.correctCount;
     });
 
-    const winner = completedResults[0];
+    const winner = completed[0];
+    if (winner) points.set(winner.playerId, 30);
 
-    if (winner) {
-      points.set(winner.playerId, 30);
-    }
-
-    const remainingResults = submittedResults
-      .filter((result) => result.playerId !== winner?.playerId)
-      .map((result) => ({
-        playerId: result.playerId,
-        value: result.correctCount,
-      }));
-    const rankedPoints = this.calculateRankedBonusPoints(remainingResults, [20, 10]);
-
-    for (const [playerId, pointValue] of rankedPoints) {
-      points.set(playerId, pointValue);
-    }
+    const remaining = submitted
+      .filter((r) => r.playerId !== winner?.playerId)
+      .map((r) => ({ playerId: r.playerId, value: r.correctCount }));
+    const ranked = this.calculateRankedBonusPoints(remaining, [20, 10]);
+    for (const [id, pts] of ranked) points.set(id, pts);
 
     return points;
   }
 
   private calculatePaintWinnerBonusPoints(results: MinigameResultPayload[]): Map<string, number> {
-    const submittedResults = results
-      .filter((result) => result.submitted && result.votesReceived !== undefined)
-      .map((result) => ({
-        playerId: result.playerId,
-        value: result.votesReceived || 0,
-      }));
+    const submitted = results
+      .filter((r) => r.submitted && r.votesReceived !== undefined)
+      .map((r) => ({ playerId: r.playerId, value: r.votesReceived || 0 }));
 
-    if (!submittedResults.length) {
-      return new Map<string, number>();
-    }
+    if (!submitted.length) return new Map<string, number>();
 
-    const maxVotes = Math.max(...submittedResults.map((result) => result.value));
-    const winners = submittedResults.filter((result) => result.value === maxVotes);
-    const winnerPoints = winners.length === 1 ? 30 : winners.length === 2 ? 15 : 10;
+    const maxVotes   = Math.max(...submitted.map((r) => r.value));
+    const winners    = submitted.filter((r) => r.value === maxVotes);
+    const winnerPts  = winners.length === 1 ? 30 : winners.length === 2 ? 15 : 10;
 
-    return new Map(winners.map((winner) => [winner.playerId, winnerPoints]));
+    return new Map(winners.map((w) => [w.playerId, winnerPts]));
   }
 
-  private calculateRankedBonusPoints(results: Array<{ playerId: string; value: number }>, rankPoints: number[]): Map<string, number> {
+  private calculateRankedBonusPoints(
+    results: Array<{ playerId: string; value: number }>,
+    rankPoints: number[],
+  ): Map<string, number> {
     const points = new Map<string, number>();
-    const sortedResults = [...results].sort((firstResult, secondResult) => secondResult.value - firstResult.value);
+    const sorted = [...results].sort((a, b) => b.value - a.value);
     let currentIndex = 0;
 
-    for (const rankPoint of rankPoints) {
-      if (currentIndex >= sortedResults.length) {
-        break;
-      }
+    for (const rankPt of rankPoints) {
+      if (currentIndex >= sorted.length) break;
 
-      const value = sortedResults[currentIndex].value;
-      const tiedResults = sortedResults.filter((result, index) => index >= currentIndex && result.value === value);
-      const playerPoint = tiedResults.length === 1 ? rankPoint : tiedResults.length === 2 ? Math.max(5, rankPoint / 2) : 5;
+      const value   = sorted[currentIndex].value;
+      const tied    = sorted.filter((r, i) => i >= currentIndex && r.value === value);
+      const perPlayer = tied.length === 1 ? rankPt : tied.length === 2 ? Math.max(5, rankPt / 2) : 5;
 
-      for (const result of tiedResults) {
-        points.set(result.playerId, Math.trunc(playerPoint));
-      }
-
-      currentIndex += tiedResults.length;
+      for (const r of tied) points.set(r.playerId, Math.trunc(perPlayer));
+      currentIndex += tied.length;
     }
 
     return points;
   }
 
   private generateAddition(): Omit<MathOperation, 'id'> {
-    const firstValue = this.randomInt(8, 40);
-    const secondValue = this.randomInt(5, 35);
-
-    return {
-      prompt: `${firstValue} + ${secondValue}`,
-      answer: firstValue + secondValue,
-    };
+    const a = this.randomInt(8, 40), b = this.randomInt(5, 35);
+    return { prompt: `${a} + ${b}`, answer: a + b };
   }
 
   private generateSubtraction(): Omit<MathOperation, 'id'> {
-    const firstValue = this.randomInt(20, 70);
-    const secondValue = this.randomInt(5, firstValue - 2);
-
-    return {
-      prompt: `${firstValue} - ${secondValue}`,
-      answer: firstValue - secondValue,
-    };
+    const a = this.randomInt(20, 70), b = this.randomInt(5, a - 2);
+    return { prompt: `${a} - ${b}`, answer: a - b };
   }
 
   private generateSmallMultiplication(): Omit<MathOperation, 'id'> {
-    const firstValue = this.randomInt(4, 24);
-    const secondValue = Math.random() > 0.5 ? 2 : 3;
-
-    return {
-      prompt: `${firstValue} x ${secondValue}`,
-      answer: firstValue * secondValue,
-    };
+    const a = this.randomInt(4, 24), b = Math.random() > 0.5 ? 2 : 3;
+    return { prompt: `${a} x ${b}`, answer: a * b };
   }
 
   private generateSimpleDivision(): Omit<MathOperation, 'id'> {
     const divisor = Math.random() > 0.5 ? 2 : 3;
-    const answer = this.randomInt(3, 18);
-
-    return {
-      prompt: `${answer * divisor} / ${divisor}`,
-      answer,
-    };
+    const answer  = this.randomInt(3, 18);
+    return { prompt: `${answer * divisor} / ${divisor}`, answer };
   }
 
   private generateParenthesisOperation(): Omit<MathOperation, 'id'> {
-    const firstValue = this.randomInt(2, 8);
-    const secondValue = this.randomInt(3, 12);
-    const multiplier = Math.random() > 0.5 ? 2 : 3;
-
-    return {
-      prompt: `(${firstValue} + ${secondValue}) x ${multiplier}`,
-      answer: (firstValue + secondValue) * multiplier,
-    };
+    const a = this.randomInt(2, 8), b = this.randomInt(3, 12), m = Math.random() > 0.5 ? 2 : 3;
+    return { prompt: `(${a} + ${b}) x ${m}`, answer: (a + b) * m };
   }
 
-  private randomInt(minValue: number, maxValue: number): number {
-    return Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue;
+  private randomInt(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 }

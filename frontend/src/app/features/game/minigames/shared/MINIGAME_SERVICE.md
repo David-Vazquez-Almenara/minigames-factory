@@ -19,18 +19,75 @@ Servicio central para que los componentes de minijuego no dependan directamente 
 | `submitPaintDrawing(...)` | Adaptador legacy para enviar un dibujo. | `minigameService.submitPaintDrawing(lobbyId, imageDataUrl)` |
 | `submitPaintVote(...)` | Adaptador legacy para votar un dibujo. | `minigameService.submitPaintVote(lobbyId, targetPlayerId)` |
 
+---
+
+## Añadir un nuevo minijuego (solo 2 pasos)
+
+### Paso 1 — Registrar el componente en `minigame.registry.ts`
+
+```ts
+// minigame.registry.ts
+import { MiNuevoMinijuegoComponent } from '../mi-nuevo-minijuego/mi-nuevo-minijuego.component';
+
+export const MINIGAME_COMPONENTS: Record<string, Type<any>> = {
+  'math-operations': MathOperationsComponent, // legacy, no tocar
+  'paint': PaintComponent,                    // legacy, no tocar
+  'mi-nuevo': MiNuevoMinijuegoComponent,      // <-- añadir aqui
+};
+```
+
+### Paso 2 — Copiar la plantilla
+
+Copia la carpeta `plantilla-minijuego/` entera, renombra los archivos y la clase,
+y personaliza la logica. El service detectara automaticamente el nuevo minijuego por su ID.
+
+---
+
+## Payload que recibe cada minijuego del registry
+
+```ts
+// Lo que llega a info.payload en cualquier minijuego que NO sea paint/math-operations:
+{
+  roundNumber: number;     // Numero de ronda actual
+  minigameId: string;      // ID del minijuego
+  title: string;           // Titulo para mostrar al jugador
+  description: string;     // Descripcion / instrucciones
+  preparedByHost: boolean; // true cuando el host ya ha preparado la ronda
+  progress: any[];         // Progreso de los jugadores (el host lo ve completo)
+  results: any[];          // Resultados finales (el host los ve completo)
+}
+```
+
+---
+
 ## Patron recomendado para un nuevo minijuego
 
 ```ts
-const info = this.minigameService.receiveGameData();
-const payload = info?.payload as MyMinigamePayload;
+// En ngOnInit o directamente como propiedad:
+readonly gameInfo = this.minigameService.receiveGameData();
 
+// Reportar progreso en tiempo real:
 await this.minigameService.submitProgress({
   answeredCount: 1,
   correctCount: 1,
-  completed: true,
-  finishedAt: Date.now(),
+  completed: false,
+  finishedAt: null,
 });
+
+// Finalizar y enviar puntos (solo el host los calcula):
+await this.minigameService.submitProgress({ ..., completed: true, finishedAt: Date.now() });
+
+if (this.minigameService.isHost()) {
+  await this.minigameService.submitPoints([{ playerId, points: 30 }]);
+}
 ```
 
 El componente visual solo deberia conocer su `payload`, su estado local y cuando reportar progreso o puntos.
+
+---
+
+## Minijuegos legacy (paint, math-operations)
+
+Estos dos minijuegos tienen logica especial de preparacion en el host (generacion de operaciones
+matematicas, seleccion aleatoria de objeto a dibujar, fases de votacion, etc.).
+**No tocar** su logica en `minigame.service.ts` sin revisar bien el impacto.

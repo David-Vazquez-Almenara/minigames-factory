@@ -1866,6 +1866,41 @@ io.on('connection', (socket) => {
     callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
   });
 
+  // Handler para minijuegos genéricos del registry (sin operations).
+  // El host emite este evento para marcar preparedByHost = true y arrancar la ronda.
+  socket.on('match:minigame-generic-prepared', (payload = {}, callback) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const hostId = String(payload.hostId || '').trim();
+    const room = gameState.rooms.get(code);
+    const specialRound = room?.match?.specialRound;
+
+    if (!room || !room.match || room.match.phase !== 'special-round' || !specialRound) {
+      callback?.({ ok: false, reason: 'No hay un minijuego activo.' });
+      return;
+    }
+
+    if (room.hostId !== hostId) {
+      callback?.({ ok: false, reason: 'Solo el host puede preparar el minijuego.' });
+      return;
+    }
+
+    if (specialRound.preparedByHost) {
+      callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+      return;
+    }
+
+    specialRound.preparedByHost = true;
+    specialRound.progress = new Map();
+    specialRound.results = [];
+
+    io.to(room.code).emit('match:minigame-prepared', {
+      lobbyId: room.code,
+      specialRound: toPublicSpecialRound(specialRound),
+    });
+    emitQuestionState(room);
+    callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
+  });
+
   socket.on('match:minigame-submit', (payload = {}, callback) => {
     const code = String(payload.code || '').trim().toUpperCase();
     const playerId = String(payload.playerId || '').trim();
@@ -1942,7 +1977,14 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (!specialRound.preparedByHost || !Array.isArray(specialRound.operations) || !specialRound.operations.length) {
+    if (!specialRound.preparedByHost) {
+      callback?.({ ok: false, reason: 'El minijuego todavia se esta preparando.' });
+      return;
+    }
+
+    // math-operations exige operations; minijuegos genéricos del registry no las tienen.
+    const isMathMinigame = specialRound.minigameId === 'math-operations';
+    if (isMathMinigame && (!Array.isArray(specialRound.operations) || !specialRound.operations.length)) {
       callback?.({ ok: false, reason: 'El minijuego todavia se esta preparando.' });
       return;
     }
@@ -1972,15 +2014,18 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const clampedAnsweredCount = Math.min(answeredCount, specialRound.operations.length);
+    // Para math-operations se clampea el progreso al número de operaciones.
+    // Para minijuegos genéricos se acepta el progreso tal como llega.
+    const operationCount = isMathMinigame ? specialRound.operations.length : Math.max(answeredCount, 1);
+    const clampedAnsweredCount = Math.min(answeredCount, operationCount);
     const clampedCorrectCount = Math.min(correctCount, clampedAnsweredCount);
     currentProgress.answers = Array.from({ length: clampedAnsweredCount }, (_unused, index) => ({
-      operationId: specialRound.operations[index]?.id || `operation-${index + 1}`,
+      operationId: specialRound.operations?.[index]?.id || `step-${index + 1}`,
       answer: null,
       correct: index < clampedCorrectCount,
     }));
     currentProgress.correctCount = clampedCorrectCount;
-    currentProgress.completed = completed || clampedAnsweredCount >= specialRound.operations.length;
+    currentProgress.completed = completed || (isMathMinigame && clampedAnsweredCount >= operationCount);
     currentProgress.finishedAt = currentProgress.completed ? finishedAt || Date.now() : null;
 
     specialRound.progress.set(playerId, currentProgress);
