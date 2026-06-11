@@ -1,8 +1,6 @@
-export {
-  MathOperation,
-  MinigameService as MinigamesService,
-} from '../../features/game/minigames/shared/minigame.service';
-export {
+export type { MathOperation } from '../../features/game/minigames/shared/minigame.service';
+export { MinigameService as MinigamesService } from '../../features/game/minigames/shared/minigame.service';
+export type {
   MinigameDefinition,
   MinigameId,
   MinigameInfo,

@@ -160,6 +160,14 @@ export class MinigameService {
     return this.localPoints();
   }
 
+  clearMatchState(): void {
+    this.socketService.clearMatch();
+  }
+
+  continueFromSpecialRound(lobbyId: string): Promise<RoomResponse> {
+    return this.socketService.continueFromSpecialRound(lobbyId);
+  }
+
   startMinigame(info: MinigameInfo): void {
     const userPlayerId = this.currentPlayerId;
     const mockLobby: LobbyState = {
@@ -214,8 +222,8 @@ export class MinigameService {
       specialRound: {
         roundNumber: 1,
         minigameId: info.id,
-        title: String(info.metadata?.['title'] || info.id),
-        description: String(info.metadata?.['description'] || ''),
+        title: String((info.metadata as Record<string, unknown>)?.['title'] || info.id),
+        description: String((info.metadata as Record<string, unknown>)?.['description'] || ''),
         preparedByHost: false,
         operations: info.id === 'math-operations' ? [] : undefined,
         submittedPlayerIds: [],

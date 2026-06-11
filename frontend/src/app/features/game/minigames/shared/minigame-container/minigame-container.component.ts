@@ -1,6 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
-import { MatchService } from '../../../../core/services/match.service';
 import { MinigameService } from '../minigame.service';
 import { getMinigameDefinition } from '../minigame.registry';
 
@@ -13,7 +12,6 @@ type ContainerStage = 'intro' | 'explanation' | 'game';
   styleUrl: './minigame-container.component.scss',
 })
 export class MinigameContainerComponent implements OnDestroy {
-  private readonly matchService = inject(MatchService);
   private readonly minigameService = inject(MinigameService);
   private stageTimers: ReturnType<typeof setTimeout>[] = [];
   private progressTimer?: ReturnType<typeof setInterval>;
@@ -90,7 +88,7 @@ export class MinigameContainerComponent implements OnDestroy {
     }
 
     this.loading.set(true);
-    const response = await this.matchService.continueFromSpecialRound(lobbyId);
+    const response = await this.minigameService.continueFromSpecialRound(lobbyId);
     this.loading.set(false);
 
     if (!response.ok) {
@@ -99,7 +97,7 @@ export class MinigameContainerComponent implements OnDestroy {
   }
 
   exitTest(): void {
-    this.matchService.clearMatchState();
+    this.minigameService.clearMatchState();
   }
 
   private startIntroSequence(): void {
