@@ -33,29 +33,12 @@ const IMAGE_SELECTION_MS = 60000;
 const SPECIAL_QUESTION_PROBABILITY = 1;
 const CUSTOM_QUESTION_EXTRA_MS = 30000;
 const SPECIAL_ROUND_COIN_PROBABILITY = 0.5;
-const PAINT_DRAWING_MS = 60000;
-const PAINT_VOTING_MS = 20000;
 // Minigames stay registered centrally so the server can coordinate one shared choice for every client.
-const MINIGAMES = [
-  {
-    id: 'math-operations',
-    title: 'Operaciones matematicas',
-    description:
-      'Resuelve las mismas operaciones que el resto. Cuantas mas aciertes y mas rapido termines, mas puntos podras ganar.',
-  },
-  {
-    id: 'paint',
-    title: 'A Pintar',
-    description:
-      'Dibuja el objeto secreto y vota despues por la obra que mas se parezca. El mas votado gana mas puntos.',
-  },
-  {
-    id: 'plantilla',
-    title: 'Plantilla',
-    description:
-      'Plantilla para futuros minijuegos',
-  }
-];
+const MINIGAMES = require('./config/minigames.json');
+
+function getMinigameConfig(minigameId) {
+  return MINIGAMES.find((minigame) => minigame.id === minigameId) || null;
+}
 const SPECIAL_QUESTION_OPTION = {
   id: 'special-custom-question',
   text: 'Pregunta especial: escribe tu propia pregunta',
@@ -772,8 +755,11 @@ function startPaintVotingPhase(room) {
     return;
   }
 
+  const minigameConfig = getMinigameConfig(specialRound.minigameId);
+  const votingDurationSeconds = minigameConfig?.minigameData?.votingDurationSeconds || 20;
+
   specialRound.paintPhase = 'voting';
-  specialRound.paintVoteEndsAt = Date.now() + PAINT_VOTING_MS;
+  specialRound.paintVoteEndsAt = Date.now() + (votingDurationSeconds * 1000);
   io.to(room.code).emit('match:paint-voting-started', {
     lobbyId: room.code,
     specialRound: toPublicSpecialRound(specialRound),
@@ -2040,6 +2026,8 @@ io.on('connection', (socket) => {
       callback?.({ ok: false, reason: 'El objeto para dibujar es obligatorio.' });
       return;
     }
+    const minigameConfig = getMinigameConfig(specialRound.minigameId);
+    const durationSeconds = minigameConfig ? minigameConfig.durationSeconds : 60;
 
     specialRound.preparedByHost = true;
     specialRound.paintTarget = {
@@ -2047,7 +2035,7 @@ io.on('connection', (socket) => {
       label,
     };
     specialRound.paintPhase = 'drawing';
-    specialRound.paintEndsAt = Date.now() + PAINT_DRAWING_MS;
+    specialRound.paintEndsAt = Date.now() + (durationSeconds * 1000);
     specialRound.paintVoteEndsAt = null;
     specialRound.paintSubmissions = new Map();
     specialRound.paintVotes = new Map();

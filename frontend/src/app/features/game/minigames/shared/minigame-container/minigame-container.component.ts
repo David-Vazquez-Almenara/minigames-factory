@@ -1,7 +1,7 @@
 import { NgComponentOutlet } from '@angular/common';
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MinigameService } from '../minigame.service';
-import { getMinigameDefinition } from '../minigame.registry';
+import { MINIGAME_COMPONENTS } from '../minigame.registry';
 
 type ContainerStage = 'intro' | 'explanation' | 'game';
 
@@ -28,10 +28,12 @@ export class MinigameContainerComponent implements OnDestroy {
   readonly timerProgress = signal(0);
   readonly remainingSeconds = signal(0);
   readonly specialRound = this.minigameService.currentRound;
-  readonly definition = computed(() => getMinigameDefinition(this.specialRound()?.minigameId));
-  readonly activeComponent = computed(() => this.definition()?.component || null);
-  readonly title = computed(() => this.definition()?.title || this.specialRound()?.title || 'Minijuego');
-  readonly description = computed(() => this.definition()?.description || this.specialRound()?.description || '');
+  readonly activeComponent = computed(() => {
+    const minigameId = this.specialRound()?.minigameId;
+    return minigameId ? MINIGAME_COMPONENTS[minigameId] || null : null;
+  });
+  readonly title = computed(() => this.specialRound()?.title || 'Minijuego');
+  readonly description = computed(() => this.specialRound()?.description || '');
 
   constructor() {
     effect(() => {

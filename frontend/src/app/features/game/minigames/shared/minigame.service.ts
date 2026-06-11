@@ -91,15 +91,15 @@ export class MinigameService {
       return Promise.resolve({ ok: false, reason: 'No hay lobby activo para enviar datos del minijuego.' });
     }
 
-    if (info.id === 'math-operations') {
-      return this.socketService.prepareMinigame(lobbyId, (info.payload as MathOperationPayload[]) || []);
+    if (Array.isArray(info.payload)) {
+      return this.socketService.prepareMinigame(lobbyId, info.payload as MathOperationPayload[]);
     }
 
-    if (info.id === 'paint') {
+    if (info.payload && typeof info.payload === 'object' && 'label' in info.payload) {
       return this.socketService.preparePaintMinigame(lobbyId, info.payload as PaintTargetPayload);
     }
 
-    return Promise.resolve({ ok: false, reason: `El minijuego "${info.id}" no tiene adaptador de preparacion.` });
+    return Promise.resolve({ ok: true });
   }
 
   receiveGameData(): MinigameInfo | null {
@@ -261,6 +261,15 @@ export class MinigameService {
     });
   }
 
+
+  preparePlantillaMinigame(lobbyId: string): Promise<RoomResponse> {
+    return this.sendGameData({
+      id: 'plantilla',
+      time: 60,
+      payload: {}
+    });
+  }
+
   submitPaintDrawing(lobbyId: string, imageDataUrl: string): Promise<RoomResponse> {
     return this.socketService.submitPaintDrawing(lobbyId, imageDataUrl);
   }
@@ -276,33 +285,25 @@ export class MinigameService {
       return null;
     }
 
-    if (specialRound.minigameId === 'math-operations') {
-      return {
-        id: specialRound.minigameId,
-        time: 60,
-        payload: this.generateMathOperationsMinigame(),
-        metadata: {
-          title: specialRound.title,
-          description: specialRound.description,
-          roundNumber: specialRound.roundNumber,
-        },
-      };
-    }
+    const generatorMap: Record<string, () => any> = {
+      'math-operations': () => this.generateMathOperationsMinigame(),
+      'paint': () => this.selectRandomObject(),
+      'plantilla': () => this.preparePlantillaMinigame('lobbyId'),
+    };
 
-    if (specialRound.minigameId === 'paint') {
-      return {
-        id: specialRound.minigameId,
-        time: 60,
-        payload: this.selectRandomObject(),
-        metadata: {
-          title: specialRound.title,
-          description: specialRound.description,
-          roundNumber: specialRound.roundNumber,
-        },
-      };
-    }
+    const generator = generatorMap[specialRound.minigameId];
+    const payload = generator ? generator() : undefined;
 
-    return null;
+    return {
+      id: specialRound.minigameId,
+      time: 60,
+      payload,
+      metadata: {
+        title: specialRound.title,
+        description: specialRound.description,
+        roundNumber: specialRound.roundNumber,
+      },
+    };
   }
 
   calculateOfficialMinigameScoreboard(
@@ -351,41 +352,24 @@ export class MinigameService {
       return { winners: [], noWinnerMessage: '' };
     }
 
-    if (specialRound.minigameId === 'math-operations') {
-      const submittedResults = specialRound.results.filter((result) => result.submitted || (result.answeredCount || 0) > 0);
-      const maxCorrectCount = submittedResults.length
-        ? Math.max(...submittedResults.map((result) => result.correctCount || 0))
-        : 0;
+    const submittedResults = specialRound.results.filter(
+      (result) => result.submitted || (result.answeredCount || 0) > 0,
+    );
 
-      if (maxCorrectCount <= 0) {
-        return { winners: [], noWinnerMessage: 'Nadie ha acertado ninguna pregunta' };
-      }
-
-      return {
-        winners: submittedResults
-          .filter((result) => (result.correctCount || 0) === maxCorrectCount)
-          .map((result) => ({
-            playerId: result.playerId,
-            playerName: result.playerName,
-            metricLabel: `${result.correctCount || 0} aciertos`,
-          })),
-        noWinnerMessage: '',
-      };
+    if (!submittedResults.length) {
+      return { winners: [], noWinnerMessage: '' };
     }
 
-    if (specialRound.minigameId === 'paint') {
-      const submittedResults = specialRound.results.filter(
-        (result) => result.submitted && result.votesReceived !== undefined,
-      );
+    const isVotingMinigame = submittedResults.some(
+      (result) => result.votesReceived !== undefined,
+    );
 
-      if (!submittedResults.length) {
-        return { winners: [], noWinnerMessage: '' };
-      }
-
+    if (isVotingMinigame) {
       const maxVotes = Math.max(...submittedResults.map((result) => result.votesReceived || 0));
       const submissionsByPlayer = new Map(
-        (specialRound.paintSubmissions || []).map((submission: PaintSubmissionPayload) => [submission.playerId, submission]),
+        (specialRound.paintSubmissions || []).map((sub: PaintSubmissionPayload) => [sub.playerId, sub]),
       );
+
       const winners: MinigameWinner[] = submittedResults
         .filter((result) => (result.votesReceived || 0) === maxVotes)
         .map((result) => {
@@ -401,9 +385,23 @@ export class MinigameService {
         .filter((winner) => winner.imageDataUrl);
 
       return { winners, noWinnerMessage: '' };
-    }
+    } else {
+      const maxCorrectCount = Math.max(...submittedResults.map((result) => result.correctCount || 0));
 
-    return { winners: [], noWinnerMessage: '' };
+      if (maxCorrectCount <= 0) {
+        return { winners: [], noWinnerMessage: 'Nadie ha acertado ninguna pregunta' };
+      }
+
+      const winners = submittedResults
+        .filter((result) => (result.correctCount || 0) === maxCorrectCount)
+        .map((result) => ({
+          playerId: result.playerId,
+          playerName: result.playerName,
+          metricLabel: `${result.correctCount || 0} aciertos`,
+        }));
+
+      return { winners, noWinnerMessage: '' };
+    }
   }
 
   selectRandomObject(): PaintTargetPayload {
@@ -441,46 +439,25 @@ export class MinigameService {
       return null;
     }
 
+    let payload: any = specialRound;
     if (specialRound.minigameId === 'math-operations') {
-      return {
-        id: specialRound.minigameId,
-        time: 60,
-        payload: specialRound.operations || [],
-        metadata: {
-          title: specialRound.title,
-          description: specialRound.description,
-          roundNumber: specialRound.roundNumber,
-          preparedByHost: specialRound.preparedByHost,
-        },
-      };
-    }
-
-    if (specialRound.minigameId === 'paint') {
-      return {
-        id: specialRound.minigameId,
-        time: 60,
-        payload: specialRound.paintTarget,
-        metadata: {
-          title: specialRound.title,
-          description: specialRound.description,
-          roundNumber: specialRound.roundNumber,
-          preparedByHost: specialRound.preparedByHost,
-          paintPhase: specialRound.paintPhase,
-          paintEndsAt: specialRound.paintEndsAt,
-          paintVoteEndsAt: specialRound.paintVoteEndsAt,
-        },
-      };
+      payload = specialRound.operations || [];
+    } else if (specialRound.minigameId === 'paint') {
+      payload = specialRound.paintTarget;
     }
 
     return {
       id: specialRound.minigameId,
       time: 60,
-      payload: specialRound,
+      payload,
       metadata: {
         title: specialRound.title,
         description: specialRound.description,
         roundNumber: specialRound.roundNumber,
         preparedByHost: specialRound.preparedByHost,
+        paintPhase: specialRound.paintPhase,
+        paintEndsAt: specialRound.paintEndsAt,
+        paintVoteEndsAt: specialRound.paintVoteEndsAt,
       },
     };
   }

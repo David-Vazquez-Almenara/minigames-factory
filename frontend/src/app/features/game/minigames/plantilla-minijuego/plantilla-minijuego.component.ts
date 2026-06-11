@@ -18,7 +18,7 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
   // 1. ZONA DE INYECCIONES Y SERVICIOS
   // ==========================================
   private readonly minigameService = inject(MinigameService);
-
+  
 
 
   // ==========================================
@@ -44,7 +44,7 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
   // 3. ZONA DE VARIABLES DE ESTADO (LOCAL)
   // ==========================================
   // Coloca aquí las variables específicas de la lógica de tu minijuego.
-  readonly score = signal<number>(0);
+  points = 0;
 
 
 
@@ -64,16 +64,32 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
   /**
    * Incrementa la puntuación y reporta el progreso en tiempo real al servicio.
    */
-  incrementScore(): void {
-    // 1. Lógica interna: sumamos 1 punto local
-    this.score.update(s => s + 1);
 
-    // 2. Reportamos el progreso al servicio para sincronizar con la sala/servidor.
-    // Usamos la estructura definida en MinigameProgress.
+
+  pulsar(){
+        this.points = this.points + 1;
+
+    if(this.points >= 10){
+      this.finishMinigame();
+    }else{
+      this.updateProgress();
+    }
+  }
+
+
+
+
+
+
+  // ================================================
+  // 5. ZONA de actualizaciones para el servicio (Maneja puntos )
+  // ================================================
+
+  updateProgress(completed?: boolean): void {
     const progress: MinigameProgress = {
-      answeredCount: this.score(), // Respuestas o clics realizados
-      correctCount: this.score(),  // Respuestas o clics válidos/correctos
-      completed: false,            // ¿Ha terminado el minijuego para este jugador?
+      answeredCount: this.points, // Respuestas o clics realizados
+      correctCount: this.points,  // Respuestas o clics válidos/correctos
+      completed: completed || false,            // ¿Ha terminado el minijuego para este jugador?
       finishedAt: null             // Timestamp de cuándo terminó (si aplica)
     };
 
@@ -98,19 +114,25 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
   // ================================================
 
   /**
-   * Finaliza el minijuego de forma manual o al expirar los 60 segundos
-   * y envía los puntos definitivos para el Scoreboard.
+   *Funcion que al ejecutarse finaliza el minijuego para el jugador, reportando el progreso final y cualquier resultado necesario para parar el juego al resto de jugadores y en el caso de ser el host, obtener los datos de los jugadores.  
    */
-  finishGame(): void {
-    const finalPoints = [{
-      playerId: this.currentPlayerId,
-      points: this.score() // Ejemplo: cada clic vale 10 puntos en el Scoreboard
-    }];
 
-    // Enviamos los puntos finales usando submitPoints / sendPoints
-    this.minigameService.submitPoints(finalPoints)
-      .then(res => {
-        console.log('Puntos definitivos enviados:', res);
-      });
+  //Creo que con esto acaba para todo el mundo la ronda, pero asegurate con siguiedo el siguiente comentario:
+   //Haz algo "simple", que con una fincion de "finishMinigame" o algo asi, vaya todo solo y mande al scoreboard y demás, sin necesidad de tener que programarlo todo a mano, para que sea más fácil de implementar y no se tenga que estar pendiente de cada fase del juego, sino que con esa función ya se encargue de todo el proceso de datos y finalización del minijuego.
+  finishMinigame(): void {
+    this.updateProgress(true); // Reporta el progreso final indicando que el minijuego ha terminado para este jugador.
+    
+    // Si el jugador es el host, recopila puntos, calcula scoreboard y manda al resto al scoreboard.
+  if (this.minigameService.isHost()) {        
   }
 }
+}
+
+
+
+
+
+
+
+
+

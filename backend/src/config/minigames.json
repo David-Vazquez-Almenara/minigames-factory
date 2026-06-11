@@ -1,0 +1,31 @@
+[
+  {
+    "id": "math-operations",
+    "title": "Operaciones matematicas",
+    "description": "Resuelve las mismas operaciones que el resto. Cuantas mas aciertes y mas rapido termines, mas puntos podras ganar.",
+    "durationSeconds": 60,
+    "requiresPreparation": true,
+    "minigameData": {},
+    "phases": ["playing"]
+  },
+  {
+    "id": "paint",
+    "title": "A Pintar",
+    "description": "Dibuja el objeto secreto y vota despues por la obra que mas se parezca. El mas votado gana mas puntos.",
+    "durationSeconds": 60,
+    "requiresPreparation": true,
+    "minigameData": {
+      "votingDurationSeconds": 20
+    },
+    "phases": ["playing", "voting"]
+  },
+  {
+    "id": "plantilla",
+    "title": "Plantilla",
+    "description": "Plantilla para futuros minijuegos",
+    "durationSeconds": 60,
+    "requiresPreparation": false,
+    "minigameData": {},
+    "phases": ["playing"]
+  }
+]

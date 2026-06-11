@@ -34,17 +34,17 @@
 
 
 
-  <div *ngIf="showMinigameSelect" id="minigameSelectPanel">
-
-    <div class="bg" (click)="openMinigameSelect(false)"></div>
-
-    <div class="minigameMenu">
-      <h2>Selecciona tu minijuego</h2>
-      <button class="menu-button" type="button" (click)="startPaintTest()">¡A pintar!</button>
-      <button class="menu-button" type="button" (click)="startMathTest()">Operaciones matematicas</button>
-      <button class="menu-button" type="button" (click)="startTemplateTest()">Plantilla</button>
+  @if (showMinigameSelect()) {
+    <div id="minigameSelectPanel">
+      <div class="bg" (click)="openMinigameSelect(false)"></div>
+      <div class="minigameMenu">
+        <h2>Selecciona tu minijuego</h2>
+        @for (id of minigameTestIds; track id) {
+          <button class="menu-button" type="button" (click)="startMinigameTest(id)">{{ id }}</button>
+        }
+      </div>
     </div>
-  </div>
+  }
 
 
 
