@@ -227,7 +227,9 @@ export class MinigameService {
       },
     });
 
-    void this.sendGameData(info);
+    // La preparación (sendGameData) la gestiona el minigame-container,
+    // igual que en una partida real. No llamarla aquí evita la doble
+    // llamada a prepareGenericMinigame que dejaba preparedByHost en false.
   }
 
   // ---------------------------------------------------------------------------
