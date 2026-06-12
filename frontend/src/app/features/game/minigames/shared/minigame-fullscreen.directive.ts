@@ -26,8 +26,21 @@ export class MinigameFullscreenDirective implements OnInit, OnDestroy {
   }
 
   private checkOverflow(container: HTMLElement, gameArea: HTMLElement): void {
+    // Guardar si estaba en pantalla completa y quitarlo temporalmente para medir la altura natural del contenido
+    const wasFullscreen = container.classList.contains('fullscreen-mode');
+    if (wasFullscreen) {
+      container.classList.remove('fullscreen-mode');
+    }
+
+    const naturalHeight = gameArea.scrollHeight;
+
+    // Restaurar temporalmente el estado para evitar saltos visuales durante el layout
+    if (wasFullscreen) {
+      container.classList.add('fullscreen-mode');
+    }
+
     // Si la altura del contenido real es mayor que la pantalla, o si las dimensiones de la pantalla son pequeñas
-    const overflow = (gameArea.scrollHeight + 160 > window.innerHeight) || 
+    const overflow = (naturalHeight + 160 > window.innerHeight) || 
                      (window.innerWidth <= 768) || 
                      (window.innerHeight <= 750);
 

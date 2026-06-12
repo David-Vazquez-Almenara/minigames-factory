@@ -157,7 +157,7 @@
 
     strong {
       color: #e53935;
-      font-size: 2rem;
+      font-size: 20px;
     }
   }
 }
@@ -167,6 +167,7 @@
     transform: translateY(-20px) scale(0.8);
     opacity: 0;
   }
+
   to {
     transform: translateY(0) scale(1);
     opacity: 1;
@@ -180,7 +181,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  
+
   // Animation size 1 to 0 transitions
   transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: top center;
@@ -252,6 +253,7 @@
     &::-webkit-color-swatch-wrapper {
       padding: 0;
     }
+
     &::-webkit-color-swatch {
       border: none;
       border-radius: 8px;
@@ -261,6 +263,7 @@
       transform: translateY(-1px);
       box-shadow: 0 4px 0 #000;
     }
+
     &:active {
       transform: translateY(1px);
       box-shadow: 0 1px 0 #000;
@@ -399,6 +402,7 @@ canvas.paint-canvas {
 }
 
 @media (max-width: 680px) {
+
   .paint-panel,
   .vote-panel {
     padding: 14px;
