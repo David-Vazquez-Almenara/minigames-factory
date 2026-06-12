@@ -48,7 +48,7 @@
             @if (row.minigameVoteCount !== undefined) {
             <small>{{ row.minigameVoteCount || 0 }} votos</small>
             } @else if (row.minigameAnsweredCount !== undefined) {
-            <small>{{ row.minigameCorrectCount || 0 }} / {{ row.minigameAnsweredCount || 0 }} aciertos</small>
+            <small>{{ row.minigameCorrectCount || 0 }} / {{ row.minigameAnsweredCount || 0 }} puntos</small>
             }
           </span>
           <strong class="score">{{ row.displayScore }} pts</strong>

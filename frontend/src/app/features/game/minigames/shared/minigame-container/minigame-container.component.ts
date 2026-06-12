@@ -73,23 +73,23 @@ export class MinigameContainerComponent implements OnDestroy {
     effect(() => {
       const round = this.specialRound();
 
-      let deadline: any | null = null;
-
       if (round?.paintPhase === 'drawing') {
-        deadline = round.paintEndsAt;
+        this.syncGameTimer(round.paintEndsAt ?? null);
       } else if (round?.paintPhase === 'voting') {
-        deadline = round.paintVoteEndsAt;
+        this.syncGameTimer(round.paintVoteEndsAt ?? null);
       } else if (round?.preparedByHost && !round?.paintPhase) {
-        // Minijuego genérico: arranca el countdown cuando el servidor
-        // confirma preparedByHost. syncGameTimer lo ignora si ya hay
-        // un deadline activo, así que solo se calcula una vez.
+        // Minijuego genérico: calcula el deadline UNA SOLA VEZ cuando
+        // preparedByHost pasa a true. Si activeDeadline ya existe, el
+        // timer está corriendo — no lo tocamos aunque el effect vuelva
+        // a dispararse por cambios en progress/results.
         if (!this.activeDeadline) {
           const durationSeconds = this.minigameService.currentInfo()?.time ?? 60;
-          deadline = Date.now() + durationSeconds * 1000;
+          this.syncGameTimer(Date.now() + durationSeconds * 1000);
         }
+      } else if (!round?.preparedByHost) {
+        // Aún preparando: sin timer.
+        this.syncGameTimer(null);
       }
-
-      this.syncGameTimer(deadline);
     });
   }
 
