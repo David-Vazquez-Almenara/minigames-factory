@@ -6,7 +6,9 @@
     "durationSeconds": 60,
     "requiresPreparation": true,
     "minigameData": {},
-    "phases": ["playing"]
+    "phases": [
+      "playing"
+    ]
   },
   {
     "id": "paint",
@@ -17,7 +19,10 @@
     "minigameData": {
       "votingDurationSeconds": 20
     },
-    "phases": ["playing", "voting"]
+    "phases": [
+      "playing",
+      "voting"
+    ]
   },
   {
     "id": "plantilla",
@@ -26,6 +31,8 @@
     "durationSeconds": 60,
     "requiresPreparation": false,
     "minigameData": {},
-    "phases": ["playing"]
+    "phases": [
+      "playing"
+    ]
   }
 ]

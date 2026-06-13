@@ -63,15 +63,15 @@ export interface QuestionOption {
 export interface MatchState {
   lobbyId: string;
   phase:
-    | 'lobby'
-    | 'countdown'
-    | 'image-selection'
-    | 'image-selection-complete'
-    | 'question-selection'
-    | 'answer-phase'
-    | 'scoreboard'
-    | 'special-round'
-    | 'questions-complete';
+  | 'lobby'
+  | 'countdown'
+  | 'image-selection'
+  | 'image-selection-complete'
+  | 'question-selection'
+  | 'answer-phase'
+  | 'scoreboard'
+  | 'special-round'
+  | 'questions-complete';
   assignments: MatchAssignment[];
   readySelections: MatchSelection[];
   readyCount: number;
@@ -424,7 +424,7 @@ export class SocketService {
         source?: 'questions' | 'minigame';
         results?: MinigameResultPayload[];
       }) => {
-      this.scoreboardCalculateRequest.set(payload);
+        this.scoreboardCalculateRequest.set(payload);
       },
     );
 
@@ -499,13 +499,13 @@ export class SocketService {
         this.match.update((currentMatch) =>
           currentMatch && currentMatch.lobbyId === payload.lobbyId && currentMatch.specialRound
             ? {
-                ...currentMatch,
-                totalPlayers: payload.totalPlayers,
-                specialRound: {
-                  ...currentMatch.specialRound,
-                  submittedPlayerIds: payload.submittedPlayerIds,
-                },
-              }
+              ...currentMatch,
+              totalPlayers: payload.totalPlayers,
+              specialRound: {
+                ...currentMatch.specialRound,
+                submittedPlayerIds: payload.submittedPlayerIds,
+              },
+            }
             : currentMatch,
         );
       },
@@ -515,12 +515,12 @@ export class SocketService {
       this.match.update((currentMatch) =>
         currentMatch && currentMatch.lobbyId === payload.lobbyId && currentMatch.specialRound
           ? {
-              ...currentMatch,
-              specialRound: {
-                ...currentMatch.specialRound,
-                progress: payload.progress,
-              },
-            }
+            ...currentMatch,
+            specialRound: {
+              ...currentMatch.specialRound,
+              progress: payload.progress,
+            },
+          }
           : currentMatch,
       );
     });
@@ -558,11 +558,11 @@ export class SocketService {
       this.match.update((currentMatch) =>
         currentMatch && currentMatch.lobbyId === payload.lobbyId
           ? {
-              ...currentMatch,
-              waitingQuestionBatchPlayerIds: [
-                ...new Set([...currentMatch.waitingQuestionBatchPlayerIds, this.playerId]),
-              ],
-            }
+            ...currentMatch,
+            waitingQuestionBatchPlayerIds: [
+              ...new Set([...currentMatch.waitingQuestionBatchPlayerIds, this.playerId]),
+            ],
+          }
           : currentMatch,
       );
     });
@@ -585,11 +585,11 @@ export class SocketService {
       this.match.update((currentMatch) =>
         currentMatch && currentMatch.lobbyId === payload.lobbyId
           ? {
-              ...currentMatch,
-              hostPaused: false,
-              hostPauseDeadline: null,
-              imageSelectionEndsAt: payload.imageSelectionEndsAt || currentMatch.imageSelectionEndsAt,
-            }
+            ...currentMatch,
+            hostPaused: false,
+            hostPauseDeadline: null,
+            imageSelectionEndsAt: payload.imageSelectionEndsAt || currentMatch.imageSelectionEndsAt,
+          }
           : currentMatch,
       );
     });
@@ -621,9 +621,9 @@ export class SocketService {
       const match = this.match();
       const ready = Boolean(
         match &&
-          match.lobbyId === payload.lobbyId &&
-          !match.waitingPlayerIds.includes(this.playerId) &&
-          match.readySelections.some((selection) => selection.playerId === this.playerId),
+        match.lobbyId === payload.lobbyId &&
+        !match.waitingPlayerIds.includes(this.playerId) &&
+        match.readySelections.some((selection) => selection.playerId === this.playerId),
       );
 
       callback?.({ ok: true, ready });
@@ -799,10 +799,11 @@ export class SocketService {
     });
   }
 
-  prepareGenericMinigame(code: string): Promise<RoomResponse> {
+  prepareGenericMinigame(code: string, hostMinigameData?: unknown): Promise<RoomResponse> {
     return this.emitWithResponse('match:minigame-generic-prepared', {
       code,
       hostId: this.playerId,
+      hostMinigameData: hostMinigameData ?? null,
     });
   }
 
@@ -989,7 +990,7 @@ export class SocketService {
 
         if (eventName === 'match:paint-prepared') {
           const target = payload.paintTarget;
-          
+
           const sofiaDrawing = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" style="background:%23fff0f5"><circle cx="200" cy="200" r="80" fill="%23ff6b6b"/><text x="200" y="210" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="white">Sofia (AI)</text></svg>`;
           const mateoDrawing = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" style="background:%23e6f7ff"><rect x="100" y="100" width="200" height="200" fill="%231890ff" rx="20"/><text x="200" y="210" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="white">Mateo (AI)</text></svg>`;
 
@@ -1022,7 +1023,7 @@ export class SocketService {
 
         if (eventName === 'match:paint-submit') {
           const userDrawing = payload.imageDataUrl;
-          
+
           const newSubmission = {
             playerId: userPlayerId,
             playerName: 'Jugador (Tú)',
@@ -1081,7 +1082,7 @@ export class SocketService {
             paintVotes: mockVotes,
             results: results
           };
-          
+
           const scores = [
             { playerId: userPlayerId, playerName: 'Jugador (Tú)', score: 30, position: 1, minigameCorrectCount: 0, minigameAnsweredCount: 0, minigameVoteCount: voteCounts.get(userPlayerId) || 0 },
             { playerId: 'sofia-ai', playerName: 'Sofia (AI)', score: 30, position: 1, minigameCorrectCount: 0, minigameAnsweredCount: 0, minigameVoteCount: voteCounts.get('sofia-ai') || 0 },
@@ -1112,6 +1113,7 @@ export class SocketService {
           const updatedSpecialRound = {
             ...specialRound!,
             preparedByHost: true,
+            hostMinigameData: payload.hostMinigameData ?? null,
             progress: [],
             results: [],
           };

@@ -19,8 +19,9 @@
     <span>seg</span>
   </aside>
   }
+  }
 
-  <main class="minigame-container">
+  <main class="minigame-container" [style.display]="stage() === 'game' ? 'block' : 'none'">
     @if (activeComponent(); as component) {
     <ng-container *ngComponentOutlet="component" />
     } @else {
@@ -30,7 +31,6 @@
     </section>
     }
   </main>
-  }
 
   @if (errorMessage()) {
   <p class="error-message" role="alert">{{ errorMessage() }}</p>

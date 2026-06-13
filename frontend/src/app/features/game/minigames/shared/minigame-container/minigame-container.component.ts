@@ -55,6 +55,13 @@ export class MinigameContainerComponent implements OnDestroy {
         return;
       }
 
+      // Evita la auto-preparacion para minijuegos genericos del registry.
+      // Estos minijuegos se auto-preparan a traves de sus propios componentes durante la intro/explicacion.
+      const isLegacy = round.minigameId === 'math-operations' || round.minigameId === 'paint';
+      if (!isLegacy) {
+        return;
+      }
+
       const info = this.minigameService.buildHostGameInfo();
 
       if (!info) {

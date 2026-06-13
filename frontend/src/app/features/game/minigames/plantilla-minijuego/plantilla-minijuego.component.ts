@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MinigameService } from '../shared/minigame.service';
 import { MinigameProgress } from '../shared/minigame.models';
@@ -27,7 +27,7 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
 
 
   //=========================================================
-  //            DATOS ESTATICOS DEL MINIJUEGO
+  //         ⚠️ DATOS ESTATICOS DEL MINIJUEGO ⚠️
   //=========================================================
 
   // DATOS DEL MINIJUEGO (solo lectura, llegan del servidor)  // ⚠️ NO TOCAR
@@ -45,7 +45,14 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
       progress: unknown[];
       results: unknown[];
       time: number;
+      hostMinigameData: any;
     } | undefined;
+  }
+
+  ngOnInit(): void {
+    if (this.minigameService.isHost()) {
+      this.minigamesDataPrepare();
+    }
   }
 
 
@@ -53,13 +60,80 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
   points = 0;
   readonly finished = signal(false);
   roundTime = this.payload?.time ?? 60;
+  hostMinigameData: any;
+
+
+  // El guest espera a que preparedByHost sea true para leer hostMinigameData,
+  private readonly _hostDataEffect = effect(() => {
+    const round = this.minigameService.currentRound();
+    if (!round?.preparedByHost) return;
+
+    const data = (round as any).hostMinigameData ?? this.payload?.hostMinigameData ?? null;
+    if (!this.minigameService.isHost()) {
+      this.hostMinigameData = data;
+    }
+  });
+
+  hostPrepareMinigame(reciveData: object) {
+    if (this.minigameService.isHost()) {
+
+      const data = reciveData
+
+      // Lo guardamos localmente en la propiedad
+      this.hostMinigameData = data;
+      console.log('Host minigame data:', this.hostMinigameData);
+
+      this.minigameService.prepareGenericMinigame(data).then((res) => { if (!res.ok) { console.error('Error al preparar minijuego:', res.reason); } });
+
+      return data;
+    }
+    return null;
+  }
+
   //=========================================================
 
 
 
 
-  //                     [ ZONA EDITABLE ]
-  // ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️
+
+
+
+
+
+
+
+
+
+
+  //                   [ ZONA EDITABLE ]
+  // ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️
+
+
+
+
+
+
+
+
+
+
+  //=========================================================
+  //              CONFIGURACIÓN DEL MINIJUEGO
+  //=========================================================
+
+  minigamesDataPrepare() {
+    let data: object = {}
+
+
+    data = {
+      array: [1, 2, 3, 4, 5, 6],
+      texto: "Ejemplo",
+      objeto: { propiedad1: "valor1", propiedad2: "valor2" }
+    }
+
+    this.hostPrepareMinigame(data)
+  }
+
 
 
 
@@ -73,15 +147,13 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
 
   /**  FUNCIONES PRINCIPALES MINIJUEGO
   * 
+  *   "this.hostMinigameData.X" se usa para datos del minijuego
+  * 
   *   sumarPuntos(cantidad: number)
   * 
   *   finishMinigame()
   * 
   */
-  ngOnInit(): void {
-  }
-
-
 
 
 
@@ -113,8 +185,27 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
 
 
 
-  //  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  
-  //                     [ ZONA EDITABLE ]
+  //  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆   ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆   ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆   ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆   ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆   ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆   ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆   ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆   ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  ⬆  
+  //                   [ ZONA EDITABLE ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   //=========================================================

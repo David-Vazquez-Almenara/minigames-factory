@@ -272,6 +272,8 @@ function toPublicSpecialRound(specialRound) {
     paintPhase: specialRound.paintPhase || null,
     paintEndsAt: specialRound.paintEndsAt || null,
     paintVoteEndsAt: specialRound.paintVoteEndsAt || null,
+    gameEndsAt: specialRound.gameEndsAt || null,
+    hostMinigameData: specialRound.hostMinigameData ?? null,
     paintSubmissions: toPublicPaintSubmissions(specialRound),
     paintVotes: toPublicPaintVotes(specialRound),
     progress: specialRound.progress
@@ -1892,6 +1894,8 @@ io.on('connection', (socket) => {
     specialRound.preparedByHost = true;
     specialRound.progress = new Map();
     specialRound.results = [];
+    specialRound.gameEndsAt = Number(payload.gameEndsAt) || (Date.now() + 60000);
+    specialRound.hostMinigameData = payload.hostMinigameData ?? null;
 
     io.to(room.code).emit('match:minigame-prepared', {
       lobbyId: room.code,

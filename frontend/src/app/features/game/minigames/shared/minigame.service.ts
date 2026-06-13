@@ -8,6 +8,7 @@ import {
   RoomResponse,
   ScoreboardPayload,
   SocketService,
+  SpecialRoundPayload,
 } from '../../../../core/services/socket.service';
 import {
   MinigameInfo,
@@ -87,7 +88,15 @@ export class MinigameService {
     }
 
     // Minijuegos genéricos del registry: marcan preparedByHost en servidor sin operations.
-    return this.socketService.prepareGenericMinigame(lobbyId);
+    return this.socketService.prepareGenericMinigame(lobbyId, info.payload);
+  }
+
+  prepareGenericMinigame(hostMinigameData?: any): Promise<RoomResponse> {
+    const lobbyId = this.match()?.lobbyId || this.lobby()?.code || '';
+    if (!lobbyId) {
+      return Promise.resolve({ ok: false, reason: 'No hay lobby activo para preparar el minijuego.' });
+    }
+    return this.socketService.prepareGenericMinigame(lobbyId, hostMinigameData);
   }
 
   receiveGameData(): MinigameInfo | null {
@@ -176,8 +185,8 @@ export class MinigameService {
       },
       players: [
         { id: userPlayerId, name: 'Jugador (Tu)', joinedAt: new Date().toISOString(), active: true, ready: true },
-        { id: 'sofia-ai',  name: 'Sofia (AI)',   joinedAt: new Date().toISOString(), active: true, ready: true },
-        { id: 'mateo-ai',  name: 'Mateo (AI)',   joinedAt: new Date().toISOString(), active: true, ready: true },
+        { id: 'sofia-ai', name: 'Sofia (AI)', joinedAt: new Date().toISOString(), active: true, ready: true },
+        { id: 'mateo-ai', name: 'Mateo (AI)', joinedAt: new Date().toISOString(), active: true, ready: true },
       ],
       createdAt: new Date().toISOString(),
     };
@@ -250,7 +259,7 @@ export class MinigameService {
 
     const legacyGenerators: Record<string, () => unknown> = {
       'math-operations': () => this.generateMathOperationsMinigame(),
-      'paint':           () => this.selectRandomObject(),
+      'paint': () => this.selectRandomObject(),
     };
 
     const legacyGenerator = legacyGenerators[specialRound.minigameId];
@@ -342,18 +351,18 @@ export class MinigameService {
     previousScoreboard: ScoreboardPayload | null,
   ): ScoreboardPayload {
     const previousScores = new Map((previousScoreboard?.scores || []).map((s) => [s.playerId, s.score]));
-    const lobbyOrder    = new Map(lobby.players.map((p, i) => [p.id, i]));
-    const bonusPoints   = this.calculateMinigameBonusPoints(results);
-    const resultMap     = new Map(results.map((r) => [r.playerId, r]));
+    const lobbyOrder = new Map(lobby.players.map((p, i) => [p.id, i]));
+    const bonusPoints = this.calculateMinigameBonusPoints(results);
+    const resultMap = new Map(results.map((r) => [r.playerId, r]));
 
     const scores = lobby.players.map((player) => ({
       playerId: player.id,
       playerName: player.name,
       score: (previousScores.get(player.id) || 0) + (bonusPoints.get(player.id) || 0),
       position: 0,
-      minigameCorrectCount:  resultMap.get(player.id)?.correctCount   || 0,
-      minigameAnsweredCount: resultMap.get(player.id)?.answeredCount  || 0,
-      minigameVoteCount:     resultMap.get(player.id)?.votesReceived,
+      minigameCorrectCount: resultMap.get(player.id)?.correctCount || 0,
+      minigameAnsweredCount: resultMap.get(player.id)?.answeredCount || 0,
+      minigameVoteCount: resultMap.get(player.id)?.votesReceived,
     }));
 
     scores.sort((a, b) => {
@@ -396,9 +405,9 @@ export class MinigameService {
         .map((r) => {
           const submission = submissionsByPlayer.get(r.playerId);
           return {
-            playerId:     r.playerId,
-            playerName:   submission?.playerName || r.playerName,
-            metricLabel:  `${r.votesReceived || 0} votos`,
+            playerId: r.playerId,
+            playerName: submission?.playerName || r.playerName,
+            metricLabel: `${r.votesReceived || 0} votos`,
             imageDataUrl: submission?.imageDataUrl || '',
           };
         })
@@ -416,8 +425,8 @@ export class MinigameService {
     const winners = submittedResults
       .filter((r) => (r.correctCount || 0) === maxCorrectCount)
       .map((r) => ({
-        playerId:    r.playerId,
-        playerName:  r.playerName,
+        playerId: r.playerId,
+        playerName: r.playerName,
         metricLabel: `${r.correctCount || 0} aciertos`,
       }));
 
@@ -476,12 +485,12 @@ export class MinigameService {
       time: 60,
       payload,
       metadata: {
-        title:           specialRound.title,
-        description:     specialRound.description,
-        roundNumber:     specialRound.roundNumber,
-        preparedByHost:  specialRound.preparedByHost,
-        paintPhase:      specialRound.paintPhase,
-        paintEndsAt:     specialRound.paintEndsAt,
+        title: specialRound.title,
+        description: specialRound.description,
+        roundNumber: specialRound.roundNumber,
+        preparedByHost: specialRound.preparedByHost,
+        paintPhase: specialRound.paintPhase,
+        paintEndsAt: specialRound.paintEndsAt,
         paintVoteEndsAt: specialRound.paintVoteEndsAt,
       },
     };
@@ -491,15 +500,17 @@ export class MinigameService {
    * Payload genérico para cualquier minijuego que no sea legacy.
    * Contiene todo lo que un componente del registry puede necesitar.
    */
-  private buildGenericPayload(specialRound: NonNullable<ReturnType<typeof this.currentRound>>) {
+  private buildGenericPayload(specialRound: SpecialRoundPayload) {
+    const round = specialRound as SpecialRoundPayload & { hostMinigameData?: unknown };
     return {
-      roundNumber:    specialRound.roundNumber,
-      minigameId:     specialRound.minigameId,
-      title:          specialRound.title,
-      description:    specialRound.description,
-      preparedByHost: specialRound.preparedByHost,
-      progress:       specialRound.progress ?? [],
-      results:        specialRound.results  ?? [],
+      roundNumber: round.roundNumber,
+      minigameId: round.minigameId,
+      title: round.title,
+      description: round.description,
+      preparedByHost: round.preparedByHost,
+      progress: round.progress ?? [],
+      results: round.results ?? [],
+      hostMinigameData: round.hostMinigameData ?? null,
     };
   }
 
@@ -552,9 +563,9 @@ export class MinigameService {
 
     if (!submitted.length) return new Map<string, number>();
 
-    const maxVotes   = Math.max(...submitted.map((r) => r.value));
-    const winners    = submitted.filter((r) => r.value === maxVotes);
-    const winnerPts  = winners.length === 1 ? 30 : winners.length === 2 ? 15 : 10;
+    const maxVotes = Math.max(...submitted.map((r) => r.value));
+    const winners = submitted.filter((r) => r.value === maxVotes);
+    const winnerPts = winners.length === 1 ? 30 : winners.length === 2 ? 15 : 10;
 
     return new Map(winners.map((w) => [w.playerId, winnerPts]));
   }
@@ -570,8 +581,8 @@ export class MinigameService {
     for (const rankPt of rankPoints) {
       if (currentIndex >= sorted.length) break;
 
-      const value   = sorted[currentIndex].value;
-      const tied    = sorted.filter((r, i) => i >= currentIndex && r.value === value);
+      const value = sorted[currentIndex].value;
+      const tied = sorted.filter((r, i) => i >= currentIndex && r.value === value);
       const perPlayer = tied.length === 1 ? rankPt : tied.length === 2 ? Math.max(5, rankPt / 2) : 5;
 
       for (const r of tied) points.set(r.playerId, Math.trunc(perPlayer));
@@ -598,7 +609,7 @@ export class MinigameService {
 
   private generateSimpleDivision(): Omit<MathOperation, 'id'> {
     const divisor = Math.random() > 0.5 ? 2 : 3;
-    const answer  = this.randomInt(3, 18);
+    const answer = this.randomInt(3, 18);
     return { prompt: `${answer * divisor} / ${divisor}`, answer };
   }
 
