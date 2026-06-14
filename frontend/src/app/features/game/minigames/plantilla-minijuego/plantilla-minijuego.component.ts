@@ -122,14 +122,21 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
   //=========================================================
 
   minigamesDataPrepare() {
-    let data: object = {}
-
+    let data: {
+      array: number[];
+      texto: string;
+      objeto: { propiedad1: string; propiedad2: string };
+      number: number;
+    };
 
     data = {
       array: [1, 2, 3, 4, 5, 6],
       texto: "Ejemplo",
-      objeto: { propiedad1: "valor1", propiedad2: "valor2" }
+      objeto: { propiedad1: "valor1", propiedad2: "valor2" },
+      number: 0
     }
+
+
 
     this.hostPrepareMinigame(data)
   }

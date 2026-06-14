@@ -14,7 +14,7 @@
     "id": "paint",
     "title": "A Pintar",
     "description": "Dibuja el objeto secreto y vota despues por la obra que mas se parezca. El mas votado gana mas puntos.",
-    "durationSeconds": 60,
+    "durationSeconds": 120,
     "requiresPreparation": true,
     "minigameData": {
       "votingDurationSeconds": 20
@@ -29,6 +29,17 @@
     "title": "Plantilla",
     "description": "Plantilla para futuros minijuegos",
     "durationSeconds": 60,
+    "requiresPreparation": false,
+    "minigameData": {},
+    "phases": [
+      "playing"
+    ]
+  },
+  {
+    "id": "simon-says",
+    "title": "Simon Dice",
+    "description": "Repite el patron de colores de la secuencia.",
+    "durationSeconds": 120,
     "requiresPreparation": false,
     "minigameData": {},
     "phases": [
