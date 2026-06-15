@@ -33,17 +33,15 @@
     font-size: clamp(4rem, 18vw, 12rem);
     font-weight: 1000;
     line-height: 1.05;
-    background-image: linear-gradient(
-      90deg,
-      #ff9acb 0%,
-      #a8e8ff 16%,
-      #fff0a8 32%,
-      #b9f7b5 48%,
-      #ff9acb 64%,
-      #a8e8ff 80%,
-      #fff0a8 90%,
-      #ff9acb 100%
-    );
+    background-image: linear-gradient(90deg,
+        #ff9acb 0%,
+        #a8e8ff 16%,
+        #fff0a8 32%,
+        #b9f7b5 48%,
+        #ff9acb 64%,
+        #a8e8ff 80%,
+        #fff0a8 90%,
+        #ff9acb 100%);
     background-repeat: repeat;
     background-size: 210% 150%;
     background-position: 210% 50%;
@@ -103,9 +101,10 @@
 }
 
 .minigame-container {
-  display: grid;
-  width: min(1080px, 100%);
-  justify-items: center;
+  display: flex;
+  justify-content: center;
+  width: fit-content;
+  height: fit-content;
   margin-top: 96px;
   animation: rise-in 420ms ease-out both;
 }
@@ -236,10 +235,12 @@
     opacity: 0;
     transform: scale(0) rotate(20deg);
   }
+
   72% {
     opacity: 1;
     transform: scale(1.07) rotate(-3deg);
   }
+
   to {
     opacity: 1;
     transform: scale(1) rotate(0);
@@ -250,6 +251,7 @@
   from {
     transform: translate(-50%, 34vh) scale(1.9) rotate(-7deg);
   }
+
   to {
     transform: translateX(-50%) scale(1) rotate(0);
   }
@@ -273,6 +275,7 @@
     opacity: 0;
     transform: translateY(-20px) scale(0.8);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);

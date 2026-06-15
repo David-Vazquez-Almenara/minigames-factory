@@ -53,6 +53,14 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
     if (this.minigameService.isHost()) {
       this.minigamesDataPrepare();
     }
+
+
+    setTimeout(() => {
+      this.animatedSequence();
+      setTimeout(() => {
+        this.disableButtons = false;
+      }, 2000);
+    }, 8000);
   }
 
 
@@ -111,43 +119,6 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
 
 
 
-
-
-
-
-
-
-  //=========================================================
-  //              CONFIGURACIÓN DEL MINIJUEGO
-  //=========================================================
-
-  minigamesDataPrepare() {
-    let data: {
-      array: number[];
-      texto: string;
-      objeto: { propiedad1: string; propiedad2: string };
-      number: number;
-    };
-
-    data = {
-      array: [1, 2, 3, 4, 5, 6],
-      texto: "Ejemplo",
-      objeto: { propiedad1: "valor1", propiedad2: "valor2" },
-      number: 0
-    }
-
-
-
-    this.hostPrepareMinigame(data)
-  }
-
-
-
-
-
-
-
-
   //=========================================================
   //                LÓGICA DEL MINIJUEGO
   //=========================================================
@@ -164,17 +135,163 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
 
 
 
-  pulsar(): void {
-    if (this.finished()) return;
+  //=========================================================
+  //              CONFIGURACIÓN DEL MINIJUEGO
+  //=========================================================
 
-    this.sumarPuntos(1);
+  minigamesDataPrepare() {
+    let data: {
+      colorsSequence: number[];
+    };
 
-    if (this.points >= 10) {
-      this.finishMinigame();
+    let selectedColors: number[] = [];
+
+    for (let i = 0; i < 50; i++) {
+      selectedColors.push(Math.floor(Math.random() * 4 + 1));
+    }
+
+    this.colorsSequence = selectedColors;
+
+    data = {
+      colorsSequence: selectedColors
+    }
+    console.log('Data preparada:', data);
+
+
+    this.hostPrepareMinigame(data)
+  }
+
+
+  maxScoreGet = 0;
+  colorsSequence: number[] = [];
+  actualInterval = 0;
+
+  disableButtons = true;
+
+  userCheckIndex: number = 0;
+
+
+
+
+
+
+  simoSayTry(buttonAction: number) {
+    if (!buttonAction) {
+      console.error('Boton no encontrado');
+      return;
+    }
+
+    const expectedColor = this.colorsSequence[this.userCheckIndex];
+
+    if (buttonAction === expectedColor) {
+      this.userCheckIndex++;
+
+      if (this.userCheckIndex > this.actualInterval) {
+        console.log("¡Ronda completada con éxito!");
+
+        this.actualInterval++;
+
+        if (this.actualInterval > this.maxScoreGet) {
+          this.maxScoreGet = this.actualInterval;
+          this.points = this.maxScoreGet;
+        }
+
+        this.userCheckIndex = 0;
+
+        this.startNextRound();
+      }
     } else {
-      this.updateProgress();
+      console.log("¡Te equivocaste! Juego reiniciado.");
+      this.actualInterval = 0;
+      this.userCheckIndex = 0;
+
+      this.failAnimation();
+
+      setTimeout(() => {
+        this.startNextRound();
+      }, 1150);
+    }
+
+    console.log("Puntos: " + this.maxScoreGet);
+    console.log("Ronda Actual (Interval): " + this.actualInterval);
+  }
+
+  // 3. Función auxiliar para bloquear botones y mostrar la secuencia limpiamente
+  async startNextRound() {
+    this.disableButtons = true;
+    await this.animatedSequence();
+    this.disableButtons = false;
+    console.log('Botones habilitados para el usuario');
+  }
+
+
+  activarColor: string | null = null;
+  async animatedSequence() {
+    const colorSequenceForInterval = this.colorsSequence.slice(0, this.actualInterval + 1);
+
+    for (let i = 0; i < colorSequenceForInterval.length; i++) {
+
+      if (i === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+
+      let color = '';
+
+      switch (colorSequenceForInterval[i]) {
+        case 1:
+          color = 'red';
+          break;
+        case 2:
+          color = 'green';
+          break;
+        case 3:
+          color = 'yellow';
+          break;
+        case 4:
+          color = 'blue';
+          break;
+      }
+
+      this.activarColor = color;
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      this.activarColor = null;
+
     }
   }
+
+
+  pressButton(event: Event) {
+    const buttonElement = event.currentTarget as HTMLElement;
+
+    buttonElement.classList.add('button-active');
+
+    // Se levanta de forma casi instantánea (60ms)
+    setTimeout(() => {
+      buttonElement.classList.remove('button-active');
+    }, 150);
+  }
+
+
+  failAnimation() {
+    console.log('Fail animation');
+    const buttons = document.querySelectorAll('.action-btn');
+
+    buttons.forEach((button) => {
+      const element = button as HTMLElement;
+      element.classList.add('fail-animation');
+
+      setTimeout(() => {
+        element.classList.remove('fail-animation');
+      }, 500);
+    });
+  }
+
+
 
 
 

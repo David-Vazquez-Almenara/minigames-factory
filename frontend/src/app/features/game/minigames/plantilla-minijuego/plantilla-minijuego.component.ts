@@ -19,7 +19,7 @@ import { MinigameFullscreenDirective } from '../shared/minigame-fullscreen.direc
   standalone: true,
   imports: [CommonModule, MinigameFullscreenDirective],
   templateUrl: './plantilla-minijuego.component.html',
-  styleUrls: ['./plantilla-minijuego.component.css', './config-css-minijuego.component.css.css']
+  styleUrls: ['./plantilla-minijuego.component.css', './config-css-minijuego.component.css']
 })
 export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
 

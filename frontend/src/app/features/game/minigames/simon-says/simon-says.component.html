@@ -6,14 +6,31 @@
 
 
     <div class="score-display">
-      <span>Puntos actuales: </span>
+      <span>Maxima cadena </span>
       <strong class="score-number">{{ points }}</strong>
     </div>
 
-    <!-- Botón del centro para la lógica interactiva -->
-    <button class="action-btn" (click)="pulsar()">
-      ¡PÚLSAME!
-    </button>
+    <div id="simonSays-buttons-container">
+      <button class="action-btn red" [ngStyle]="{ 'pointer-events': disableButtons ? 'none' : null }"
+        (click)="simoSayTry(1); pressButton($event)" [class.active]="this.activarColor === 'red'">
+        rojo
+      </button>
+
+      <button class="action-btn green" [ngStyle]="{ 'pointer-events': disableButtons ? 'none' : null }"
+        (click)="simoSayTry(2); pressButton($event)" [class.active]="this.activarColor === 'green'">
+        verde
+      </button>
+
+      <button class="action-btn yellow" [ngStyle]="{ 'pointer-events': disableButtons ? 'none' : null }"
+        (click)="simoSayTry(3); pressButton($event)" [class.active]="this.activarColor === 'yellow'">
+        amarillo
+      </button>
+
+      <button class="action-btn blue" [ngStyle]="{ 'pointer-events': disableButtons ? 'none' : null }"
+        (click)="simoSayTry(4); pressButton($event)" [class.active]="this.activarColor === 'blue'">
+        azul
+      </button>
+    </div>
 
 
 

@@ -27,6 +27,12 @@ const MINIGAME_TEST_CONFIGS: Record<string, Pick<SpecialRoundPayload, 'minigameI
     description: 'Pulsa el boton en el centro para sumar puntos y probar la plantilla.',
     paintPhase: null,
   },
+  'simon-says': {
+    minigameId: 'simon-says',
+    title: 'Simón Dice',
+    description: 'Repite las secuencias de luces y sonidos. El orden es clave para ganar puntos.',
+    paintPhase: null,
+  },
 };
 
 @Component({

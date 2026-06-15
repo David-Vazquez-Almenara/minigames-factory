@@ -1,100 +1,211 @@
-:host {
-    display: block;
-    width: 100%;
-    overflow: hidden !important;
-}
-
-.simon-says-container {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-sizing: border-box;
-    padding: 20px;
-    overflow: hidden !important;
-}
-
-/* ================================ */
-/*             CONFIG               */
-/* ================================ */
-
 .game-area {
-    width: 50%;
-    min-width: 320px;
-    max-width: 600px;
-    max-height: 60vh;
-    overflow-y: auto;
-    border-radius: 22px;
-    padding: 26px;
-    display: grid;
-    gap: 18px;
-    justify-items: center;
-    text-align: center;
-    box-sizing: border-box;
-
-    /* Scrollbar personalizado (Firefox) */
-    scrollbar-width: thin;
-    scrollbar-color: #c0c0c0 transparent;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  font-family: "Trebuchet MS", "Comic Sans MS", Arial, sans-serif;
+  padding: 20px;
 }
 
-/* Scrollbar para Webkit (Chrome, Safari, Edge) */
-.game-area::-webkit-scrollbar {
-    width: 8px;
+#simonSays-buttons-container {
+  display: grid;
+  gap: 30px;
+  /* Un poco más de espacio para que no se pisen las sombras 3D */
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  width: 100%;
+  height: 100%;
+  padding-bottom: 15px;
+  /* Espacio inferior para la sombra del bloque de abajo */
 }
 
-.game-area::-webkit-scrollbar-track {
-    background: transparent;
+/* Estilo Base 3D para todos los botones del juego */
+#simonSays-buttons-container button {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 40px 10vw;
+
+  cursor: pointer;
+  outline: none;
+  border: 3px solid #000;
+  border-radius: 16px;
+
+  font-weight: 800;
+  font-size: 22px;
+  text-transform: capitalize;
+  color: #e0e0e0;
+
+  transform-style: preserve-3d;
+  transition: transform 150ms cubic-bezier(0, 0, 0.58, 1), background 150ms cubic-bezier(0, 0, 0.58, 1);
 }
 
-.game-area::-webkit-scrollbar-thumb {
-    background-color: #c0c0c0;
-    border-radius: 20px;
+/* El "Suelo/Relieve" 3D genérico detrás del botón */
+#simonSays-buttons-container button::before {
+  position: absolute;
+  content: '';
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px #000;
+  transform: translate3d(0, 0.6em, -1em);
+  transition: transform 150ms cubic-bezier(0, 0, 0.58, 1), box-shadow 150ms cubic-bezier(0, 0, 0.58, 1);
 }
 
-.game-area::-webkit-scrollbar-thumb:hover {
-    background-color: #a0a0a0;
+/* =================================================== */
+/* COMPORTAMIENTO DE HUNDIMIENTO (Hover y Activaciones)*/
+/* =================================================== */
+
+/* 1. Al pasar el ratón (Hover): Se hunde un poco */
+#simonSays-buttons-container button:hover {
+  color: #fff !important;
+  transform: translate(0, 0.2em);
 }
 
-/* Cuando el contenido se desborda y se activa la clase de pantalla completa */
-::ng-deep .special-round-screen.minigame-fullscreen-active {
-    overflow: hidden !important;
-    padding: 0 !important;
-    display: block !important;
+#simonSays-buttons-container button:hover::before {
+  transform: translate3d(0, 0.4em, -1em);
 }
 
-::ng-deep .minigame-container.minigame-fullscreen-active {
-    margin-top: 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-    transform: none !important;
-    animation: none !important;
+/* 2. Al pulsar o activarse (Máquina o Click): Se hunde del todo */
+#simonSays-buttons-container button.active,
+#simonSays-buttons-container button.button-active {
+  color: #fff !important;
+  transform: translate(0em, 0.6em);
 }
 
-.simon-says-container.fullscreen-mode {
-    width: 100%;
-    height: 100vh;
-    background-color: #fff7ec;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 0;
+#simonSays-buttons-container button.active::before,
+#simonSays-buttons-container button.button-active::before {
+  box-shadow: 0 0 0 3px #000;
+  transform: translate3d(0, 0, -1em);
 }
 
-.simon-says-container.fullscreen-mode .game-area {
-    width: 100%;
-    max-width: none;
-    height: calc(100vh - 130px);
-    max-height: calc(100vh - 130px);
-    margin-top: 150px;
-    /* Espacio para que no se pise con el título fixed */
-    border: none;
-    border-radius: 0;
-    padding: 30px 16px 50px 16px;
-    box-sizing: border-box;
-    overflow-y: auto;
+
+
+
+/* --- ROJO --- */
+.action-btn.red {
+  background: #9e1b1b;
 }
 
-/* Quitar scroll por defecto de la página cuando el minijuego está activo */
-::ng-deep body.minigame-active-no-scroll {
-    overflow: hidden !important;
+.action-btn.red::before {
+  background: #590900;
+}
+
+.action-btn.red:hover,
+.action-btn.red.active,
+.action-btn.red.button-active {
+  background: #be1300;
+}
+
+/* --- VERDE --- */
+.action-btn.green {
+  background: #008000;
+}
+
+.action-btn.green::before {
+  background: #005d00;
+}
+
+.action-btn.green:hover,
+.action-btn.green.active,
+.action-btn.green.button-active {
+  background: #00ad00;
+}
+
+/* --- AMARILLO --- */
+.action-btn.yellow {
+  background: #928000;
+  color: #333 !important;
+}
+
+/* Texto oscuro para contraste */
+.action-btn.yellow::before {
+  background: #625500;
+}
+
+.action-btn.yellow:hover,
+.action-btn.yellow.active,
+.action-btn.yellow.button-active {
+  background: #baa700;
+  color: #fff !important;
+}
+
+/* --- AZUL --- */
+.action-btn.blue {
+  background: #00109b;
+}
+
+.action-btn.blue::before {
+  background: #00065a;
+}
+
+.action-btn.blue:hover,
+.action-btn.blue.active,
+.action-btn.blue.button-active {
+  background: #000fda;
+}
+
+
+
+
+
+/* =================================================== */
+/* ANIMACIÓN DE FALLO DE RELEVACIÓN DIRECTA (0.5s)     */
+/* =================================================== */
+
+/* 1. Forzado absoluto de colores (Doble selector para máxima prioridad) */
+#simonSays-buttons-container button.action-btn.fail-animation {
+  background: #212121 !important;
+  color: #fff !important;
+  transition: none !important;
+  /* Ejecuta solo el movimiento */
+  animation: fail-sink-only 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+#simonSays-buttons-container button.action-btn.fail-animation::before {
+  background: #000000 !important;
+  transition: none !important;
+  /* Ejecuta solo el movimiento del relieve */
+  animation: fail-shadow-only 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+/* 2. Keyframes Limpios: SOLO mueven el botón (El color ya lo fijamos arriba) */
+@keyframes fail-sink-only {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  15% {
+    transform: translate(0em, 0.6em);
+  }
+
+  50% {
+    transform: translate(0em, 0.6em);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes fail-shadow-only {
+  0% {
+    transform: translate3d(0, 0.6em, -1em);
+  }
+
+  15% {
+    transform: translate3d(0, 0, -1em);
+  }
+
+  50% {
+    transform: translate3d(0, 0, -1em);
+  }
+
+  100% {
+    transform: translate3d(0, 0.6em, -1em);
+  }
 }
