@@ -53,6 +53,10 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
     if (this.minigameService.isHost()) {
       this.minigamesDataPrepare();
     }
+
+    setTimeout(() => {
+      this.countdownTimer();
+    }, 8000);
   }
 
 
@@ -220,6 +224,21 @@ export class PlantillaMinijuegoComponent implements OnInit, OnDestroy {
   //=========================================================
   ngOnDestroy(): void {
   }
+
+  //timer con roundTime y ejecuta finishMinigame al llegar a 0 sin interrumpir el resto de funciones
+
+  countdownTimer() {
+    const timerInterval = setInterval(() => {
+      this.roundTime--;
+
+      if (this.roundTime <= 0) {
+        clearInterval(timerInterval);
+        this.finishMinigame();
+      }
+      console.log("Time: " + this.roundTime);
+    }, 1000);
+  }
+
 
 
   sumarPuntos(cantidad: number): void {

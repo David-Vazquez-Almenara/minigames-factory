@@ -3,6 +3,7 @@ import { MathOperationsComponent } from '../math-operations/math-operations.comp
 import { PaintComponent } from '../paint/paint.component';
 import { PlantillaMinijuegoComponent } from '../plantilla-minijuego/plantilla-minijuego.component';
 import { SimonSaysComponent } from '../simon-says/simon-says.component';
+import { LowerHigherMinijuegoComponent } from '../lower-higher/lower-higher-minijuego.component';
 
 
 /*
@@ -17,4 +18,5 @@ export const MINIGAME_COMPONENTS: Record<string, Type<any>> = {
   // ── Minijuegos genéricos (añadir aquí los nuevos) ──────────
   'plantilla': PlantillaMinijuegoComponent,
   "simon-says": SimonSaysComponent,
+  "lower-higher": LowerHigherMinijuegoComponent,
 };

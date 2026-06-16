@@ -57,6 +57,7 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
 
     setTimeout(() => {
       this.animatedSequence();
+      this.countdownTimer();
       setTimeout(() => {
         this.disableButtons = false;
       }, 2000);
@@ -139,6 +140,8 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
   //              CONFIGURACIÓN DEL MINIJUEGO
   //=========================================================
 
+
+
   minigamesDataPrepare() {
     let data: {
       colorsSequence: number[];
@@ -193,7 +196,7 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
 
         if (this.actualInterval > this.maxScoreGet) {
           this.maxScoreGet = this.actualInterval;
-          this.points = this.maxScoreGet;
+          this.sumarPuntos(1);
         }
 
         this.userCheckIndex = 0;
@@ -338,6 +341,19 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
   }
 
+  //timer con roundTime y ejecuta finishMinigame al llegar a 0 sin interrumpir el resto de funciones
+
+  countdownTimer() {
+    const timerInterval = setInterval(() => {
+      this.roundTime--;
+
+      if (this.roundTime <= 0) {
+        clearInterval(timerInterval);
+        this.finishMinigame();
+      }
+      console.log("Time: " + this.roundTime);
+    }, 1000);
+  }
 
   sumarPuntos(cantidad: number): void {
     this.points += cantidad;

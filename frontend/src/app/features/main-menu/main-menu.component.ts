@@ -33,6 +33,12 @@ const MINIGAME_TEST_CONFIGS: Record<string, Pick<SpecialRoundPayload, 'minigameI
     description: 'Repite las secuencias de luces y sonidos. El orden es clave para ganar puntos.',
     paintPhase: null,
   },
+  'lower-higher': {
+    minigameId: 'lower-higher',
+    title: 'Mas alto o mas bajo',
+    description: '¡Adivina cual de los dos objetos es mas caro!',
+    paintPhase: null,
+  },
 };
 
 @Component({

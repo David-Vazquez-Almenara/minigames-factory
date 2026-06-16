@@ -45,5 +45,16 @@
     "phases": [
       "playing"
     ]
+  },
+  {
+    "id": "lower-higher",
+    "title": "Mas alto o mas bajo",
+    "description": "¡Adivina cual de los dos objetos es mas caro!",
+    "durationSeconds": 120,
+    "requiresPreparation": false,
+    "minigameData": {},
+    "phases": [
+      "playing"
+    ]
   }
 ]
