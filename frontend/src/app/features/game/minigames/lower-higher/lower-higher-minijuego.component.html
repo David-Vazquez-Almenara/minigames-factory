@@ -6,46 +6,33 @@
       <strong class="score-number">{{ points }}</strong>
     </div>
 
-    <div id="cardsContainer">
-      @let leftItem = hostMinigameData?.selectedItem[cardSlots()[0]];
-      @let rightItem = hostMinigameData?.selectedItem[cardSlots()[1]];
+    <div id="cardsContainer" [class.interaction-blocked]="blocked()">
 
-      @if (leftItem) {
-      <div class="card" [class.slide-out-left]="animating()" (click)="checkAnswer(cardSlots()[0])">
-        @if (showCorrectAnim() && lastClickedIndex() === cardSlots()[0]) {
+      @for (card of visibleCards(); track card.index) {
+      @let item = hostMinigameData?.selectedItem[card.index];
+      @if (item) {
+      <div class="card"
+        [style.left]="leftForSlot(card.slot)"
+        (click)="checkAnswer(card.index)">
+
+        @if (showCorrectAnim() && lastClickedIndex() === card.index) {
         <div class="anim-overlay correct-overlay">✓</div>
         }
-        @if (showWrongAnim() && lastClickedIndex() === cardSlots()[0]) {
+        @if (showWrongAnim() && lastClickedIndex() === card.index) {
         <div class="anim-overlay wrong-overlay">✗</div>
         }
-        <div class="card-image" [style.background-image]="'url(' + leftItem.image + ')'"></div>
-        <div class="card-name">{{ leftItem.name }}</div>
-        <div class="card-price debug">{{ leftItem.price }}</div>
+
+        <div class="card-image" [style.background-image]="'url(' + item.image + ')'"></div>
+        <div class="card-name">{{ item.name }}</div>
+
+        @if (card.showPrice) {
+        <div class="card-price">{{ item.price }} €</div>
+        }
+
       </div>
+      }
       }
 
-      @if (rightItem) {
-      <div class="card" [class.slide-shift]="animating()" (click)="checkAnswer(cardSlots()[1])">
-        @if (showCorrectAnim() && lastClickedIndex() === cardSlots()[1]) {
-        <div class="anim-overlay correct-overlay">✓</div>
-        }
-        @if (showWrongAnim() && lastClickedIndex() === cardSlots()[1]) {
-        <div class="anim-overlay wrong-overlay">✗</div>
-        }
-        <div class="card-image" [style.background-image]="'url(' + rightItem.image + ')'"></div>
-        <div class="card-name">{{ rightItem.name }}</div>
-        <div class="card-price debug">{{ rightItem.price }}</div>
-      </div>
-      }
-
-      @if (nextCardIndex() !== null && hostMinigameData?.selectedItem[nextCardIndex()!]) {
-      @let nextItem = hostMinigameData.selectedItem[nextCardIndex()!];
-      <div class="card incoming-card" [class.slide-in-right]="animating()">
-        <div class="card-image" [style.background-image]="'url(' + nextItem.image + ')'"></div>
-        <div class="card-name">{{ nextItem.name }}</div>
-        <div class="card-price debug">{{ nextItem.price }}</div>
-      </div>
-      }
     </div>
 
   </main>
