@@ -55,6 +55,16 @@
     background-color: #a0a0a0;
 }
 
+/* Escritorio normal (no fullscreen, no móvil) */
+@media (min-width: 1024px) {
+    .plantilla-container:not(.fullscreen-mode) .game-area {
+        width: 100%;
+        max-width: none;
+        height: 55vh;
+        max-height: 55vh;
+    }
+}
+
 /* Cuando el contenido se desborda y se activa la clase de pantalla completa */
 ::ng-deep .special-round-screen.minigame-fullscreen-active {
     overflow: hidden !important;

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, effect, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MinigameService } from '../shared/minigame.service';
 import { MinigameProgress } from '../shared/minigame.models';
@@ -33,10 +33,10 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
   // DATOS DEL MINIJUEGO (solo lectura, llegan del servidor)  // ⚠️ NO TOCAR
 
   private readonly minigameService = inject(MinigameService);
-  readonly gameInfo = this.minigameService.receiveGameData();
+  readonly gameInfo = computed(() => this.minigameService.receiveGameData());
   readonly currentPlayerId = this.minigameService.currentPlayerId;
   get payload() {
-    return this.gameInfo?.payload as {
+    return this.gameInfo()?.payload as {
       roundNumber: number;
       minigameId: string;
       title: string;
@@ -54,14 +54,11 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
       this.minigamesDataPrepare();
     }
 
-
+    this.animatedSequence();
+    this.countdownTimer();
     setTimeout(() => {
-      this.animatedSequence();
-      this.countdownTimer();
-      setTimeout(() => {
-        this.disableButtons = false;
-      }, 2000);
-    }, 8000);
+      this.disableButtons = false;
+    }, 2000);
   }
 
 
@@ -70,6 +67,7 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
   readonly finished = signal(false);
   roundTime = this.payload?.time ?? 60;
   hostMinigameData: any;
+  private timerInterval?: ReturnType<typeof setInterval>;
 
 
   // El guest espera a que preparedByHost sea true para leer hostMinigameData,
@@ -80,6 +78,9 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
     const data = (round as any).hostMinigameData ?? this.payload?.hostMinigameData ?? null;
     if (!this.minigameService.isHost()) {
       this.hostMinigameData = data;
+      if (data && Array.isArray(data.colorsSequence)) {
+        this.colorsSequence = data.colorsSequence;
+      }
     }
   });
 
@@ -339,16 +340,30 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
   //        LÓGICA DE PROGRESO Y PUNTUACIÓN ESTATICA
   //=========================================================
   ngOnDestroy(): void {
+    this.clearTimer();
+  }
+
+  private clearTimer(): void {
+    if (this.timerInterval !== undefined) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = undefined;
+    }
   }
 
   //timer con roundTime y ejecuta finishMinigame al llegar a 0 sin interrumpir el resto de funciones
 
   countdownTimer() {
-    const timerInterval = setInterval(() => {
+    this.clearTimer();
+    this.timerInterval = setInterval(() => {
+      if (this.finished()) {
+        this.clearTimer();
+        return;
+      }
+
       this.roundTime--;
 
       if (this.roundTime <= 0) {
-        clearInterval(timerInterval);
+        this.clearTimer();
         this.finishMinigame();
       }
       console.log("Time: " + this.roundTime);
@@ -379,6 +394,7 @@ export class SimonSaysComponent implements OnInit, OnDestroy {
   finishMinigame(): void {
     if (this.finished()) return;
     this.finished.set(true);
+    this.clearTimer();
 
     this.updateProgress(true); //finishedAt = true
 

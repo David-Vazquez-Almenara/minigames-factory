@@ -133,6 +133,7 @@ export interface SpecialRoundPayload {
   minigameId: string;
   title: string;
   description: string;
+  durationSeconds?: number;
   preparedByHost?: boolean;
   operations?: MathOperationPayload[];
   submittedPlayerIds?: string[];

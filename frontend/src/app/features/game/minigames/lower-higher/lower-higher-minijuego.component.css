@@ -5,52 +5,218 @@
 .game-area {
   background-color: #fff7ec;
   border: 4px solid #000;
-
   font-family: "Trebuchet MS", "Comic Sans MS", Arial, sans-serif;
-
 }
 
 /* ================================ */
 /*               CSS                */
 /* ================================ */
 
+#cardsContainer {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  padding: 16px;
+  overflow: hidden;
+  min-height: 340px;
+}
 
+/* --- CARD BASE --- */
+.card {
+  position: relative;
+  width: 42%;
+  max-width: 320px;
+  min-height: 280px;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  flex-shrink: 0;
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+}
+
+.card:active {
+  transform: translateY(-2px);
+}
+
+/* --- BACKGROUND IMAGE (cover) --- */
+.card-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+}
+
+/* --- OVERLAY GRADIENT SO TEXT IS READABLE --- */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.05) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* --- PRODUCT NAME --- */
+.card-name {
+  position: absolute;
+  bottom: 20px;
+  left: 10%;
+  width: 80%;
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 800;
+  text-align: center;
+  z-index: 2;
+  text-shadow:
+    2px 2px 0 #000,
+    -2px -2px 0 #000,
+    2px -2px 0 #000,
+    -2px 2px 0 #000,
+    0 0 8px rgba(0,0,0,0.5);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+/* --- PRICE (debug, visible) --- */
+.card-price.debug {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  z-index: 2;
+}
+
+/* --- CORRECT / WRONG OVERLAY --- */
+.anim-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 5rem;
+  font-weight: 900;
+  z-index: 5;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.correct-overlay {
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.2);
+  animation: pulse-correct 0.6s ease-out;
+}
+
+.wrong-overlay {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.2);
+  animation: shake-wrong 0.5s ease-in-out;
+}
+
+@keyframes pulse-correct {
+  0%   { transform: scale(0.5); opacity: 0; }
+  50%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1);   opacity: 0; }
+}
+
+@keyframes shake-wrong {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-12px); }
+  30%  { transform: translateX(12px); }
+  45%  { transform: translateX(-8px); }
+  60%  { transform: translateX(8px); }
+  80%  { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+
+/* ======================================== */
+/*          CAROUSEL ANIMATIONS             */
+/* ======================================== */
+
+/* Card at left position slides out to the left */
+.card.slide-out-left {
+  animation: slide-out-left 0.4s ease-in forwards;
+}
+
+/* Card at right position shifts left to take the left spot */
+.card.slide-shift {
+  animation: slide-shift 0.4s ease-in-out forwards;
+}
+
+/* Incoming card slides in from the right */
+.card.incoming-card {
+  position: absolute;
+  width: 42%;
+  max-width: 320px;
+  min-height: 280px;
+  right: -45%;
+  opacity: 0;
+  z-index: 0;
+}
+
+@media (min-width: 1024px) {
+  #cardsContainer {
+    gap: 32px;
+    min-height: 420px;
+  }
+
+  .card,
+  .card.incoming-card {
+    max-width: 460px;
+    min-height: 360px;
+  }
+
+  .card-name {
+    font-size: 1.8rem;
+  }
+}
+
+.card.incoming-card.slide-in-right {
+  animation: slide-in-right 0.4s ease-out forwards;
+}
+
+@keyframes slide-out-left {
+  0%   { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(-120%); opacity: 0; }
+}
+
+@keyframes slide-shift {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(calc(-50% - 12px)); }
+}
+
+@keyframes slide-in-right {
+  0%   { transform: translateX(0); opacity: 0; }
+  100% { transform: translateX(calc(-110% - 24px)); opacity: 1; }
+}
+
+/* --- FAIL ANIMATION (legacy, keep for cards container as fallback) --- */
 .card.fail-animation {
   animation: fail-animation 1s ease-in-out;
 }
 
 @keyframes fail-animation {
-  0% {
-    transform: translateX(0);
-    background-color: initial;
-  }
-
-
-  15% {
-    transform: rotate(3deg);
-  }
-
-  30% {
-    transform: rotate(-3deg);
-  }
-
-  50% {
-    background-color: red;
-    transform: rotate(3deg);
-
-  }
-
-  65% {
-    transform: rotate(-3deg);
-  }
-
-  80% {
-    transform: rotate(3deg);
-  }
-
-  100% {
-    transform: translateX(0%);
-    background-color: initial;
-
-  }
+  0%   { transform: translateX(0); background-color: initial; }
+  15%  { transform: rotate(3deg); }
+  30%  { transform: rotate(-3deg); }
+  50%  { background-color: red; transform: rotate(3deg); }
+  65%  { transform: rotate(-3deg); }
+  80%  { transform: rotate(3deg); }
+  100% { transform: translateX(0%); background-color: initial; }
 }

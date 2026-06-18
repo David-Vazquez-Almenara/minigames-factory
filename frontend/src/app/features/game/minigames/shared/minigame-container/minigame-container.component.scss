@@ -109,6 +109,15 @@
   animation: rise-in 420ms ease-out both;
 }
 
+@media (min-width: 1024px) {
+  .minigame-container:not(.minigame-fullscreen-active) {
+    width: 80vw;
+    max-width: 80vw;
+    height: 55vh;
+    max-height: 55vh;
+  }
+}
+
 .pacman-timer {
   --timer-progress: 0;
   width: 118px;

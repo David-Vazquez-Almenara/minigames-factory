@@ -1,36 +1,52 @@
 <div class="plantilla-container" appMinigameFullscreen>
   <main class="game-area">
 
-
-
-
-
     <div class="score-display">
       <span>Número de aciertos: </span>
       <strong class="score-number">{{ points }}</strong>
     </div>
 
-
-    <!-- debe actualizarse por cada click en checkAnswer -->
-    {{this.roundItem}}
-
-
-
     <div id="cardsContainer">
-      <!-- Muestra un ngfor de solo dos cartas con su this.hostMinigameData.selectedItem[roundItem[0]] y this.hostMinigameData.selectedItem[roundItem[1]] -->
-      <div *ngFor="let index of roundItem">
-        <div (click)="checkAnswer(index)" class="card" style="border: solid 2px black;" [ngClass]="{
-          'fail-animation': failAnimationStart == true}">
-          <img [src]="hostMinigameData.selectedItem[index].image">
-          <p>{{ hostMinigameData.selectedItem[index].name }}</p>
-          <p>{{ hostMinigameData.selectedItem[index].price }}</p>
-        </div>
+      @let leftItem = hostMinigameData?.selectedItem[cardSlots()[0]];
+      @let rightItem = hostMinigameData?.selectedItem[cardSlots()[1]];
+
+      @if (leftItem) {
+      <div class="card" [class.slide-out-left]="animating()" (click)="checkAnswer(cardSlots()[0])">
+        @if (showCorrectAnim() && lastClickedIndex() === cardSlots()[0]) {
+        <div class="anim-overlay correct-overlay">✓</div>
+        }
+        @if (showWrongAnim() && lastClickedIndex() === cardSlots()[0]) {
+        <div class="anim-overlay wrong-overlay">✗</div>
+        }
+        <div class="card-image" [style.background-image]="'url(' + leftItem.image + ')'"></div>
+        <div class="card-name">{{ leftItem.name }}</div>
+        <div class="card-price debug">{{ leftItem.price }}</div>
       </div>
+      }
+
+      @if (rightItem) {
+      <div class="card" [class.slide-shift]="animating()" (click)="checkAnswer(cardSlots()[1])">
+        @if (showCorrectAnim() && lastClickedIndex() === cardSlots()[1]) {
+        <div class="anim-overlay correct-overlay">✓</div>
+        }
+        @if (showWrongAnim() && lastClickedIndex() === cardSlots()[1]) {
+        <div class="anim-overlay wrong-overlay">✗</div>
+        }
+        <div class="card-image" [style.background-image]="'url(' + rightItem.image + ')'"></div>
+        <div class="card-name">{{ rightItem.name }}</div>
+        <div class="card-price debug">{{ rightItem.price }}</div>
+      </div>
+      }
+
+      @if (nextCardIndex() !== null && hostMinigameData?.selectedItem[nextCardIndex()!]) {
+      @let nextItem = hostMinigameData.selectedItem[nextCardIndex()!];
+      <div class="card incoming-card" [class.slide-in-right]="animating()">
+        <div class="card-image" [style.background-image]="'url(' + nextItem.image + ')'"></div>
+        <div class="card-name">{{ nextItem.name }}</div>
+        <div class="card-price debug">{{ nextItem.price }}</div>
+      </div>
+      }
     </div>
-
-
-
-
 
   </main>
 </div>

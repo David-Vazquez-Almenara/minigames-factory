@@ -222,6 +222,7 @@ export class MinigameService {
         minigameId: info.id,
         title: String((info.metadata as Record<string, unknown>)?.['title'] || info.id),
         description: String((info.metadata as Record<string, unknown>)?.['description'] || ''),
+        durationSeconds: info.time ?? 60,
         preparedByHost: false,
         operations: info.id === 'math-operations' ? [] : undefined,
         submittedPlayerIds: [],
@@ -270,13 +271,14 @@ export class MinigameService {
 
     return {
       id: specialRound.minigameId,
-      time: 60,
+      time: specialRound.durationSeconds ?? 60,
       payload,
       metadata: {
         title: specialRound.title,
         description: specialRound.description,
         roundNumber: specialRound.roundNumber,
         preparedByHost: specialRound.preparedByHost,
+        durationSeconds: specialRound.durationSeconds,
       },
     };
   }
@@ -299,9 +301,9 @@ export class MinigameService {
     }
 
     if (minigameId in MINIGAME_COMPONENTS) {
-      // Minijuego del registry: no necesita preparación especial en servidor.
-      // El specialRound ya contiene title, description, roundNumber, etc.
-      return this.sendGameData({ id: minigameId, time: 60, payload: {} });
+      const specialRound = this.currentRound();
+      const durationSeconds = specialRound?.durationSeconds ?? 60;
+      return this.sendGameData({ id: minigameId, time: durationSeconds, payload: {} });
     }
 
     console.warn(`[MinigameService] ID de minijuego desconocido: "${minigameId}". No está registrado en MINIGAME_COMPONENTS.`);
@@ -482,7 +484,7 @@ export class MinigameService {
 
     return {
       id: specialRound.minigameId,
-      time: 60,
+      time: specialRound.durationSeconds ?? 60,
       payload,
       metadata: {
         title: specialRound.title,
@@ -492,6 +494,7 @@ export class MinigameService {
         paintPhase: specialRound.paintPhase,
         paintEndsAt: specialRound.paintEndsAt,
         paintVoteEndsAt: specialRound.paintVoteEndsAt,
+        durationSeconds: specialRound.durationSeconds,
       },
     };
   }

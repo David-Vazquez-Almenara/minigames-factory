@@ -677,12 +677,14 @@ function startSpecialRound(room, roundNumber) {
   }
 
   const selectedMinigame = selectRandomMinigame(room);
+  const minigameConfig = getMinigameConfig(selectedMinigame.id);
   room.match.phase = 'special-round';
   room.match.specialRound = {
     roundNumber,
     minigameId: selectedMinigame.id,
     title: selectedMinigame.title,
     description: selectedMinigame.description,
+    durationSeconds: minigameConfig?.durationSeconds || 60,
     preparedByHost: false,
     operations: [],
     submissions: new Map(),
