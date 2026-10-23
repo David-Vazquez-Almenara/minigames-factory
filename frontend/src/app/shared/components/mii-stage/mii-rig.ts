@@ -78,6 +78,7 @@ export class MiiRig {
   private lastMood: MiiMood = 'idle';
 
   private dizzyStars: ThreeModule.Group | null = null;
+  private disposed = false;
 
   mood: MiiMood = 'idle';
   pose: MiiPose = 'stand';
@@ -214,6 +215,12 @@ export class MiiRig {
   }
 
   setFaceTexture(texture: ThreeModule.Texture): void {
+    // La cara se carga en segundo plano: si llega cuando la escena ya se ha cerrado, se libera sin usarla.
+    if (this.disposed) {
+      texture.dispose();
+      return;
+    }
+
     this.faceTexture?.dispose();
     this.faceTexture = texture;
     this.faceMaterial.map = texture;
@@ -315,6 +322,7 @@ export class MiiRig {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.faceTexture?.dispose();
 
     for (const item of this.disposables) {

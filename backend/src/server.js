@@ -119,7 +119,7 @@ const MINIGAMES = [
     id: 'math-operations',
     title: 'Operaciones matematicas',
     description:
-      'Resuelve las mismas operaciones que el resto. Cuantas mas aciertes y mas rapido termines, mas puntos podras ganar.',
+      'Resuelve las operaciones. Cuantas mas aciertes y mas rapido termines, mas puntos podras ganar.',
     image: 'assets/minigames/math-operations.png',
     accent: '#d9f4ff',
     minPlayers: 1,
@@ -128,7 +128,7 @@ const MINIGAMES = [
     id: 'paint',
     title: 'A Pintar',
     description:
-      'Dibuja el objeto secreto y vota despues por la obra que mas se parezca. El mas votado gana mas puntos.',
+      'Dibuja el objeto y vota despues por la obra que mas se parezca.',
     image: 'assets/minigames/paint.png',
     accent: '#fff4b8',
     minPlayers: 2,
@@ -137,7 +137,7 @@ const MINIGAMES = [
     id: 'impostor',
     title: 'El Impostor',
     description:
-      'Todos conocen la palabra secreta menos uno, que solo sabe la categoria. Por turnos, decid en voz alta algo relacionado y votad para expulsar al impostor.',
+      'Todos conocen la palabra secreta menos uno. Por turnos, decid en voz alta algo relacionado y votad para expulsar al impostor.',
     image: 'assets/minigames/impostor.png',
     accent: '#ffb3b3',
     minPlayers: 3,
@@ -155,7 +155,7 @@ const MINIGAMES = [
     id: 'pinturillo',
     title: 'Pinturillo',
     description:
-      'Un jugador dibuja una palabra secreta y el resto la adivina por el chat. Cuanto antes la aciertes, mas puntos. Tienes 90 segundos.',
+      'Un jugador dibuja y el resto la adivina por el chat. Cuanto antes la aciertes, mas puntos.',
     image: 'assets/minigames/pinturillo.png',
     accent: '#ffb3b3',
     minPlayers: 2,
@@ -164,7 +164,7 @@ const MINIGAMES = [
     id: 'pogo',
     title: 'Carrera en pogo',
     description:
-      'Pulsa ESPACIO (o el boton) cuando la aguja pase por la zona marcada para saltar. La zona blanca pequena vale doble. Llega el primero a la meta.',
+      'Pulsa ESPACIO (o el boton) cuando la aguja pase por la zona marcada para saltar. La zona blanca vale el doble. Llega el primero a la meta.',
     image: 'assets/minigames/pogo.png',
     accent: '#d9f4ff',
     minPlayers: 2,
@@ -173,7 +173,7 @@ const MINIGAMES = [
     id: 'blackjack',
     title: 'Blackjack',
     description:
-      'Mesa de casino con 300 fichas para 3 manos, en mesas de 4 jugadores. Apuesta, pide carta o plantate y gana al crupier sin pasarte de 21. Gana quien acabe con mas fichas; quien se quede sin fichas pierde 10 puntos.',
+      'Mesa de casino con 300 fichas para 3 manos. Gana al crupier sin pasarte de 21. Gana quien acabe con mas fichas.',
     image: 'assets/minigames/blackjack.png',
     accent: '#b9f7a7',
     minPlayers: 2,
@@ -182,7 +182,7 @@ const MINIGAMES = [
     id: 'barrels',
     title: 'Barriles',
     description:
-      'Un barril cae sobre tu cabeza desde 50 metros, y cae rapido. Pulsa ESPACIO para pararlo lo mas cerca posible de tu cabeza... sin que te aplaste: si te aplasta pierdes 10 puntos.',
+      'Un barril cae sobre tu cabeza. Pulsa ESPACIO (O el boton) para pararlo lo mas cerca posible de tu cabeza... sin que te aplaste.',
     image: 'assets/minigames/barrels.png',
     accent: '#ffe891',
     minPlayers: 2,
@@ -191,7 +191,7 @@ const MINIGAMES = [
     id: 'cups',
     title: 'Cubiletes',
     description:
-      'El crupier esconde una bola bajo uno de los 4 cubiletes y los mezcla, cada ronda mas rapido. Cuando paren, tienes 15 segundos para elegir donde esta la bola. Son 4 rondas y una ronda bonus final muy rapida; cada acierto suma 5 puntos.',
+      'El crupier esconde una bola bajo uno de los 4 cubiletes y los mezcla. Cuando paren, tienes 15 segundos para elegir donde esta la bola.',
     image: 'assets/minigames/cups.png',
     accent: '#fff0a8',
     minPlayers: 2,
@@ -200,7 +200,7 @@ const MINIGAMES = [
     id: 'cars',
     title: 'Esquiva los coches',
     description:
-      'Elige uno de los 4 carriles en 15 segundos y cruza los dedos: pasaran coches (uno en las 2 primeras rondas y dos despues) y si pasa por tu carril, te atropella. Gana quien aguante mas rondas, hasta un maximo de 6.',
+      'Elige uno de los 4 carriles y cruza los dedos. Gana quien aguante mas rondas.',
     image: 'assets/minigames/cars.png',
     accent: '#d9f4ff',
     minPlayers: 2,
@@ -209,7 +209,7 @@ const MINIGAMES = [
     id: 'balloon',
     title: 'Cuidado que explota',
     description:
-      'Por turnos, sube al escenario y dale a la palanca para hinchar el globo: cada palancazo suma 1 de aire y puedes darle las veces que quieras antes de pasar el turno. Nadie sabe cuanto aguanta. A quien le explote pierde 15 puntos; el resto gana 5.',
+      'Por turnos, sube al escenario y dale a la palanca para hinchar el globo hasta que explote. A quien le explote pierde 15 puntos; el resto gana 5 puntos.',
     image: 'assets/minigames/balloon.png',
     accent: '#ffc4dc',
     minPlayers: 2,
@@ -503,20 +503,20 @@ function toMatchState(room) {
 function toPublicPaintSubmissions(specialRound) {
   return specialRound?.paintSubmissions
     ? Array.from(specialRound.paintSubmissions.values()).map((submission) => ({
-        playerId: submission.playerId,
-        playerName: submission.playerName,
-        imageDataUrl: submission.imageDataUrl,
-        submittedAt: submission.submittedAt,
-      }))
+      playerId: submission.playerId,
+      playerName: submission.playerName,
+      imageDataUrl: submission.imageDataUrl,
+      submittedAt: submission.submittedAt,
+    }))
     : [];
 }
 
 function toPublicPaintVotes(specialRound) {
   return specialRound?.paintVotes
     ? Array.from(specialRound.paintVotes.entries()).map(([voterPlayerId, targetPlayerId]) => ({
-        voterPlayerId,
-        targetPlayerId,
-      }))
+      voterPlayerId,
+      targetPlayerId,
+    }))
     : [];
 }
 
@@ -541,10 +541,10 @@ function toPublicSpecialRound(specialRound) {
     preparedByHost: specialRound.preparedByHost,
     operations: Array.isArray(specialRound.operations)
       ? specialRound.operations.map((operation) => ({
-          id: String(operation.id || ''),
-          prompt: String(operation.prompt || ''),
-          answer: Number(operation.answer),
-        }))
+        id: String(operation.id || ''),
+        prompt: String(operation.prompt || ''),
+        answer: Number(operation.answer),
+      }))
       : [],
     submittedPlayerIds: specialRound.submissions ? Array.from(specialRound.submissions.keys()) : [],
     paintTarget: specialRound.paintTarget || null,
@@ -555,13 +555,13 @@ function toPublicSpecialRound(specialRound) {
     paintVotes: toPublicPaintVotes(specialRound),
     progress: specialRound.progress
       ? Array.from(specialRound.progress.values()).map((entry) => ({
-          playerId: entry.playerId,
-          playerName: entry.playerName,
-          correctCount: entry.correctCount,
-          answeredCount: entry.answers?.length || 0,
-          completed: Boolean(entry.completed),
-          finishedAt: entry.finishedAt || null,
-        }))
+        playerId: entry.playerId,
+        playerName: entry.playerName,
+        correctCount: entry.correctCount,
+        answeredCount: entry.answers?.length || 0,
+        completed: Boolean(entry.completed),
+        finishedAt: entry.finishedAt || null,
+      }))
       : [],
     results: Array.isArray(specialRound.results) ? specialRound.results : [],
     impostor: toPublicImpostor(specialRound.impostor),
@@ -931,11 +931,11 @@ function finishMatch(room) {
   room.match.finalStandings = room.match.lastScoreboard?.scores?.length
     ? room.match.lastScoreboard.scores
     : Array.from(room.players.values()).map((player, index) => ({
-        playerId: player.id,
-        playerName: player.name,
-        score: 0,
-        position: index + 1,
-      }));
+      playerId: player.id,
+      playerName: player.name,
+      score: 0,
+      position: index + 1,
+    }));
   emitMatchState(room);
 }
 
@@ -3292,7 +3292,7 @@ async function readLimitedBody(response) {
   const chunks = [];
   let total = 0;
 
-  for (;;) {
+  for (; ;) {
     const { done, value } = await reader.read();
 
     if (done) {

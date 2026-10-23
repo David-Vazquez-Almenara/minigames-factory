@@ -1,5 +1,6 @@
 import type * as ThreeModule from 'three';
 import { BlackjackCard } from '../../../../core/services/socket.service';
+import { createDealerRig } from '../../../../shared/components/mii-stage/dealer-rig';
 import { MiiMood, MiiRig, createFaceTexture } from '../../../../shared/components/mii-stage/mii-rig';
 import { CameraDirector, CameraGoal, ViewInsets } from '../../../../shared/three/camera-director';
 import { CARD_HEIGHT, CARD_WIDTH, CardFactory, CardMesh } from './card-factory';
@@ -280,6 +281,8 @@ export class BlackjackScene {
     private readonly labelLayer: HTMLElement,
     initialState: BlackjackSceneState,
     private readonly proxyBase: string,
+    /** Semilla de la cara del crupier (sala + ronda): todos los jugadores ven la misma. */
+    dealerSeed: string,
   ) {
     const T = THREE;
     this.state = initialState;
@@ -314,7 +317,7 @@ export class BlackjackScene {
     const time = performance.now() / 1000;
 
     // Crupier: un Mii normal vestido de negro, de pie y sin foto en la cara.
-    this.dealer = new MiiRig(T, '#1d1d1f', { pantsColor: '#121214', bowTie: true });
+    this.dealer = createDealerRig(T, dealerSeed);
     this.dealer.mood = 'dealer';
     this.dealer.root.position.z = DEALER_Z;
     this.dealer.enter(time);

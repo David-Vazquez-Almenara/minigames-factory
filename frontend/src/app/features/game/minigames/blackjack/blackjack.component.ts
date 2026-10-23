@@ -425,7 +425,7 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
     }
 
     try {
-      this.scene = new BlackjackScene(THREE, this.canvasRef().nativeElement, this.rootRef().nativeElement, this.labelsRef().nativeElement, initial, environment.apiUrl);
+      this.scene = new BlackjackScene(THREE, this.canvasRef().nativeElement, this.rootRef().nativeElement, this.labelsRef().nativeElement, initial, environment.apiUrl, this.dealerSeed());
     } catch {
       // Sin WebGL los controles siguen funcionando con el panel de jugadores.
       this.unsupported.set(true);
@@ -522,6 +522,12 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
     }
 
     this.audioService.playEffect(amount > 0 ? 'confirm' : 'select');
+  }
+
+  /** Semilla de la cara del crupier: la misma para todos los jugadores de esta ronda. */
+  private dealerSeed(): string {
+    const match = this.matchService.match();
+    return `${match?.lobbyId || ''}:${match?.roundNumber || 0}`;
   }
 
   private clampBet(value: number): number {

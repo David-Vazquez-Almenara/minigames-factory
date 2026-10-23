@@ -187,7 +187,7 @@ export class CupsComponent implements AfterViewInit, OnDestroy {
     }
 
     try {
-      this.scene = new CupsScene(THREE, this.canvasRef().nativeElement, this.rootRef().nativeElement, this.labelsRef().nativeElement, initial);
+      this.scene = new CupsScene(THREE, this.canvasRef().nativeElement, this.rootRef().nativeElement, this.labelsRef().nativeElement, initial, this.dealerSeed());
     } catch {
       this.unsupported.set(true);
       return;
@@ -231,6 +231,12 @@ export class CupsComponent implements AfterViewInit, OnDestroy {
     this.localPick.set({ round: state.round, slot });
     this.audioService.playEffect('select');
     void this.matchService.voteCup(lobbyId, state.round, slot);
+  }
+
+  /** Semilla de la cara del crupier: la misma para todos los jugadores de esta ronda. */
+  private dealerSeed(): string {
+    const match = this.matchService.match();
+    return `${match?.lobbyId || ''}:${match?.roundNumber || 0}`;
   }
 
   private playStageSound(stage: string): void {

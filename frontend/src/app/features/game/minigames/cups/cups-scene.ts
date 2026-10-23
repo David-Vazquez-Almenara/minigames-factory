@@ -1,4 +1,5 @@
 import type * as ThreeModule from 'three';
+import { createDealerRig } from '../../../../shared/components/mii-stage/dealer-rig';
 import { MiiRig } from '../../../../shared/components/mii-stage/mii-rig';
 import { CameraDirector, CameraGoal, ViewInsets } from '../../../../shared/three/camera-director';
 
@@ -82,6 +83,8 @@ export class CupsScene {
     private readonly host: HTMLElement,
     private readonly labelLayer: HTMLElement,
     initialState: CupsSceneState,
+    /** Semilla de la cara del crupier (sala + ronda): todos los jugadores ven la misma. */
+    dealerSeed: string,
   ) {
     const T = THREE;
     this.renderer = new T.WebGLRenderer({ canvas, antialias: true });
@@ -106,7 +109,7 @@ export class CupsScene {
 
     // El crupier del blackjack, grande y de pie detras de la mesa (sin atravesarla): se le ve sobre todo el
     // cuerpo, con las manos a la altura de los cubiletes. Puede que la cabeza quede fuera de plano.
-    this.dealer = new MiiRig(T, '#1d1d1f', { pantsColor: '#121214', bowTie: true });
+    this.dealer = createDealerRig(T, dealerSeed);
     this.dealer.mood = 'dealer';
     this.dealer.enter(performance.now() / 1000 - 1);
     const dealerHolder = new T.Group();
