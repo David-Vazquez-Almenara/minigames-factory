@@ -1,0 +1,48 @@
+﻿<section class="finished-screen" aria-label="Fin de la partida">
+  <div class="confetti" aria-hidden="true">
+    @for (piece of confetti; track $index) {
+    <i [style.left.%]="piece.left" [style.animation-delay.ms]="piece.delay" [style.--hue]="piece.hue"></i>
+    }
+  </div>
+
+  <main class="finished-panel">
+    <header>
+      <p>Fin de la partida</p>
+      <h1>Podio final</h1>
+    </header>
+
+    <app-mii-stage class="podium-miis" [players]="podiumMiis()" mode="podium" />
+
+    @if (standings().length > 3) {
+    <ol class="rest-list" start="4">
+      @for (entry of standings().slice(3); track entry.playerId) {
+      <li>
+        <span>{{ entry.position }}º</span>
+        <app-player-avatar [avatarUrl]="playerAvatar(entry.playerId)" [name]="entry.playerName" [color]="playerColor(entry.playerId)" [size]="28" />
+        <strong>{{ entry.playerName }}</strong>
+        <em>{{ entry.score }} pts</em>
+      </li>
+      }
+    </ol>
+    }
+
+    @if (!standings().length) {
+    <p class="empty-message">No hay puntuaciones registradas en esta partida.</p>
+    }
+
+    <div class="finished-actions">
+      @if (isHost()) {
+      <button class="primary-button" type="button" [disabled]="loading()" (click)="returnToLobby()">
+        {{ loading() ? 'Volviendo...' : 'Volver al lobby' }}
+      </button>
+      } @else {
+      <p class="waiting-host">Esperando a que el host vuelva al lobby...</p>
+      <button class="secondary-button" type="button" (click)="leave()">Salir</button>
+      }
+    </div>
+
+    @if (errorMessage()) {
+    <p class="error-message" role="alert">{{ errorMessage() }}</p>
+    }
+  </main>
+</section>

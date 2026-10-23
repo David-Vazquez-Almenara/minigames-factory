@@ -1,0 +1,25 @@
+<div class="roulette" [class.number-variant]="variant() === 'number'" [class.landed]="hasLanded()">
+  <div class="viewport" #viewport>
+    <div class="track" #track>
+      @for (item of strip(); track item.stripIndex) {
+      <div
+        class="roulette-card"
+        [class.winner]="hasLanded() && item.stripIndex === winnerStripIndex()"
+        [style.--card-accent]="item.accent || '#fff7ec'"
+        [attr.data-roulette-key]="item.key"
+        [attr.data-strip-index]="item.stripIndex"
+        [attr.data-winner]="item.stripIndex === winnerStripIndex() ? 'true' : null"
+      >
+        @if (item.image && !brokenImages().has(item.key)) {
+        <img [src]="item.image" [alt]="item.label" draggable="false" (error)="markImageBroken(item.key)" />
+        } @else if (variant() === 'card') {
+        <span class="image-fallback" aria-hidden="true">{{ item.label.charAt(0) }}</span>
+        }
+        <span class="card-label">{{ item.label }}</span>
+      </div>
+      }
+    </div>
+  </div>
+
+  <div class="marker" aria-hidden="true"></div>
+</div>

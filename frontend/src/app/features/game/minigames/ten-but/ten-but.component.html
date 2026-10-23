@@ -1,0 +1,136 @@
+﻿<section class="ten-but-game" aria-label="Minijuego Es un 10, pero">
+  @if (state(); as tenBut) {
+
+  @if (tenBut.stage !== 'results') {
+  <header class="speaker-banner" [class.is-me]="isSpeaker()">
+    <app-player-avatar [avatarUrl]="speakerAvatar()" [name]="speakerName()" [color]="speakerColor()" [size]="52" />
+    <div>
+      <span>{{ isSpeaker() ? 'Tú eres' : 'Portavoz' }}</span>
+      <strong>{{ isSpeaker() ? 'el portavoz' : speakerName() }}</strong>
+    </div>
+  </header>
+  }
+
+  @switch (tenBut.stage) {
+    @case ('waiting-spin') {
+    <main class="stage-card">
+      @if (isSpeaker()) {
+      <h2>¡Tu ruleta secreta va a girar!</h2>
+      <p>Te tocará un número del 1 al 10. Nadie más lo verá.</p>
+      <span class="bouncing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      } @else {
+      <h2>{{ speakerName() }} va a girar la ruleta</h2>
+      <p>Prepárate para escuchar su frase: «Es un 10, pero…».</p>
+      <span class="bouncing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      }
+    </main>
+    }
+
+    @case ('spinning') {
+    <main class="stage-card wide">
+      <h2>{{ isSpeaker() ? 'Tu número secreto' : speakerName() + ' está girando...' }}</h2>
+      @if (isSpeaker() && secretNumber()) {
+      <app-roulette-strip
+        variant="number"
+        [items]="numberItems"
+        [winnerIndex]="secretNumber()! - 1"
+        [spinStartsAt]="tenBut.spinStartsAt"
+        [spinDurationMs]="tenBut.spinDurationMs"
+        [landingOffset]="landingOffset()"
+        (landed)="onSpeakerLanded()"
+      />
+      } @else {
+      <app-roulette-strip
+        variant="number"
+        [items]="hiddenItems"
+        [winnerIndex]="0"
+        [spinStartsAt]="tenBut.spinStartsAt"
+        [spinDurationMs]="tenBut.spinDurationMs"
+      />
+      }
+    </main>
+
+    @if (isSpeaker() && numberRevealed() && secretNumber()) {
+    <div class="number-burst" aria-live="assertive">
+      <div class="rays" aria-hidden="true"></div>
+      <div class="big-number" [style.background-color]="numberColors[secretNumber()! - 1]">{{ secretNumber() }}</div>
+      <p>¡Tu número es el {{ secretNumber() }}!</p>
+    </div>
+    }
+    }
+
+    @case ('answering') {
+    @if (isSpeaker()) {
+    <main class="stage-card speaker-panel">
+      <div class="secret-badge" [style.background-color]="numberColors[(secretNumber() || 1) - 1]">
+        <span>Tu número</span>
+        <strong>{{ secretNumber() || '?' }}</strong>
+      </div>
+      <h2>¡Di tu frase!</h2>
+      <p class="phrase-example">«Es un 10, pero…» y describe algo que encaje con tu número. ¡Sin decirlo!</p>
+      <div class="answer-progress">
+        <span>Respuestas: {{ answeredCount() }} / {{ guessers().length }}</span>
+        <div class="guesser-chips">
+          @for (guesser of guessers(); track guesser.id) {
+          <span class="guesser-chip" [class.answered]="guesser.answered">
+            <app-player-avatar [avatarUrl]="guesser.avatarUrl" [name]="guesser.name" [color]="guesser.color" [size]="26" />{{ guesser.name }}
+          </span>
+          }
+        </div>
+      </div>
+      <small class="timer-pill">Tiempo: {{ answerTimer.seconds() }}s</small>
+    </main>
+    } @else if (isParticipant()) {
+    <main class="stage-card answer-panel">
+      <h2>¿Qué número tiene {{ speakerName() }}?</h2>
+      <p>Escucha su frase y elige del 1 al 10.</p>
+
+      <div class="number-pad" role="radiogroup" aria-label="Elige un numero">
+        @for (value of numbers; track value) {
+        <button
+          type="button"
+          role="radio"
+          class="number-button"
+          [style.--number-color]="numberColors[value - 1]"
+          [class.selected]="(submittedAnswer() ?? selectedNumber()) === value"
+          [attr.aria-checked]="(submittedAnswer() ?? selectedNumber()) === value"
+          [disabled]="hasAnswered()"
+          (click)="selectNumber(value)"
+        >
+          {{ value }}
+        </button>
+        }
+      </div>
+
+      @if (hasAnswered()) {
+      <p class="sent-badge">✓ Respuesta enviada{{ submittedAnswer() ? ': ' + submittedAnswer() : '' }}. Esperando al resto...</p>
+      } @else {
+      <button class="confirm-button" type="button" [disabled]="selectedNumber() === null || sending()" (click)="confirmAnswer()">
+        {{ sending() ? 'Enviando...' : selectedNumber() === null ? 'Elige un número' : 'Confirmar respuesta (' + selectedNumber() + ')' }}
+      </button>
+      }
+      <small class="timer-pill">Tiempo: {{ answerTimer.seconds() }}s · {{ answeredCount() }} / {{ guessers().length }} han respondido</small>
+    </main>
+    } @else {
+    <main class="stage-card">
+      <p>Estás viendo esta ronda como espectador.</p>
+    </main>
+    }
+    }
+
+    @case ('results') {
+    @if (tenBut.outcome; as outcome) {
+    <app-ten-but-results [outcome]="outcome" />
+    }
+    }
+  }
+  } @else {
+  <main class="stage-card">
+    <h2>Preparando la ruleta</h2>
+  </main>
+  }
+
+  @if (errorMessage()) {
+  <p class="error-message" role="alert">{{ errorMessage() }}</p>
+  }
+</section>

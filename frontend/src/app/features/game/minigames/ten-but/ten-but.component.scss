@@ -1,0 +1,366 @@
+:host {
+  display: grid;
+  width: 100%;
+  justify-items: center;
+}
+
+.ten-but-game {
+  display: grid;
+  width: min(980px, 100%);
+  gap: 18px;
+  justify-items: center;
+}
+
+.speaker-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px 8px 12px;
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 999px;
+  animation: pop-in 420ms cubic-bezier(0.18, 0.88, 0.3, 1.3) both;
+
+  div {
+    display: grid;
+    text-align: left;
+  }
+
+  span {
+    font-size: 0.8rem;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  strong {
+    font-size: 1.3rem;
+  }
+
+  &.is-me {
+    background-color: #ffe891;
+  }
+}
+
+.stage-card {
+  display: grid;
+  width: min(720px, 100%);
+  gap: 14px;
+  justify-items: center;
+  padding: 24px;
+  text-align: center;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+  animation: pop-in 460ms cubic-bezier(0.18, 0.88, 0.3, 1.2) both;
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h2 {
+    font-size: clamp(1.7rem, 5.5vw, 2.8rem);
+    line-height: 1;
+  }
+
+  p,
+  small {
+    font-weight: 900;
+  }
+
+  &.wide {
+    width: min(980px, 100%);
+  }
+}
+
+.spin-button {
+  min-width: 220px;
+  min-height: 72px;
+  font: inherit;
+  font-size: 1.8rem;
+  font-weight: 1000;
+  background-color: #ffe891;
+  border: 4px solid #000;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #000;
+  animation: spin-invite 1300ms ease-in-out infinite;
+
+  &:disabled {
+    cursor: no-drop;
+    opacity: 0.65;
+  }
+}
+
+// Revelacion del numero: la tarjeta salta al centro de la pantalla con rayos girando detras.
+.number-burst {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  background-color: rgba(255, 214, 232, 0.88);
+  pointer-events: none;
+  animation: burst-fade 2600ms ease-in both;
+
+  p {
+    margin: 0;
+    font-size: clamp(1.4rem, 5vw, 2.4rem);
+    font-weight: 1000;
+    animation: pop-in 500ms cubic-bezier(0.18, 0.88, 0.3, 1.4) 350ms both;
+  }
+}
+
+.rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 160vmax;
+  height: 160vmax;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 232, 145, 0.85) 0 10deg, transparent 10deg 20deg);
+  transform: translate(-50%, -50%);
+  animation: rays-spin 6s linear infinite;
+}
+
+.big-number {
+  position: relative;
+  display: grid;
+  width: clamp(150px, 34vw, 240px);
+  aspect-ratio: 3 / 4;
+  place-items: center;
+  color: #fff;
+  font-size: clamp(6rem, 22vw, 10rem);
+  font-weight: 1000;
+  line-height: 1;
+  border: 5px solid #000;
+  border-radius: 26px;
+  box-shadow: 0 10px 0 #000;
+  -webkit-text-stroke: 4px #000;
+  paint-order: stroke fill;
+  animation: number-zoom 900ms cubic-bezier(0.18, 0.88, 0.3, 1.35) both;
+}
+
+.secret-badge {
+  display: grid;
+  min-width: 120px;
+  padding: 8px 16px;
+  border: 4px solid #000;
+  border-radius: 18px;
+  animation: badge-drop 620ms cubic-bezier(0.18, 0.88, 0.3, 1.3) both;
+
+  span {
+    font-weight: 950;
+    text-transform: uppercase;
+  }
+
+  strong {
+    color: #fff;
+    font-size: 4rem;
+    line-height: 1;
+    -webkit-text-stroke: 3px #000;
+    paint-order: stroke fill;
+  }
+}
+
+.phrase-example {
+  font-size: 1.15rem;
+}
+
+.answer-progress {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+  font-weight: 950;
+}
+
+.guesser-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.guesser-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  font-weight: 900;
+  background-color: #fff;
+  border: 2px solid #000;
+  border-radius: 999px;
+  transition: background-color 240ms ease;
+
+  &.answered {
+    background-color: #b9f7a7;
+    animation: pop-in 320ms ease-out both;
+  }
+}
+
+.number-pad {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%;
+  gap: 10px;
+}
+
+.number-button {
+  min-height: 70px;
+  color: #000;
+  font: inherit;
+  font-size: 2rem;
+  font-weight: 1000;
+  background-color: var(--number-color);
+  border: 3px solid #000;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 0 #000;
+  }
+
+  &.selected {
+    transform: translateY(-4px) scale(1.06);
+    box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+  }
+
+  &:disabled:not(.selected) {
+    opacity: 0.45;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+.confirm-button {
+  min-width: 240px;
+  min-height: 56px;
+  padding: 12px 20px;
+  font: inherit;
+  font-weight: 950;
+  background-color: #b9f7a7;
+  border: 3px solid #000;
+  border-radius: 16px;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: no-drop;
+    opacity: 0.6;
+  }
+}
+
+.sent-badge {
+  padding: 10px 16px;
+  background-color: #b9f7a7;
+  border: 3px solid #000;
+  border-radius: 14px;
+  animation: pop-in 360ms ease-out both;
+}
+
+.timer-pill {
+  padding: 6px 12px;
+  background-color: #d9f4ff;
+  border: 2px solid #000;
+  border-radius: 999px;
+}
+
+.bouncing-dots {
+  display: flex;
+  gap: 8px;
+
+  i {
+    width: 14px;
+    height: 14px;
+    background-color: #000;
+    border-radius: 50%;
+    animation: dot-bounce 900ms ease-in-out infinite;
+  }
+
+  i:nth-child(2) {
+    animation-delay: 150ms;
+  }
+
+  i:nth-child(3) {
+    animation-delay: 300ms;
+  }
+}
+
+.error-message {
+  margin: 0;
+  padding: 10px 14px;
+  color: #9a0000;
+  font-weight: 950;
+  background-color: #ffd4d4;
+  border: 3px solid #000;
+  border-radius: 14px;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes spin-invite {
+  50% {
+    transform: translateY(-5px) rotate(-2deg);
+  }
+}
+
+@keyframes burst-fade {
+  0%,
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rays-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes number-zoom {
+  from {
+    transform: translateY(30vh) scale(0.3) rotate(-25deg);
+  }
+
+  60% {
+    transform: translateY(-10px) scale(1.15) rotate(6deg);
+  }
+}
+
+@keyframes badge-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-80px) scale(1.6);
+  }
+}
+
+@keyframes dot-bounce {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@media (max-width: 560px) {
+  .number-pad {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .number-button {
+    min-height: 56px;
+    font-size: 1.5rem;
+  }
+}

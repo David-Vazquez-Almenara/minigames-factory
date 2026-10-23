@@ -1,28 +1,32 @@
-import { Injectable, signal } from '@angular/core';
+﻿import { Injectable, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { environment } from '../../../environments/environment';
 
 interface ServerReadyPayload {
   socketId: string;
   message: string;
+  minigames?: MinigameInfo[];
 }
 
 export interface CreateRoomSettings {
-  customQuestionsEnabled: boolean;
-  randomThemePerPlayer: boolean;
-  randomCharacterTypePerPlayer: boolean;
-  questionDuration: 15 | 30 | 60;
-  respondQuestionTime: 5 | 10 | 15;
   rounds: number;
-  specialRounds: number[];
-  minigamesOnly: boolean;
-  themeCategories: string[];
-  characterTypes: string[];
+  enabledMinigames: string[];
+}
+
+export interface MinigameInfo {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  accent: string;
+  minPlayers: number;
 }
 
 export interface LobbyPlayer {
   id: string;
   name: string;
+  avatarUrl: string;
+  color: string;
   joinedAt: string;
   active: boolean;
   ready: boolean;
@@ -36,96 +40,33 @@ export interface LobbyState {
   createdAt: string;
 }
 
-export interface MatchAssignment {
-  playerId: string;
-  targetPlayerId: string;
-  targetPlayerName: string;
-  theme: string;
-  characterType: string;
-  promptType?: 'theme' | 'characterType';
-  promptLabel?: string;
-}
+export type MatchPhase = 'countdown' | 'roulette' | 'special-round' | 'scoreboard' | 'finished';
 
-export interface MatchSelection {
-  playerId: string;
-  targetPlayerId?: string;
-  imageUrl: string;
-  theme: string;
-  characterType: string;
-}
-
-export interface QuestionOption {
-  id: string;
-  text: string;
-  special?: boolean;
+export interface RouletteState {
+  roundNumber: number;
+  options: MinigameInfo[];
+  winnerId: string;
+  winnerIndex: number;
+  spinStartsAt: number;
+  spinDurationMs: number;
+  landingOffset: number;
 }
 
 export interface MatchState {
   lobbyId: string;
-  phase:
-    | 'lobby'
-    | 'countdown'
-    | 'image-selection'
-    | 'image-selection-complete'
-    | 'question-selection'
-    | 'answer-phase'
-    | 'scoreboard'
-    | 'special-round'
-    | 'questions-complete';
-  assignments: MatchAssignment[];
-  readySelections: MatchSelection[];
-  readyCount: number;
+  phase: MatchPhase;
+  roundNumber: number;
+  totalRounds: number;
   totalPlayers: number;
   hostPaused: boolean;
   hostPauseDeadline: number | null;
   countdownEndsAt: number;
-  imageSelectionEndsAt: number;
-  waitingPlayerIds: string[];
-  questionRoundNumber: number;
-  questionSelectionEndsAt: number | null;
-  selectedQuestions: Array<{
-    playerId: string;
-    questionId: string;
-    question: string;
-    questionType: 'normal' | 'custom' | 'auto-assigned';
-  }>;
-  questionOptionsByPlayer: Array<{
-    playerId: string;
-    options: QuestionOption[];
-  }>;
-  questionHistory: Array<{
-    ownerPlayerId: string;
-    questionId: string;
-    question: string;
-    questionType: 'normal' | 'custom' | 'auto-assigned';
-    answer: 'yes' | 'no' | 'maybe';
-    roundNumber: number;
-  }>;
-  customQuestionEditingPlayerIds: string[];
-  customQuestionDeadlineByPlayer: Array<{
-    playerId: string;
-    deadline: number;
-  }>;
-  currentAnswer: {
-    ownerPlayerId: string;
-    ownerPlayerName: string;
-    questionId: string;
-    question: string;
-    questionType?: 'normal' | 'custom' | 'auto-assigned';
-    imageUrl: string;
-  } | null;
-  answerEndsAt: number | null;
-  answerResults: Array<{
-    ownerPlayerId: string;
-    questionId?: string;
-    selectedQuestion: string;
-    questionType?: 'normal' | 'custom' | 'auto-assigned';
-    finalAnswer: 'yes' | 'no' | 'maybe';
-  }>;
-  waitingQuestionBatchPlayerIds: string[];
+  roulette: RouletteState | null;
   scoreboard: ScoreboardPayload | null;
-  specialRounds: number[];
+  scoreboardRequest: ScoreboardCalculateRequest | null;
+  finalStandings: ScoreboardEntry[] | null;
   specialRound: SpecialRoundPayload | null;
+  serverTime: number;
 }
 
 export interface SpecialRoundPayload {
@@ -133,6 +74,8 @@ export interface SpecialRoundPayload {
   minigameId: string;
   title: string;
   description: string;
+  participantIds: string[];
+  hasResults: boolean;
   preparedByHost?: boolean;
   operations?: MathOperationPayload[];
   submittedPlayerIds?: string[];
@@ -144,6 +87,162 @@ export interface SpecialRoundPayload {
   paintVotes?: PaintVotePayload[];
   progress?: MinigameProgressPayload[];
   results?: MinigameResultPayload[];
+  impostor: ImpostorPublicState | null;
+  tenBut: TenButPublicState | null;
+  pinturillo: PinturilloPublicState | null;
+  pogo: PogoPublicState | null;
+}
+
+export interface ImpostorRoundResult {
+  wordRound: number;
+  reason: 'ejected' | 'tie' | 'skip' | 'no-votes';
+  ejectedId: string | null;
+  skipCount: number;
+  tally: Array<{ playerId: string; votes: number }>;
+  votes: Array<{ voterId: string; targetId: string }>;
+}
+
+export interface ImpostorOutcome {
+  winner: 'innocents' | 'impostor';
+  abandoned: boolean;
+  reason: ImpostorRoundResult['reason'] | 'abandoned';
+  ejectedId: string | null;
+  ejectedWasImpostor: boolean;
+  impostorId: string;
+  impostorName: string;
+  word: string;
+  category: string;
+  roundsPlayed: number;
+  extraRounds: number;
+  impostorPoints: number;
+  tally: ImpostorRoundResult['tally'];
+  skipCount: number;
+  votes: ImpostorRoundResult['votes'];
+}
+
+export interface ImpostorPublicState {
+  stage: 'turns' | 'voting' | 'no-ejection' | 'reveal';
+  wordRound: number;
+  maxRounds: number;
+  blankVoteAllowed: boolean;
+  turnOrder: string[];
+  turnIndex: number;
+  currentTurnPlayerId: string | null;
+  completedTurnIds: string[];
+  votedPlayerIds: string[];
+  voteEndsAt: number | null;
+  stageStartedAt: number;
+  lastRoundResult: ImpostorRoundResult | null;
+  outcome: ImpostorOutcome | null;
+}
+
+export interface TenButAnswerResult {
+  playerId: string;
+  playerName: string;
+  number: number | null;
+  diff: number | null;
+  points: number;
+  valid: boolean;
+}
+
+export interface TenButOutcome {
+  secretNumber: number;
+  speakerId: string;
+  speakerName: string;
+  answers: TenButAnswerResult[];
+  validCount: number;
+  invalidCount: number;
+  penaltyCap: number;
+  speakerPositive: number;
+  speakerPenalty: number;
+  speakerTotal: number;
+}
+
+export interface TenButPublicState {
+  stage: 'waiting-spin' | 'spinning' | 'answering' | 'results';
+  speakerId: string;
+  spinDeadline: number | null;
+  spinStartsAt: number | null;
+  spinDurationMs: number;
+  answerEndsAt: number | null;
+  answeredPlayerIds: string[];
+  outcome: TenButOutcome | null;
+}
+
+export interface PinturilloChatMessage {
+  id: string;
+  at: number;
+  kind: 'chat' | 'correct' | 'system' | 'guessed-chat';
+  playerId?: string;
+  text?: string;
+  points?: number;
+  order?: number;
+}
+
+export interface PinturilloOutcome {
+  word: string;
+  category: string;
+  drawerId: string;
+  drawerName: string;
+  drawerLeft: boolean;
+  guesses: Array<{ playerId: string; order: number; points: number; at: number }>;
+  correctCount: number;
+  guesserCount: number;
+  drawerPoints: number;
+  penaltyCap: number;
+  finalFrame: string | null;
+}
+
+export interface PinturilloPublicState {
+  stage: 'drawing' | 'results';
+  drawerId: string;
+  startsAt: number;
+  endsAt: number;
+  hint: string[];
+  guessedPlayerIds: string[];
+  chat: PinturilloChatMessage[];
+  outcome: PinturilloOutcome | null;
+}
+
+export interface PogoRacer {
+  playerId: string;
+  progress: number;
+  jumps: number;
+  perfects: number;
+  misses: number;
+  finishedAt: number | null;
+}
+
+export interface PogoPublicState {
+  stage: 'racing' | 'results';
+  goal: number;
+  raceStartsAt: number;
+  raceEndsAt: number;
+  racers: PogoRacer[];
+  outcome: {
+    ranking: Array<{
+      playerId: string;
+      playerName: string;
+      position: number;
+      progress: number;
+      finished: boolean;
+      timeMs: number | null;
+      jumps: number;
+      perfects: number;
+      points: number;
+    }>;
+  } | null;
+}
+
+export interface PrivateMatchState {  lobbyId: string;
+  roundKey: string | null;
+  minigameId: string | null;
+  impostor: { role: 'impostor'; category: string } | { role: 'innocent'; word: string } | null;
+  tenBut:
+    | { role: 'speaker'; secretNumber?: number; landingOffset?: number; submittedAnswer?: null }
+    | { role: 'guesser'; submittedAnswer: number | null }
+    | null;
+  pinturillo?: { role: 'drawer'; word: string; category: string } | { role: 'guesser' } | null;
 }
 
 export interface PaintTargetPayload {
@@ -175,6 +274,7 @@ export interface MinigameResultPayload {
   correctCount: number;
   answeredCount?: number;
   votesReceived?: number;
+  points?: number;
   finishedAt: number | null;
   submitted: boolean;
 }
@@ -192,6 +292,7 @@ export interface ScoreboardEntry {
   playerId: string;
   playerName: string;
   score: number;
+  roundPoints?: number;
   position: number;
   minigameCorrectCount?: number;
   minigameAnsweredCount?: number;
@@ -202,53 +303,28 @@ export interface ScoreboardPayload {
   lobbyId: string;
   roundNumber: number;
   scores: ScoreboardEntry[];
+  previousScores?: ScoreboardEntry[];
 }
 
-export interface AllImagesReadyPayload {
-  lobbyId: string;
-  selectedImages: Array<{
-    playerId: string;
-    imageUrl: string;
-    theme: string;
-    characterType: string;
-  }>;
-}
-
-export interface QuestionBackupPayload {
+export interface ScoreboardCalculateRequest {
   lobbyId: string;
   roundNumber: number;
-  questions: Array<{
-    ownerPlayerId: string;
-    questionId: string;
-    selectedQuestion: string;
-    questionType: 'normal' | 'custom' | 'auto-assigned';
-    finalAnswer: 'yes' | 'no' | 'maybe' | null;
-  }>;
-  history?: MatchState['questionHistory'];
+  source?: 'minigame';
+  results?: MinigameResultPayload[];
+  previousScores?: ScoreboardEntry[];
 }
 
 export interface RoomResponse {
   ok: boolean;
   reason?: string;
   lobby?: LobbyState;
-  match?: MatchState;
-  waitingNextRound?: boolean;
-  waitingQuestionBatch?: boolean;
-  excludedPlayers?: Array<{
-    playerId: string;
-    name: string;
-    round: number;
-    reason: string;
-  }>;
-  unreadyPlayers?: Array<{
-    playerId: string;
-    name: string;
-    round: number;
-    reason: string;
-  }>;
+  match?: MatchState | null;
+  privateState?: PrivateMatchState;
+  answer?: number;
 }
 
 const PLAYER_ID_KEY = 'quien-soy-online-player-id';
+const PLAYER_SECRET_KEY = 'quien-soy-online-player-secret';
 const HOST_ROOM_KEY = 'quien-soy-online-host-room';
 const HOST_ID_KEY = 'quien-soy-online-host-id';
 const BANNED_PLAYERS_KEY = 'quien-soy-online-banned-players';
@@ -263,24 +339,23 @@ export class SocketService {
 
   readonly connected = signal(false);
   readonly serverMessage = signal('Backend pendiente de conexion');
+  readonly minigameCatalog = signal<MinigameInfo[]>([]);
   readonly lobby = signal<LobbyState | null>(null);
   readonly match = signal<MatchState | null>(null);
-  readonly allImagesReady = signal<AllImagesReadyPayload | null>(null);
-  readonly imageSelectionTimerReset = signal<number | null>(null);
-  readonly questionBackup = signal<QuestionBackupPayload | null>(null);
+  readonly privateState = signal<PrivateMatchState | null>(null);
+  readonly clockOffset = signal(0);
   readonly scoreboard = signal<ScoreboardPayload | null>(null);
-  readonly scoreboardCalculateRequest = signal<{
-    lobbyId: string;
-    roundNumber: number;
-    source?: 'questions' | 'minigame';
-    results?: MinigameResultPayload[];
-  } | null>(null);
+  readonly scoreboardCalculateRequest = signal<ScoreboardCalculateRequest | null>(null);
   readonly hostPauseDeadline = signal<number | null>(null);
-  readonly waitingNextRoundMessage = signal<string | null>(null);
-  readonly waitingQuestionBatchMessage = signal<string | null>(null);
   readonly kickedFromRoom = signal<string | null>(null);
   readonly closedRoomMessage = signal<string | null>(null);
-  readonly playerId = this.getOrCreatePlayerId();
+  readonly returnedToLobby = signal<LobbyState | null>(null);
+  /** Ultimo fotograma recibido del dibujante de Pinturillo (fuera del estado para no inflarlo). */
+  readonly pinturilloFrame = signal<string | null>(null);
+  /** Ultimo salto recibido en la carrera de pogo, para animar al jugador correspondiente. */
+  readonly lastPogoJump = signal<{ playerId: string; gain: number; at: number } | null>(null);
+  readonly playerId = this.getOrCreateStoredId(PLAYER_ID_KEY);
+  private readonly playerSecret = this.getOrCreateStoredId(PLAYER_SECRET_KEY);
 
   connect(): void {
     if (this.socket) {
@@ -293,10 +368,12 @@ export class SocketService {
 
     this.socket.on('connect', () => {
       this.connected.set(true);
-      const activeMatch = this.match();
+      const activeLobby = this.lobby();
 
-      if (activeMatch && activeMatch.phase === 'image-selection') {
-        this.notifyImageSelectionReconnect(activeMatch.lobbyId);
+      // Tras una reconexion se recupera el socket en la sala y la informacion privada del jugador.
+      if (activeLobby) {
+        this.startHeartbeat(activeLobby.code);
+        void this.refreshPrivateState(activeLobby.code);
       }
     });
 
@@ -306,6 +383,7 @@ export class SocketService {
 
     this.socket.on('server:ready', (payload: ServerReadyPayload) => {
       this.serverMessage.set(payload.message);
+      this.minigameCatalog.set(payload.minigames || []);
     });
 
     this.socket.on('room:lobby-updated', (payload: LobbyState) => {
@@ -316,15 +394,14 @@ export class SocketService {
     this.socket.on('room:kicked', (payload: { code: string }) => {
       this.stopHeartbeat();
       this.lobby.set(null);
-      this.match.set(null);
+      this.clearMatch();
       this.kickedFromRoom.set(payload.code);
     });
 
     this.socket.on('room:closed', (payload: { code: string; reason: string }) => {
       this.stopHeartbeat();
       this.lobby.set(null);
-      this.match.set(null);
-      this.hostPauseDeadline.set(null);
+      this.clearMatch();
       this.closedRoomMessage.set(payload.reason || 'El lobby se ha cerrado.');
       this.clearLobbyUrl();
     });
@@ -344,6 +421,7 @@ export class SocketService {
       this.socket?.emit('room:presence-response', {
         code: payload.code,
         playerId: this.playerId,
+        playerSecret: this.playerSecret,
         currentUrl: window.location.href,
         inLobby: isActiveInRoom,
       });
@@ -357,76 +435,26 @@ export class SocketService {
     });
 
     this.socket.on('match:started', (payload: MatchState) => {
-      this.match.set(payload);
-      this.hostPauseDeadline.set(payload.hostPauseDeadline);
+      this.applyMatchState(payload);
       this.startHeartbeat(payload.lobbyId);
     });
 
-    this.socket.on(
-      'match:image-selection-updated',
-      (payload: {
-        lobbyId: string;
-        readyPlayerIds: string[];
-        readyCount: number;
-        totalPlayers: number;
-        imageSelectionEndsAt: number;
-      }) => {
-        this.match.update((currentMatch) => {
-          if (!currentMatch || currentMatch.lobbyId !== payload.lobbyId) {
-            return currentMatch;
-          }
-
-          const readySelectionMap = new Map(
-            currentMatch.readySelections.map((selection) => [selection.playerId, selection]),
-          );
-
-          return {
-            ...currentMatch,
-            phase: 'image-selection',
-            readySelections: payload.readyPlayerIds.map(
-              (playerId) =>
-                readySelectionMap.get(playerId) || {
-                  playerId,
-                  imageUrl: '',
-                  theme: '',
-                  characterType: '',
-                },
-            ),
-            readyCount: payload.readyCount,
-            totalPlayers: payload.totalPlayers,
-            imageSelectionEndsAt: payload.imageSelectionEndsAt,
-          };
-        });
-      },
-    );
-
-    this.socket.on('match:all-images-ready', (payload: AllImagesReadyPayload) => {
-      this.allImagesReady.set(payload);
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, phase: 'image-selection-complete', readyCount: payload.selectedImages.length }
-          : currentMatch,
-      );
-    });
-
-    this.socket.on('match:question-state', (payload: MatchState) => {
-      this.match.set(payload);
-      if (payload.scoreboard) {
-        this.scoreboard.set(payload.scoreboard);
+    this.socket.on('match:state', (payload: MatchState | null) => {
+      if (payload) {
+        this.applyMatchState(payload);
       }
     });
 
-    this.socket.on(
-      'match:scoreboard-calculate',
-      (payload: {
-        lobbyId: string;
-        roundNumber: number;
-        source?: 'questions' | 'minigame';
-        results?: MinigameResultPayload[];
-      }) => {
+    this.socket.on('match:private-state', (payload: PrivateMatchState) => {
+      if (payload.lobbyId === this.lobby()?.code || payload.lobbyId === this.match()?.lobbyId) {
+        this.privateState.set(payload);
+      }
+    });
+
+    this.socket.on('match:scoreboard-calculate', (payload: ScoreboardCalculateRequest) => {
+      this.scoreboard.set(null);
       this.scoreboardCalculateRequest.set(payload);
-      },
-    );
+    });
 
     this.socket.on('match:scoreboard-sync', (payload: { lobbyId: string; scoreboard: ScoreboardPayload | null }) => {
       this.scoreboard.set(payload.scoreboard);
@@ -437,79 +465,22 @@ export class SocketService {
       );
     });
 
-    this.socket.on('match:questions-complete', (payload: { lobbyId: string; roundNumber: number }) => {
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, phase: 'questions-complete' }
-          : currentMatch,
-      );
-    });
-
-    this.socket.on('match:special-round-started', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
-          : currentMatch,
-      );
-    });
-
-    this.socket.on('match:minigame-prepared', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
-          : currentMatch,
-      );
-    });
-
-    this.socket.on('match:paint-prepared', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
-          : currentMatch,
-      );
-    });
-
-    this.socket.on('match:paint-submission-updated', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
-          : currentMatch,
-      );
-    });
-
-    this.socket.on('match:paint-voting-started', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, phase: 'special-round', specialRound: payload.specialRound }
-          : currentMatch,
-      );
-    });
-
-    this.socket.on('match:paint-results-ready', (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, specialRound: payload.specialRound }
-          : currentMatch,
-      );
-    });
-
-    this.socket.on(
-      'match:minigame-submission-updated',
-      (payload: { lobbyId: string; submittedPlayerIds: string[]; totalPlayers: number }) => {
+    for (const eventName of [
+      'match:special-round-started',
+      'match:minigame-prepared',
+      'match:paint-prepared',
+      'match:paint-submission-updated',
+      'match:paint-voting-started',
+      'match:paint-results-ready',
+    ]) {
+      this.socket.on(eventName, (payload: { lobbyId: string; specialRound: SpecialRoundPayload }) => {
         this.match.update((currentMatch) =>
-          currentMatch && currentMatch.lobbyId === payload.lobbyId && currentMatch.specialRound
-            ? {
-                ...currentMatch,
-                totalPlayers: payload.totalPlayers,
-                specialRound: {
-                  ...currentMatch.specialRound,
-                  submittedPlayerIds: payload.submittedPlayerIds,
-                },
-              }
+          currentMatch && currentMatch.lobbyId === payload.lobbyId
+            ? { ...currentMatch, specialRound: payload.specialRound }
             : currentMatch,
         );
-      },
-    );
+      });
+    }
 
     this.socket.on('match:minigame-progress-updated', (payload: { lobbyId: string; progress: MinigameProgressPayload[] }) => {
       this.match.update((currentMatch) =>
@@ -525,50 +496,39 @@ export class SocketService {
       );
     });
 
-    this.socket.on(
-      'match:answer-result',
-      (payload: {
-        lobbyId: string;
-        result: {
-          ownerPlayerId: string;
-          questionId?: string;
-          selectedQuestion: string;
-          finalAnswer: 'yes' | 'no' | 'maybe';
+    this.socket.on('match:pinturillo-chat', (payload: { lobbyId: string; message: PinturilloChatMessage }) => {
+      this.match.update((currentMatch) => {
+        const pinturillo = currentMatch?.specialRound?.pinturillo;
+
+        if (!currentMatch || currentMatch.lobbyId !== payload.lobbyId || !pinturillo || pinturillo.chat.some((entry) => entry.id === payload.message.id)) {
+          return currentMatch;
+        }
+
+        return {
+          ...currentMatch,
+          specialRound: {
+            ...currentMatch.specialRound!,
+            pinturillo: { ...pinturillo, chat: [...pinturillo.chat, payload.message].slice(-120) },
+          },
         };
-      }) => {
-        this.match.update((currentMatch) => {
-          if (!currentMatch || currentMatch.lobbyId !== payload.lobbyId) {
-            return currentMatch;
-          }
-
-          const previousResults = currentMatch.answerResults.filter(
-            (result) => result.ownerPlayerId !== payload.result.ownerPlayerId,
-          );
-
-          return {
-            ...currentMatch,
-            answerResults: [...previousResults, payload.result],
-          };
-        });
-      },
-    );
-
-    this.socket.on('match:waiting-next-question-batch', (payload: { lobbyId: string; reason: string }) => {
-      this.waitingQuestionBatchMessage.set(payload.reason || 'Espera a la siguiente tanda de preguntas.');
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? {
-              ...currentMatch,
-              waitingQuestionBatchPlayerIds: [
-                ...new Set([...currentMatch.waitingQuestionBatchPlayerIds, this.playerId]),
-              ],
-            }
-          : currentMatch,
-      );
+      });
     });
 
-    this.socket.on('match:question-backup-updated', (payload: QuestionBackupPayload) => {
-      this.questionBackup.set(payload);
+    this.socket.on('match:pinturillo-frame', (payload: { lobbyId: string; imageDataUrl: string }) => {
+      if (payload.lobbyId === this.match()?.lobbyId) {
+        this.pinturilloFrame.set(payload.imageDataUrl);
+      }
+    });
+
+    this.socket.on('match:pogo-progress', (payload: { lobbyId: string; racers: PogoRacer[]; jump: { playerId: string; gain: number } }) => {
+      this.lastPogoJump.set({ ...payload.jump, at: Date.now() });
+      this.match.update((currentMatch) => {
+        const pogo = currentMatch?.specialRound?.pogo;
+
+        return currentMatch && currentMatch.lobbyId === payload.lobbyId && pogo
+          ? { ...currentMatch, specialRound: { ...currentMatch.specialRound!, pogo: { ...pogo, racers: payload.racers } } }
+          : currentMatch;
+      });
     });
 
     this.socket.on('match:host-paused', (payload: { lobbyId: string; deadline: number }) => {
@@ -580,69 +540,39 @@ export class SocketService {
       );
     });
 
-    this.socket.on('match:host-resumed', (payload: { lobbyId: string; imageSelectionEndsAt?: number }) => {
+    this.socket.on('match:host-resumed', (payload: { lobbyId: string }) => {
       this.hostPauseDeadline.set(null);
       this.match.update((currentMatch) =>
         currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? {
-              ...currentMatch,
-              hostPaused: false,
-              hostPauseDeadline: null,
-              imageSelectionEndsAt: payload.imageSelectionEndsAt || currentMatch.imageSelectionEndsAt,
-            }
+          ? { ...currentMatch, hostPaused: false, hostPauseDeadline: null }
           : currentMatch,
       );
     });
 
-    this.socket.on('match:timer-reset', (payload: { lobbyId: string; imageSelectionEndsAt: number }) => {
-      this.imageSelectionTimerReset.set(payload.imageSelectionEndsAt);
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, imageSelectionEndsAt: payload.imageSelectionEndsAt }
-          : currentMatch,
-      );
-    });
-
-    this.socket.on('match:waiting-next-round', (payload: { lobbyId: string; reason: string }) => {
-      this.waitingNextRoundMessage.set(payload.reason || 'Espera a la siguiente ronda.');
-      this.match.update((currentMatch) =>
-        currentMatch && currentMatch.lobbyId === payload.lobbyId
-          ? { ...currentMatch, waitingPlayerIds: [...new Set([...currentMatch.waitingPlayerIds, this.playerId])] }
-          : currentMatch,
-      );
-    });
-
-    this.socket.on('match:confirm-image-ready', (payload: { lobbyId: string; playerId: string }, callback) => {
-      if (payload.playerId !== this.playerId) {
-        callback?.({ ok: false, ready: false });
-        return;
-      }
-
-      const match = this.match();
-      const ready = Boolean(
-        match &&
-          match.lobbyId === payload.lobbyId &&
-          !match.waitingPlayerIds.includes(this.playerId) &&
-          match.readySelections.some((selection) => selection.playerId === this.playerId),
-      );
-
-      callback?.({ ok: true, ready });
+    this.socket.on('match:returned-to-lobby', (payload: { lobbyId: string; lobby: LobbyState }) => {
+      this.clearMatch();
+      this.lobby.set(payload.lobby);
+      this.returnedToLobby.set(payload.lobby);
     });
 
     this.socket.on('match:closed', (payload: { lobbyId: string; reason: string }) => {
-      this.match.set(null);
-      this.hostPauseDeadline.set(null);
+      this.clearMatch();
       this.closedRoomMessage.set(payload.reason || 'La partida se ha cerrado.');
       this.clearLobbyUrl();
     });
   }
 
-  createRoom(playerName: string, settings: CreateRoomSettings): Promise<RoomResponse> {
-    return this.emitWithResponse('room:create', { playerId: this.playerId, playerName, settings });
+  /** Hora del servidor estimada; los plazos (deadlines) de la partida se expresan en ese reloj. */
+  serverNow(): number {
+    return Date.now() + this.clockOffset();
   }
 
-  joinRoom(playerName: string, code: string): Promise<RoomResponse> {
-    return this.emitWithResponse('room:join', { playerId: this.playerId, playerName, code });
+  createRoom(playerName: string, avatarUrl: string, settings: CreateRoomSettings): Promise<RoomResponse> {
+    return this.emitWithResponse('room:create', { playerId: this.playerId, playerName, avatarUrl, settings });
+  }
+
+  joinRoom(playerName: string, avatarUrl: string, code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('room:join', { playerId: this.playerId, playerName, avatarUrl, code });
   }
 
   kickPlayer(code: string, targetPlayerId: string): Promise<RoomResponse> {
@@ -678,66 +608,12 @@ export class SocketService {
     });
   }
 
-  submitImageSelection(code: string, imageUrl: string): Promise<RoomResponse> {
-    return this.emitWithResponse('match:image-selection-ready', {
-      code,
-      imageUrl,
-      playerId: this.playerId,
-    });
-  }
+  async refreshPrivateState(code: string): Promise<void> {
+    const response = await this.emitWithResponse('match:request-private-state', { code, playerId: this.playerId });
 
-  extendImageSelection(code: string): Promise<RoomResponse> {
-    return this.emitWithResponse('match:extend-image-selection', {
-      code,
-      hostId: this.playerId,
-    });
-  }
-
-  excludeUnreadyImagePlayers(code: string): Promise<RoomResponse> {
-    return this.emitWithResponse('match:exclude-unready-players', {
-      code,
-      hostId: this.playerId,
-    });
-  }
-
-  verifyImageSelectionReady(code: string): Promise<RoomResponse> {
-    return this.emitWithResponse('match:verify-image-selection-ready', {
-      code,
-      hostId: this.playerId,
-    });
-  }
-
-  notifyImageSelectionReconnect(code: string): void {
-    this.connect();
-    this.socket?.emit('match:player-reconnected-selection', {
-      code,
-      playerId: this.playerId,
-    });
-  }
-
-  startCustomQuestionEditing(code: string): Promise<RoomResponse> {
-    return this.emitWithResponse('match:player-custom-question-editing', {
-      code,
-      playerId: this.playerId,
-      extraTime: 30,
-    });
-  }
-
-  selectQuestion(code: string, questionId: string, customQuestion = ''): Promise<RoomResponse> {
-    return this.emitWithResponse('match:select-question', {
-      code,
-      questionId,
-      customQuestion,
-      playerId: this.playerId,
-    });
-  }
-
-  submitAnswer(code: string, answer: 'yes' | 'no'): Promise<RoomResponse> {
-    return this.emitWithResponse('match:submit-answer', {
-      code,
-      answer,
-      playerId: this.playerId,
-    });
+    if (response.ok && response.privateState) {
+      this.privateState.set(response.privateState);
+    }
   }
 
   updateScoreboard(code: string, roundNumber: number, scores: ScoreboardEntry[]): Promise<RoomResponse> {
@@ -763,28 +639,18 @@ export class SocketService {
     });
   }
 
+  returnToLobby(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:return-to-lobby', {
+      code,
+      hostId: this.playerId,
+    });
+  }
+
   prepareMinigame(code: string, operations: MathOperationPayload[]): Promise<RoomResponse> {
     return this.emitWithResponse('match:minigame-prepared', {
       code,
       operations,
       hostId: this.playerId,
-    });
-  }
-
-  submitMinigameAnswers(code: string, answers: Array<{ operationId: string; answer: number }>): Promise<RoomResponse> {
-    return this.emitWithResponse('match:minigame-submit', {
-      code,
-      answers,
-      playerId: this.playerId,
-    });
-  }
-
-  submitMinigameAnswer(code: string, operationId: string, answer: number): Promise<RoomResponse> {
-    return this.emitWithResponse('match:minigame-answer', {
-      code,
-      operationId,
-      answer,
-      playerId: this.playerId,
     });
   }
 
@@ -823,8 +689,60 @@ export class SocketService {
     });
   }
 
-  leaveRoom(code: string): Promise<RoomResponse> {
-    this.stopHeartbeat();
+  advanceImpostorTurn(code: string, turnIndex: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:impostor-advance-turn', {
+      code,
+      turnIndex,
+      playerId: this.playerId,
+    });
+  }
+
+  voteImpostor(code: string, targetId: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:impostor-vote', {
+      code,
+      targetId,
+      playerId: this.playerId,
+    });
+  }
+
+  spinTenBut(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:ten-but-spin', {
+      code,
+      playerId: this.playerId,
+    });
+  }
+
+  answerTenBut(code: string, answer: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:ten-but-answer', {
+      code,
+      answer,
+      playerId: this.playerId,
+    });
+  }
+
+  sendPinturilloFrame(code: string, imageDataUrl: string): void {
+    this.socket?.emit('match:pinturillo-frame', { code, imageDataUrl, playerId: this.playerId, playerSecret: this.playerSecret });
+  }
+
+  async requestPinturilloFrame(code: string): Promise<void> {
+    const response = (await this.emitWithResponse('match:pinturillo-request-frame', { code, playerId: this.playerId })) as RoomResponse & {
+      imageDataUrl?: string | null;
+    };
+
+    if (response.ok && response.imageDataUrl) {
+      this.pinturilloFrame.set(response.imageDataUrl);
+    }
+  }
+
+  guessPinturillo(code: string, text: string): Promise<RoomResponse & { correct?: boolean; close?: boolean; points?: number }> {
+    return this.emitWithResponse('match:pinturillo-guess', { code, text, playerId: this.playerId });
+  }
+
+  pogoJump(code: string, gain: number): Promise<RoomResponse & { progress?: number; finished?: boolean }> {
+    return this.emitWithResponse('match:pogo-jump', { code, gain, playerId: this.playerId });
+  }
+
+  leaveRoom(code: string): Promise<RoomResponse> {    this.stopHeartbeat();
     this.clearLobbyNavigation();
     return this.emitWithResponse('room:leave', {
       code,
@@ -869,20 +787,16 @@ export class SocketService {
   clearRoomNotices(): void {
     this.kickedFromRoom.set(null);
     this.closedRoomMessage.set(null);
-    this.allImagesReady.set(null);
-    this.waitingNextRoundMessage.set(null);
-    this.waitingQuestionBatchMessage.set(null);
-    this.questionBackup.set(null);
+    this.returnedToLobby.set(null);
     this.scoreboardCalculateRequest.set(null);
   }
 
   clearMatch(): void {
     this.match.set(null);
-    this.allImagesReady.set(null);
+    this.privateState.set(null);
+    this.pinturilloFrame.set(null);
+    this.lastPogoJump.set(null);
     this.hostPauseDeadline.set(null);
-    this.waitingNextRoundMessage.set(null);
-    this.waitingQuestionBatchMessage.set(null);
-    this.questionBackup.set(null);
     this.scoreboard.set(null);
     this.scoreboardCalculateRequest.set(null);
   }
@@ -904,21 +818,45 @@ export class SocketService {
       HOST_RECONNECT_CONFIG_KEY,
       JSON.stringify({
         lobbyId: lobby.code,
-        customQuestionsEnabled: lobby.settings.customQuestionsEnabled,
-        questionTime: lobby.settings.questionDuration,
         rounds: lobby.settings.rounds,
-        specialRounds: lobby.settings.specialRounds || [],
-        minigamesOnly: Boolean(lobby.settings.minigamesOnly),
-        randomThemePerPlayer: lobby.settings.randomThemePerPlayer,
-        randomCharacterTypePerPlayer: lobby.settings.randomCharacterTypePerPlayer,
-        respondQuestionTime: lobby.settings.respondQuestionTime,
-        themeCategories: lobby.settings.themeCategories,
-        characterTypes: lobby.settings.characterTypes,
+        enabledMinigames: lobby.settings.enabledMinigames,
       }),
     );
   }
 
-  private emitWithResponse(eventName: string, payload: unknown): Promise<RoomResponse> {
+  private applyMatchState(payload: MatchState): void {
+    this.clockOffset.set(payload.serverTime ? payload.serverTime - Date.now() : 0);
+    this.hostPauseDeadline.set(payload.hostPaused ? payload.hostPauseDeadline : null);
+
+    const previousMatch = this.match();
+    const nextRoundKey = payload.specialRound ? `${payload.roundNumber}:${payload.specialRound.minigameId}` : null;
+
+    if (this.privateState()?.roundKey && this.privateState()?.roundKey !== nextRoundKey) {
+      this.privateState.set(null);
+    }
+
+    if (previousMatch && (previousMatch.roundNumber !== payload.roundNumber || !payload.specialRound?.pinturillo)) {
+      this.pinturilloFrame.set(null);
+    }
+
+    if (payload.scoreboard) {
+      this.scoreboard.set(payload.scoreboard);
+    } else if (payload.phase !== 'scoreboard' || previousMatch?.roundNumber !== payload.roundNumber) {
+      this.scoreboard.set(null);
+    }
+
+    // Si el host recarga durante el marcador, recupera la peticion de calculo pendiente.
+    if (
+      payload.scoreboardRequest &&
+      this.scoreboardCalculateRequest()?.roundNumber !== payload.scoreboardRequest.roundNumber
+    ) {
+      this.scoreboardCalculateRequest.set(payload.scoreboardRequest);
+    }
+
+    this.match.set(payload);
+  }
+
+  private emitWithResponse(eventName: string, payload: Record<string, unknown>): Promise<RoomResponse> {
     this.connect();
 
     return new Promise((resolve) => {
@@ -930,26 +868,18 @@ export class SocketService {
         return;
       }
 
-      this.socket.emit(eventName, payload, (response: RoomResponse) => {
-      if (response.ok && response.lobby) {
-        this.lobby.set(response.lobby);
-        this.startHeartbeat(response.lobby.code);
-      }
+      this.socket.emit(eventName, { ...payload, playerSecret: this.playerSecret }, (response: RoomResponse) => {
+        if (response.ok && response.lobby) {
+          this.lobby.set(response.lobby);
+          this.startHeartbeat(response.lobby.code);
+        }
 
-      if (response.ok && response.match) {
-        this.match.set(response.match);
-      }
+        if (response.ok && response.match) {
+          this.applyMatchState(response.match);
+        }
 
-      if (response.ok && response.waitingNextRound) {
-        this.waitingNextRoundMessage.set('No seleccionaste imagen a tiempo. Espera a la siguiente ronda.');
-      }
-
-      if (response.ok && response.waitingQuestionBatch) {
-        this.waitingQuestionBatchMessage.set('Espera a la siguiente tanda de preguntas.');
-      }
-
-      resolve(response);
-    });
+        resolve(response);
+      });
     });
   }
 
@@ -966,6 +896,7 @@ export class SocketService {
     this.socket?.emit('room:heartbeat', {
       code,
       playerId: this.playerId,
+      playerSecret: this.playerSecret,
     });
   }
 
@@ -978,16 +909,16 @@ export class SocketService {
     this.heartbeatTimer = undefined;
   }
 
-  private getOrCreatePlayerId(): string {
-    const savedPlayerId = localStorage.getItem(PLAYER_ID_KEY);
+  private getOrCreateStoredId(key: string): string {
+    const savedValue = localStorage.getItem(key);
 
-    if (savedPlayerId) {
-      return savedPlayerId;
+    if (savedValue) {
+      return savedValue;
     }
 
-    const playerId = crypto.randomUUID();
-    localStorage.setItem(PLAYER_ID_KEY, playerId);
-    return playerId;
+    const value = crypto.randomUUID();
+    localStorage.setItem(key, value);
+    return value;
   }
 
   private getBannedPlayerIds(code: string): string[] {

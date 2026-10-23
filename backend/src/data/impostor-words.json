@@ -1,0 +1,5761 @@
+{
+  "version": 1,
+  "description": "Banco de palabras de El Impostor. Cada entrada tiene un id estable (categoria:palabra), la categoria que ve el impostor y la palabra secreta que ven los inocentes.",
+  "entries": [
+    {
+      "id": "animales-domesticos:perro",
+      "category": "Animales domésticos",
+      "word": "Perro"
+    },
+    {
+      "id": "animales-domesticos:gato",
+      "category": "Animales domésticos",
+      "word": "Gato"
+    },
+    {
+      "id": "animales-domesticos:hamster",
+      "category": "Animales domésticos",
+      "word": "Hámster"
+    },
+    {
+      "id": "animales-domesticos:conejo",
+      "category": "Animales domésticos",
+      "word": "Conejo"
+    },
+    {
+      "id": "animales-domesticos:canario",
+      "category": "Animales domésticos",
+      "word": "Canario"
+    },
+    {
+      "id": "animales-domesticos:periquito",
+      "category": "Animales domésticos",
+      "word": "Periquito"
+    },
+    {
+      "id": "animales-domesticos:tortuga",
+      "category": "Animales domésticos",
+      "word": "Tortuga"
+    },
+    {
+      "id": "animales-domesticos:pez-dorado",
+      "category": "Animales domésticos",
+      "word": "Pez dorado"
+    },
+    {
+      "id": "animales-domesticos:cobaya",
+      "category": "Animales domésticos",
+      "word": "Cobaya"
+    },
+    {
+      "id": "animales-domesticos:huron",
+      "category": "Animales domésticos",
+      "word": "Hurón"
+    },
+    {
+      "id": "animales-salvajes:leon",
+      "category": "Animales salvajes",
+      "word": "León"
+    },
+    {
+      "id": "animales-salvajes:tigre",
+      "category": "Animales salvajes",
+      "word": "Tigre"
+    },
+    {
+      "id": "animales-salvajes:elefante",
+      "category": "Animales salvajes",
+      "word": "Elefante"
+    },
+    {
+      "id": "animales-salvajes:jirafa",
+      "category": "Animales salvajes",
+      "word": "Jirafa"
+    },
+    {
+      "id": "animales-salvajes:cebra",
+      "category": "Animales salvajes",
+      "word": "Cebra"
+    },
+    {
+      "id": "animales-salvajes:rinoceronte",
+      "category": "Animales salvajes",
+      "word": "Rinoceronte"
+    },
+    {
+      "id": "animales-salvajes:hipopotamo",
+      "category": "Animales salvajes",
+      "word": "Hipopótamo"
+    },
+    {
+      "id": "animales-salvajes:gorila",
+      "category": "Animales salvajes",
+      "word": "Gorila"
+    },
+    {
+      "id": "animales-salvajes:canguro",
+      "category": "Animales salvajes",
+      "word": "Canguro"
+    },
+    {
+      "id": "animales-salvajes:koala",
+      "category": "Animales salvajes",
+      "word": "Koala"
+    },
+    {
+      "id": "animales-salvajes:oso-polar",
+      "category": "Animales salvajes",
+      "word": "Oso polar"
+    },
+    {
+      "id": "animales-salvajes:lobo",
+      "category": "Animales salvajes",
+      "word": "Lobo"
+    },
+    {
+      "id": "animales-salvajes:zorro",
+      "category": "Animales salvajes",
+      "word": "Zorro"
+    },
+    {
+      "id": "animales-salvajes:panda",
+      "category": "Animales salvajes",
+      "word": "Panda"
+    },
+    {
+      "id": "animales-salvajes:camello",
+      "category": "Animales salvajes",
+      "word": "Camello"
+    },
+    {
+      "id": "animales-salvajes:cocodrilo",
+      "category": "Animales salvajes",
+      "word": "Cocodrilo"
+    },
+    {
+      "id": "animales-salvajes:leopardo",
+      "category": "Animales salvajes",
+      "word": "Leopardo"
+    },
+    {
+      "id": "animales-salvajes:mapache",
+      "category": "Animales salvajes",
+      "word": "Mapache"
+    },
+    {
+      "id": "animales-marinos:tiburon",
+      "category": "Animales marinos",
+      "word": "Tiburón"
+    },
+    {
+      "id": "animales-marinos:delfin",
+      "category": "Animales marinos",
+      "word": "Delfín"
+    },
+    {
+      "id": "animales-marinos:ballena",
+      "category": "Animales marinos",
+      "word": "Ballena"
+    },
+    {
+      "id": "animales-marinos:pulpo",
+      "category": "Animales marinos",
+      "word": "Pulpo"
+    },
+    {
+      "id": "animales-marinos:medusa",
+      "category": "Animales marinos",
+      "word": "Medusa"
+    },
+    {
+      "id": "animales-marinos:estrella-de-mar",
+      "category": "Animales marinos",
+      "word": "Estrella de mar"
+    },
+    {
+      "id": "animales-marinos:caballito-de-mar",
+      "category": "Animales marinos",
+      "word": "Caballito de mar"
+    },
+    {
+      "id": "animales-marinos:orca",
+      "category": "Animales marinos",
+      "word": "Orca"
+    },
+    {
+      "id": "animales-marinos:foca",
+      "category": "Animales marinos",
+      "word": "Foca"
+    },
+    {
+      "id": "animales-marinos:calamar",
+      "category": "Animales marinos",
+      "word": "Calamar"
+    },
+    {
+      "id": "animales-marinos:cangrejo",
+      "category": "Animales marinos",
+      "word": "Cangrejo"
+    },
+    {
+      "id": "animales-marinos:langosta",
+      "category": "Animales marinos",
+      "word": "Langosta"
+    },
+    {
+      "id": "animales-marinos:pez-payaso",
+      "category": "Animales marinos",
+      "word": "Pez payaso"
+    },
+    {
+      "id": "animales-marinos:tortuga-marina",
+      "category": "Animales marinos",
+      "word": "Tortuga marina"
+    },
+    {
+      "id": "animales-marinos:mantarraya",
+      "category": "Animales marinos",
+      "word": "Mantarraya"
+    },
+    {
+      "id": "animales-marinos:erizo-de-mar",
+      "category": "Animales marinos",
+      "word": "Erizo de mar"
+    },
+    {
+      "id": "animales-de-granja:vaca",
+      "category": "Animales de granja",
+      "word": "Vaca"
+    },
+    {
+      "id": "animales-de-granja:cerdo",
+      "category": "Animales de granja",
+      "word": "Cerdo"
+    },
+    {
+      "id": "animales-de-granja:oveja",
+      "category": "Animales de granja",
+      "word": "Oveja"
+    },
+    {
+      "id": "animales-de-granja:cabra",
+      "category": "Animales de granja",
+      "word": "Cabra"
+    },
+    {
+      "id": "animales-de-granja:gallina",
+      "category": "Animales de granja",
+      "word": "Gallina"
+    },
+    {
+      "id": "animales-de-granja:caballo",
+      "category": "Animales de granja",
+      "word": "Caballo"
+    },
+    {
+      "id": "animales-de-granja:burro",
+      "category": "Animales de granja",
+      "word": "Burro"
+    },
+    {
+      "id": "animales-de-granja:pato",
+      "category": "Animales de granja",
+      "word": "Pato"
+    },
+    {
+      "id": "animales-de-granja:pavo",
+      "category": "Animales de granja",
+      "word": "Pavo"
+    },
+    {
+      "id": "animales-de-granja:gallo",
+      "category": "Animales de granja",
+      "word": "Gallo"
+    },
+    {
+      "id": "insectos-y-bichos:hormiga",
+      "category": "Insectos y bichos",
+      "word": "Hormiga"
+    },
+    {
+      "id": "insectos-y-bichos:abeja",
+      "category": "Insectos y bichos",
+      "word": "Abeja"
+    },
+    {
+      "id": "insectos-y-bichos:mariposa",
+      "category": "Insectos y bichos",
+      "word": "Mariposa"
+    },
+    {
+      "id": "insectos-y-bichos:mosquito",
+      "category": "Insectos y bichos",
+      "word": "Mosquito"
+    },
+    {
+      "id": "insectos-y-bichos:cucaracha",
+      "category": "Insectos y bichos",
+      "word": "Cucaracha"
+    },
+    {
+      "id": "insectos-y-bichos:mariquita",
+      "category": "Insectos y bichos",
+      "word": "Mariquita"
+    },
+    {
+      "id": "insectos-y-bichos:saltamontes",
+      "category": "Insectos y bichos",
+      "word": "Saltamontes"
+    },
+    {
+      "id": "insectos-y-bichos:arana",
+      "category": "Insectos y bichos",
+      "word": "Araña"
+    },
+    {
+      "id": "insectos-y-bichos:escorpion",
+      "category": "Insectos y bichos",
+      "word": "Escorpión"
+    },
+    {
+      "id": "insectos-y-bichos:libelula",
+      "category": "Insectos y bichos",
+      "word": "Libélula"
+    },
+    {
+      "id": "insectos-y-bichos:caracol",
+      "category": "Insectos y bichos",
+      "word": "Caracol"
+    },
+    {
+      "id": "insectos-y-bichos:lombriz",
+      "category": "Insectos y bichos",
+      "word": "Lombriz"
+    },
+    {
+      "id": "insectos-y-bichos:avispa",
+      "category": "Insectos y bichos",
+      "word": "Avispa"
+    },
+    {
+      "id": "insectos-y-bichos:luciernaga",
+      "category": "Insectos y bichos",
+      "word": "Luciérnaga"
+    },
+    {
+      "id": "aves:aguila",
+      "category": "Aves",
+      "word": "Águila"
+    },
+    {
+      "id": "aves:pinguino",
+      "category": "Aves",
+      "word": "Pingüino"
+    },
+    {
+      "id": "aves:loro",
+      "category": "Aves",
+      "word": "Loro"
+    },
+    {
+      "id": "aves:buho",
+      "category": "Aves",
+      "word": "Búho"
+    },
+    {
+      "id": "aves:flamenco",
+      "category": "Aves",
+      "word": "Flamenco"
+    },
+    {
+      "id": "aves:avestruz",
+      "category": "Aves",
+      "word": "Avestruz"
+    },
+    {
+      "id": "aves:paloma",
+      "category": "Aves",
+      "word": "Paloma"
+    },
+    {
+      "id": "aves:ciguena",
+      "category": "Aves",
+      "word": "Cigüeña"
+    },
+    {
+      "id": "aves:gaviota",
+      "category": "Aves",
+      "word": "Gaviota"
+    },
+    {
+      "id": "aves:pavo-real",
+      "category": "Aves",
+      "word": "Pavo real"
+    },
+    {
+      "id": "aves:colibri",
+      "category": "Aves",
+      "word": "Colibrí"
+    },
+    {
+      "id": "aves:cuervo",
+      "category": "Aves",
+      "word": "Cuervo"
+    },
+    {
+      "id": "aves:murcielago",
+      "category": "Aves",
+      "word": "Murciélago"
+    },
+    {
+      "id": "frutas:manzana",
+      "category": "Frutas",
+      "word": "Manzana"
+    },
+    {
+      "id": "frutas:platano",
+      "category": "Frutas",
+      "word": "Plátano"
+    },
+    {
+      "id": "frutas:fresa",
+      "category": "Frutas",
+      "word": "Fresa"
+    },
+    {
+      "id": "frutas:sandia",
+      "category": "Frutas",
+      "word": "Sandía"
+    },
+    {
+      "id": "frutas:melon",
+      "category": "Frutas",
+      "word": "Melón"
+    },
+    {
+      "id": "frutas:pina",
+      "category": "Frutas",
+      "word": "Piña"
+    },
+    {
+      "id": "frutas:uva",
+      "category": "Frutas",
+      "word": "Uva"
+    },
+    {
+      "id": "frutas:naranja",
+      "category": "Frutas",
+      "word": "Naranja"
+    },
+    {
+      "id": "frutas:kiwi",
+      "category": "Frutas",
+      "word": "Kiwi"
+    },
+    {
+      "id": "frutas:mango",
+      "category": "Frutas",
+      "word": "Mango"
+    },
+    {
+      "id": "frutas:cereza",
+      "category": "Frutas",
+      "word": "Cereza"
+    },
+    {
+      "id": "frutas:pera",
+      "category": "Frutas",
+      "word": "Pera"
+    },
+    {
+      "id": "frutas:melocoton",
+      "category": "Frutas",
+      "word": "Melocotón"
+    },
+    {
+      "id": "frutas:limon",
+      "category": "Frutas",
+      "word": "Limón"
+    },
+    {
+      "id": "frutas:coco",
+      "category": "Frutas",
+      "word": "Coco"
+    },
+    {
+      "id": "frutas:aguacate",
+      "category": "Frutas",
+      "word": "Aguacate"
+    },
+    {
+      "id": "frutas:frambuesa",
+      "category": "Frutas",
+      "word": "Frambuesa"
+    },
+    {
+      "id": "frutas:higo",
+      "category": "Frutas",
+      "word": "Higo"
+    },
+    {
+      "id": "verduras-y-hortalizas:zanahoria",
+      "category": "Verduras y hortalizas",
+      "word": "Zanahoria"
+    },
+    {
+      "id": "verduras-y-hortalizas:tomate",
+      "category": "Verduras y hortalizas",
+      "word": "Tomate"
+    },
+    {
+      "id": "verduras-y-hortalizas:lechuga",
+      "category": "Verduras y hortalizas",
+      "word": "Lechuga"
+    },
+    {
+      "id": "verduras-y-hortalizas:cebolla",
+      "category": "Verduras y hortalizas",
+      "word": "Cebolla"
+    },
+    {
+      "id": "verduras-y-hortalizas:ajo",
+      "category": "Verduras y hortalizas",
+      "word": "Ajo"
+    },
+    {
+      "id": "verduras-y-hortalizas:patata",
+      "category": "Verduras y hortalizas",
+      "word": "Patata"
+    },
+    {
+      "id": "verduras-y-hortalizas:pimiento",
+      "category": "Verduras y hortalizas",
+      "word": "Pimiento"
+    },
+    {
+      "id": "verduras-y-hortalizas:pepino",
+      "category": "Verduras y hortalizas",
+      "word": "Pepino"
+    },
+    {
+      "id": "verduras-y-hortalizas:brocoli",
+      "category": "Verduras y hortalizas",
+      "word": "Brócoli"
+    },
+    {
+      "id": "verduras-y-hortalizas:calabacin",
+      "category": "Verduras y hortalizas",
+      "word": "Calabacín"
+    },
+    {
+      "id": "verduras-y-hortalizas:berenjena",
+      "category": "Verduras y hortalizas",
+      "word": "Berenjena"
+    },
+    {
+      "id": "verduras-y-hortalizas:espinaca",
+      "category": "Verduras y hortalizas",
+      "word": "Espinaca"
+    },
+    {
+      "id": "verduras-y-hortalizas:champinon",
+      "category": "Verduras y hortalizas",
+      "word": "Champiñón"
+    },
+    {
+      "id": "verduras-y-hortalizas:maiz",
+      "category": "Verduras y hortalizas",
+      "word": "Maíz"
+    },
+    {
+      "id": "verduras-y-hortalizas:alcachofa",
+      "category": "Verduras y hortalizas",
+      "word": "Alcachofa"
+    },
+    {
+      "id": "verduras-y-hortalizas:coliflor",
+      "category": "Verduras y hortalizas",
+      "word": "Coliflor"
+    },
+    {
+      "id": "comida-espanola:paella",
+      "category": "Comida española",
+      "word": "Paella"
+    },
+    {
+      "id": "comida-espanola:tortilla-de-patatas",
+      "category": "Comida española",
+      "word": "Tortilla de patatas"
+    },
+    {
+      "id": "comida-espanola:gazpacho",
+      "category": "Comida española",
+      "word": "Gazpacho"
+    },
+    {
+      "id": "comida-espanola:jamon-serrano",
+      "category": "Comida española",
+      "word": "Jamón serrano"
+    },
+    {
+      "id": "comida-espanola:croquetas",
+      "category": "Comida española",
+      "word": "Croquetas"
+    },
+    {
+      "id": "comida-espanola:churros",
+      "category": "Comida española",
+      "word": "Churros"
+    },
+    {
+      "id": "comida-espanola:fabada",
+      "category": "Comida española",
+      "word": "Fabada"
+    },
+    {
+      "id": "comida-espanola:cocido-madrileno",
+      "category": "Comida española",
+      "word": "Cocido madrileño"
+    },
+    {
+      "id": "comida-espanola:pulpo-a-la-gallega",
+      "category": "Comida española",
+      "word": "Pulpo a la gallega"
+    },
+    {
+      "id": "comida-espanola:patatas-bravas",
+      "category": "Comida española",
+      "word": "Patatas bravas"
+    },
+    {
+      "id": "comida-espanola:salmorejo",
+      "category": "Comida española",
+      "word": "Salmorejo"
+    },
+    {
+      "id": "comida-espanola:pan-con-tomate",
+      "category": "Comida española",
+      "word": "Pan con tomate"
+    },
+    {
+      "id": "comida-espanola:calamares",
+      "category": "Comida española",
+      "word": "Calamares"
+    },
+    {
+      "id": "comida-espanola:pimientos-de-padron",
+      "category": "Comida española",
+      "word": "Pimientos de Padrón"
+    },
+    {
+      "id": "comida-espanola:torrijas",
+      "category": "Comida española",
+      "word": "Torrijas"
+    },
+    {
+      "id": "comida-espanola:turron",
+      "category": "Comida española",
+      "word": "Turrón"
+    },
+    {
+      "id": "comida-espanola:ensaladilla-rusa",
+      "category": "Comida española",
+      "word": "Ensaladilla rusa"
+    },
+    {
+      "id": "comida-espanola:bocadillo-de-calamares",
+      "category": "Comida española",
+      "word": "Bocadillo de calamares"
+    },
+    {
+      "id": "comida-internacional:pizza",
+      "category": "Comida internacional",
+      "word": "Pizza"
+    },
+    {
+      "id": "comida-internacional:hamburguesa",
+      "category": "Comida internacional",
+      "word": "Hamburguesa"
+    },
+    {
+      "id": "comida-internacional:sushi",
+      "category": "Comida internacional",
+      "word": "Sushi"
+    },
+    {
+      "id": "comida-internacional:tacos",
+      "category": "Comida internacional",
+      "word": "Tacos"
+    },
+    {
+      "id": "comida-internacional:kebab",
+      "category": "Comida internacional",
+      "word": "Kebab"
+    },
+    {
+      "id": "comida-internacional:ramen",
+      "category": "Comida internacional",
+      "word": "Ramen"
+    },
+    {
+      "id": "comida-internacional:lasana",
+      "category": "Comida internacional",
+      "word": "Lasaña"
+    },
+    {
+      "id": "comida-internacional:hot-dog",
+      "category": "Comida internacional",
+      "word": "Hot dog"
+    },
+    {
+      "id": "comida-internacional:burrito",
+      "category": "Comida internacional",
+      "word": "Burrito"
+    },
+    {
+      "id": "comida-internacional:curry",
+      "category": "Comida internacional",
+      "word": "Curry"
+    },
+    {
+      "id": "comida-internacional:croissant",
+      "category": "Comida internacional",
+      "word": "Croissant"
+    },
+    {
+      "id": "comida-internacional:nachos",
+      "category": "Comida internacional",
+      "word": "Nachos"
+    },
+    {
+      "id": "comida-internacional:espaguetis",
+      "category": "Comida internacional",
+      "word": "Espaguetis"
+    },
+    {
+      "id": "comida-internacional:dumplings",
+      "category": "Comida internacional",
+      "word": "Dumplings"
+    },
+    {
+      "id": "comida-internacional:fondue",
+      "category": "Comida internacional",
+      "word": "Fondue"
+    },
+    {
+      "id": "comida-internacional:crepes",
+      "category": "Comida internacional",
+      "word": "Crepes"
+    },
+    {
+      "id": "dulces-y-postres:helado",
+      "category": "Dulces y postres",
+      "word": "Helado"
+    },
+    {
+      "id": "dulces-y-postres:tarta-de-queso",
+      "category": "Dulces y postres",
+      "word": "Tarta de queso"
+    },
+    {
+      "id": "dulces-y-postres:donut",
+      "category": "Dulces y postres",
+      "word": "Donut"
+    },
+    {
+      "id": "dulces-y-postres:flan",
+      "category": "Dulces y postres",
+      "word": "Flan"
+    },
+    {
+      "id": "dulces-y-postres:chocolate",
+      "category": "Dulces y postres",
+      "word": "Chocolate"
+    },
+    {
+      "id": "dulces-y-postres:gominolas",
+      "category": "Dulces y postres",
+      "word": "Gominolas"
+    },
+    {
+      "id": "dulces-y-postres:magdalena",
+      "category": "Dulces y postres",
+      "word": "Magdalena"
+    },
+    {
+      "id": "dulces-y-postres:natillas",
+      "category": "Dulces y postres",
+      "word": "Natillas"
+    },
+    {
+      "id": "dulces-y-postres:arroz-con-leche",
+      "category": "Dulces y postres",
+      "word": "Arroz con leche"
+    },
+    {
+      "id": "dulces-y-postres:tiramisu",
+      "category": "Dulces y postres",
+      "word": "Tiramisú"
+    },
+    {
+      "id": "dulces-y-postres:brownie",
+      "category": "Dulces y postres",
+      "word": "Brownie"
+    },
+    {
+      "id": "dulces-y-postres:algodon-de-azucar",
+      "category": "Dulces y postres",
+      "word": "Algodón de azúcar"
+    },
+    {
+      "id": "dulces-y-postres:piruleta",
+      "category": "Dulces y postres",
+      "word": "Piruleta"
+    },
+    {
+      "id": "dulces-y-postres:galleta",
+      "category": "Dulces y postres",
+      "word": "Galleta"
+    },
+    {
+      "id": "dulces-y-postres:palmera-de-chocolate",
+      "category": "Dulces y postres",
+      "word": "Palmera de chocolate"
+    },
+    {
+      "id": "dulces-y-postres:cupcake",
+      "category": "Dulces y postres",
+      "word": "Cupcake"
+    },
+    {
+      "id": "bebidas:cafe",
+      "category": "Bebidas",
+      "word": "Café"
+    },
+    {
+      "id": "bebidas:te",
+      "category": "Bebidas",
+      "word": "Té"
+    },
+    {
+      "id": "bebidas:zumo-de-naranja",
+      "category": "Bebidas",
+      "word": "Zumo de naranja"
+    },
+    {
+      "id": "bebidas:horchata",
+      "category": "Bebidas",
+      "word": "Horchata"
+    },
+    {
+      "id": "bebidas:batido",
+      "category": "Bebidas",
+      "word": "Batido"
+    },
+    {
+      "id": "bebidas:agua-con-gas",
+      "category": "Bebidas",
+      "word": "Agua con gas"
+    },
+    {
+      "id": "bebidas:limonada",
+      "category": "Bebidas",
+      "word": "Limonada"
+    },
+    {
+      "id": "bebidas:chocolate-caliente",
+      "category": "Bebidas",
+      "word": "Chocolate caliente"
+    },
+    {
+      "id": "bebidas:refresco-de-cola",
+      "category": "Bebidas",
+      "word": "Refresco de cola"
+    },
+    {
+      "id": "bebidas:granizado",
+      "category": "Bebidas",
+      "word": "Granizado"
+    },
+    {
+      "id": "bebidas:leche",
+      "category": "Bebidas",
+      "word": "Leche"
+    },
+    {
+      "id": "bebidas:kombucha",
+      "category": "Bebidas",
+      "word": "Kombucha"
+    },
+    {
+      "id": "objetos-de-cocina:sarten",
+      "category": "Objetos de cocina",
+      "word": "Sartén"
+    },
+    {
+      "id": "objetos-de-cocina:cuchara",
+      "category": "Objetos de cocina",
+      "word": "Cuchara"
+    },
+    {
+      "id": "objetos-de-cocina:tenedor",
+      "category": "Objetos de cocina",
+      "word": "Tenedor"
+    },
+    {
+      "id": "objetos-de-cocina:batidora",
+      "category": "Objetos de cocina",
+      "word": "Batidora"
+    },
+    {
+      "id": "objetos-de-cocina:microondas",
+      "category": "Objetos de cocina",
+      "word": "Microondas"
+    },
+    {
+      "id": "objetos-de-cocina:tostadora",
+      "category": "Objetos de cocina",
+      "word": "Tostadora"
+    },
+    {
+      "id": "objetos-de-cocina:olla",
+      "category": "Objetos de cocina",
+      "word": "Olla"
+    },
+    {
+      "id": "objetos-de-cocina:rallador",
+      "category": "Objetos de cocina",
+      "word": "Rallador"
+    },
+    {
+      "id": "objetos-de-cocina:abrelatas",
+      "category": "Objetos de cocina",
+      "word": "Abrelatas"
+    },
+    {
+      "id": "objetos-de-cocina:colador",
+      "category": "Objetos de cocina",
+      "word": "Colador"
+    },
+    {
+      "id": "objetos-de-cocina:cafetera",
+      "category": "Objetos de cocina",
+      "word": "Cafetera"
+    },
+    {
+      "id": "objetos-de-cocina:rodillo",
+      "category": "Objetos de cocina",
+      "word": "Rodillo"
+    },
+    {
+      "id": "objetos-de-cocina:nevera",
+      "category": "Objetos de cocina",
+      "word": "Nevera"
+    },
+    {
+      "id": "objetos-de-cocina:horno",
+      "category": "Objetos de cocina",
+      "word": "Horno"
+    },
+    {
+      "id": "objetos-de-cocina:delantal",
+      "category": "Objetos de cocina",
+      "word": "Delantal"
+    },
+    {
+      "id": "objetos-de-cocina:tabla-de-cortar",
+      "category": "Objetos de cocina",
+      "word": "Tabla de cortar"
+    },
+    {
+      "id": "objetos-del-bano:cepillo-de-dientes",
+      "category": "Objetos del baño",
+      "word": "Cepillo de dientes"
+    },
+    {
+      "id": "objetos-del-bano:pasta-de-dientes",
+      "category": "Objetos del baño",
+      "word": "Pasta de dientes"
+    },
+    {
+      "id": "objetos-del-bano:toalla",
+      "category": "Objetos del baño",
+      "word": "Toalla"
+    },
+    {
+      "id": "objetos-del-bano:ducha",
+      "category": "Objetos del baño",
+      "word": "Ducha"
+    },
+    {
+      "id": "objetos-del-bano:espejo",
+      "category": "Objetos del baño",
+      "word": "Espejo"
+    },
+    {
+      "id": "objetos-del-bano:secador-de-pelo",
+      "category": "Objetos del baño",
+      "word": "Secador de pelo"
+    },
+    {
+      "id": "objetos-del-bano:champu",
+      "category": "Objetos del baño",
+      "word": "Champú"
+    },
+    {
+      "id": "objetos-del-bano:jabon",
+      "category": "Objetos del baño",
+      "word": "Jabón"
+    },
+    {
+      "id": "objetos-del-bano:papel-higienico",
+      "category": "Objetos del baño",
+      "word": "Papel higiénico"
+    },
+    {
+      "id": "objetos-del-bano:peine",
+      "category": "Objetos del baño",
+      "word": "Peine"
+    },
+    {
+      "id": "objetos-del-bano:esponja",
+      "category": "Objetos del baño",
+      "word": "Esponja"
+    },
+    {
+      "id": "objetos-del-bano:banera",
+      "category": "Objetos del baño",
+      "word": "Bañera"
+    },
+    {
+      "id": "objetos-de-casa:sofa",
+      "category": "Objetos de casa",
+      "word": "Sofá"
+    },
+    {
+      "id": "objetos-de-casa:lampara",
+      "category": "Objetos de casa",
+      "word": "Lámpara"
+    },
+    {
+      "id": "objetos-de-casa:almohada",
+      "category": "Objetos de casa",
+      "word": "Almohada"
+    },
+    {
+      "id": "objetos-de-casa:mando-de-la-tele",
+      "category": "Objetos de casa",
+      "word": "Mando de la tele"
+    },
+    {
+      "id": "objetos-de-casa:cortina",
+      "category": "Objetos de casa",
+      "word": "Cortina"
+    },
+    {
+      "id": "objetos-de-casa:alfombra",
+      "category": "Objetos de casa",
+      "word": "Alfombra"
+    },
+    {
+      "id": "objetos-de-casa:escoba",
+      "category": "Objetos de casa",
+      "word": "Escoba"
+    },
+    {
+      "id": "objetos-de-casa:fregona",
+      "category": "Objetos de casa",
+      "word": "Fregona"
+    },
+    {
+      "id": "objetos-de-casa:percha",
+      "category": "Objetos de casa",
+      "word": "Percha"
+    },
+    {
+      "id": "objetos-de-casa:reloj-de-pared",
+      "category": "Objetos de casa",
+      "word": "Reloj de pared"
+    },
+    {
+      "id": "objetos-de-casa:llave",
+      "category": "Objetos de casa",
+      "word": "Llave"
+    },
+    {
+      "id": "objetos-de-casa:paraguas",
+      "category": "Objetos de casa",
+      "word": "Paraguas"
+    },
+    {
+      "id": "objetos-de-casa:mochila",
+      "category": "Objetos de casa",
+      "word": "Mochila"
+    },
+    {
+      "id": "objetos-de-casa:vela",
+      "category": "Objetos de casa",
+      "word": "Vela"
+    },
+    {
+      "id": "objetos-de-casa:cojin",
+      "category": "Objetos de casa",
+      "word": "Cojín"
+    },
+    {
+      "id": "objetos-de-casa:ventilador",
+      "category": "Objetos de casa",
+      "word": "Ventilador"
+    },
+    {
+      "id": "objetos-de-casa:estanteria",
+      "category": "Objetos de casa",
+      "word": "Estantería"
+    },
+    {
+      "id": "objetos-de-casa:felpudo",
+      "category": "Objetos de casa",
+      "word": "Felpudo"
+    },
+    {
+      "id": "material-escolar:lapiz",
+      "category": "Material escolar",
+      "word": "Lápiz"
+    },
+    {
+      "id": "material-escolar:goma-de-borrar",
+      "category": "Material escolar",
+      "word": "Goma de borrar"
+    },
+    {
+      "id": "material-escolar:sacapuntas",
+      "category": "Material escolar",
+      "word": "Sacapuntas"
+    },
+    {
+      "id": "material-escolar:regla",
+      "category": "Material escolar",
+      "word": "Regla"
+    },
+    {
+      "id": "material-escolar:tijeras",
+      "category": "Material escolar",
+      "word": "Tijeras"
+    },
+    {
+      "id": "material-escolar:pegamento",
+      "category": "Material escolar",
+      "word": "Pegamento"
+    },
+    {
+      "id": "material-escolar:estuche",
+      "category": "Material escolar",
+      "word": "Estuche"
+    },
+    {
+      "id": "material-escolar:cuaderno",
+      "category": "Material escolar",
+      "word": "Cuaderno"
+    },
+    {
+      "id": "material-escolar:compas",
+      "category": "Material escolar",
+      "word": "Compás"
+    },
+    {
+      "id": "material-escolar:calculadora",
+      "category": "Material escolar",
+      "word": "Calculadora"
+    },
+    {
+      "id": "material-escolar:rotulador",
+      "category": "Material escolar",
+      "word": "Rotulador"
+    },
+    {
+      "id": "material-escolar:pizarra",
+      "category": "Material escolar",
+      "word": "Pizarra"
+    },
+    {
+      "id": "material-escolar:grapadora",
+      "category": "Material escolar",
+      "word": "Grapadora"
+    },
+    {
+      "id": "material-escolar:tipex",
+      "category": "Material escolar",
+      "word": "Típex"
+    },
+    {
+      "id": "material-escolar:agenda",
+      "category": "Material escolar",
+      "word": "Agenda"
+    },
+    {
+      "id": "herramientas:martillo",
+      "category": "Herramientas",
+      "word": "Martillo"
+    },
+    {
+      "id": "herramientas:destornillador",
+      "category": "Herramientas",
+      "word": "Destornillador"
+    },
+    {
+      "id": "herramientas:llave-inglesa",
+      "category": "Herramientas",
+      "word": "Llave inglesa"
+    },
+    {
+      "id": "herramientas:taladro",
+      "category": "Herramientas",
+      "word": "Taladro"
+    },
+    {
+      "id": "herramientas:sierra",
+      "category": "Herramientas",
+      "word": "Sierra"
+    },
+    {
+      "id": "herramientas:alicates",
+      "category": "Herramientas",
+      "word": "Alicates"
+    },
+    {
+      "id": "herramientas:cinta-metrica",
+      "category": "Herramientas",
+      "word": "Cinta métrica"
+    },
+    {
+      "id": "herramientas:clavo",
+      "category": "Herramientas",
+      "word": "Clavo"
+    },
+    {
+      "id": "herramientas:tornillo",
+      "category": "Herramientas",
+      "word": "Tornillo"
+    },
+    {
+      "id": "herramientas:nivel",
+      "category": "Herramientas",
+      "word": "Nivel"
+    },
+    {
+      "id": "herramientas:lija",
+      "category": "Herramientas",
+      "word": "Lija"
+    },
+    {
+      "id": "herramientas:pala",
+      "category": "Herramientas",
+      "word": "Pala"
+    },
+    {
+      "id": "herramientas:rastrillo",
+      "category": "Herramientas",
+      "word": "Rastrillo"
+    },
+    {
+      "id": "herramientas:escalera",
+      "category": "Herramientas",
+      "word": "Escalera"
+    },
+    {
+      "id": "herramientas:linterna",
+      "category": "Herramientas",
+      "word": "Linterna"
+    },
+    {
+      "id": "herramientas:brocha",
+      "category": "Herramientas",
+      "word": "Brocha"
+    },
+    {
+      "id": "ropa:camiseta",
+      "category": "Ropa",
+      "word": "Camiseta"
+    },
+    {
+      "id": "ropa:pantalon-vaquero",
+      "category": "Ropa",
+      "word": "Pantalón vaquero"
+    },
+    {
+      "id": "ropa:sudadera",
+      "category": "Ropa",
+      "word": "Sudadera"
+    },
+    {
+      "id": "ropa:abrigo",
+      "category": "Ropa",
+      "word": "Abrigo"
+    },
+    {
+      "id": "ropa:bufanda",
+      "category": "Ropa",
+      "word": "Bufanda"
+    },
+    {
+      "id": "ropa:calcetines",
+      "category": "Ropa",
+      "word": "Calcetines"
+    },
+    {
+      "id": "ropa:pijama",
+      "category": "Ropa",
+      "word": "Pijama"
+    },
+    {
+      "id": "ropa:corbata",
+      "category": "Ropa",
+      "word": "Corbata"
+    },
+    {
+      "id": "ropa:falda",
+      "category": "Ropa",
+      "word": "Falda"
+    },
+    {
+      "id": "ropa:chandal",
+      "category": "Ropa",
+      "word": "Chándal"
+    },
+    {
+      "id": "ropa:banador",
+      "category": "Ropa",
+      "word": "Bañador"
+    },
+    {
+      "id": "ropa:chaqueta-de-cuero",
+      "category": "Ropa",
+      "word": "Chaqueta de cuero"
+    },
+    {
+      "id": "ropa:vestido",
+      "category": "Ropa",
+      "word": "Vestido"
+    },
+    {
+      "id": "ropa:gorro-de-lana",
+      "category": "Ropa",
+      "word": "Gorro de lana"
+    },
+    {
+      "id": "ropa:guantes",
+      "category": "Ropa",
+      "word": "Guantes"
+    },
+    {
+      "id": "ropa:chubasquero",
+      "category": "Ropa",
+      "word": "Chubasquero"
+    },
+    {
+      "id": "calzado-y-complementos:zapatillas-de-deporte",
+      "category": "Calzado y complementos",
+      "word": "Zapatillas de deporte"
+    },
+    {
+      "id": "calzado-y-complementos:chanclas",
+      "category": "Calzado y complementos",
+      "word": "Chanclas"
+    },
+    {
+      "id": "calzado-y-complementos:botas",
+      "category": "Calzado y complementos",
+      "word": "Botas"
+    },
+    {
+      "id": "calzado-y-complementos:tacones",
+      "category": "Calzado y complementos",
+      "word": "Tacones"
+    },
+    {
+      "id": "calzado-y-complementos:sandalias",
+      "category": "Calzado y complementos",
+      "word": "Sandalias"
+    },
+    {
+      "id": "calzado-y-complementos:gafas-de-sol",
+      "category": "Calzado y complementos",
+      "word": "Gafas de sol"
+    },
+    {
+      "id": "calzado-y-complementos:reloj-de-pulsera",
+      "category": "Calzado y complementos",
+      "word": "Reloj de pulsera"
+    },
+    {
+      "id": "calzado-y-complementos:cinturon",
+      "category": "Calzado y complementos",
+      "word": "Cinturón"
+    },
+    {
+      "id": "calzado-y-complementos:gorra",
+      "category": "Calzado y complementos",
+      "word": "Gorra"
+    },
+    {
+      "id": "calzado-y-complementos:collar",
+      "category": "Calzado y complementos",
+      "word": "Collar"
+    },
+    {
+      "id": "calzado-y-complementos:pendientes",
+      "category": "Calzado y complementos",
+      "word": "Pendientes"
+    },
+    {
+      "id": "calzado-y-complementos:anillo",
+      "category": "Calzado y complementos",
+      "word": "Anillo"
+    },
+    {
+      "id": "calzado-y-complementos:bolso",
+      "category": "Calzado y complementos",
+      "word": "Bolso"
+    },
+    {
+      "id": "calzado-y-complementos:cartera",
+      "category": "Calzado y complementos",
+      "word": "Cartera"
+    },
+    {
+      "id": "calzado-y-complementos:sombrero",
+      "category": "Calzado y complementos",
+      "word": "Sombrero"
+    },
+    {
+      "id": "profesiones:medico",
+      "category": "Profesiones",
+      "word": "Médico"
+    },
+    {
+      "id": "profesiones:bombero",
+      "category": "Profesiones",
+      "word": "Bombero"
+    },
+    {
+      "id": "profesiones:policia",
+      "category": "Profesiones",
+      "word": "Policía"
+    },
+    {
+      "id": "profesiones:profesor",
+      "category": "Profesiones",
+      "word": "Profesor"
+    },
+    {
+      "id": "profesiones:cocinero",
+      "category": "Profesiones",
+      "word": "Cocinero"
+    },
+    {
+      "id": "profesiones:piloto",
+      "category": "Profesiones",
+      "word": "Piloto"
+    },
+    {
+      "id": "profesiones:astronauta",
+      "category": "Profesiones",
+      "word": "Astronauta"
+    },
+    {
+      "id": "profesiones:fontanero",
+      "category": "Profesiones",
+      "word": "Fontanero"
+    },
+    {
+      "id": "profesiones:peluquero",
+      "category": "Profesiones",
+      "word": "Peluquero"
+    },
+    {
+      "id": "profesiones:dentista",
+      "category": "Profesiones",
+      "word": "Dentista"
+    },
+    {
+      "id": "profesiones:veterinario",
+      "category": "Profesiones",
+      "word": "Veterinario"
+    },
+    {
+      "id": "profesiones:abogado",
+      "category": "Profesiones",
+      "word": "Abogado"
+    },
+    {
+      "id": "profesiones:carpintero",
+      "category": "Profesiones",
+      "word": "Carpintero"
+    },
+    {
+      "id": "profesiones:periodista",
+      "category": "Profesiones",
+      "word": "Periodista"
+    },
+    {
+      "id": "profesiones:camarero",
+      "category": "Profesiones",
+      "word": "Camarero"
+    },
+    {
+      "id": "profesiones:electricista",
+      "category": "Profesiones",
+      "word": "Electricista"
+    },
+    {
+      "id": "profesiones:arquitecto",
+      "category": "Profesiones",
+      "word": "Arquitecto"
+    },
+    {
+      "id": "profesiones:socorrista",
+      "category": "Profesiones",
+      "word": "Socorrista"
+    },
+    {
+      "id": "profesiones:panadero",
+      "category": "Profesiones",
+      "word": "Panadero"
+    },
+    {
+      "id": "profesiones:taxista",
+      "category": "Profesiones",
+      "word": "Taxista"
+    },
+    {
+      "id": "profesiones:cartero",
+      "category": "Profesiones",
+      "word": "Cartero"
+    },
+    {
+      "id": "profesiones:juez",
+      "category": "Profesiones",
+      "word": "Juez"
+    },
+    {
+      "id": "profesiones:mago",
+      "category": "Profesiones",
+      "word": "Mago"
+    },
+    {
+      "id": "profesiones:payaso",
+      "category": "Profesiones",
+      "word": "Payaso"
+    },
+    {
+      "id": "deportes:futbol",
+      "category": "Deportes",
+      "word": "Fútbol"
+    },
+    {
+      "id": "deportes:baloncesto",
+      "category": "Deportes",
+      "word": "Baloncesto"
+    },
+    {
+      "id": "deportes:tenis",
+      "category": "Deportes",
+      "word": "Tenis"
+    },
+    {
+      "id": "deportes:natacion",
+      "category": "Deportes",
+      "word": "Natación"
+    },
+    {
+      "id": "deportes:ciclismo",
+      "category": "Deportes",
+      "word": "Ciclismo"
+    },
+    {
+      "id": "deportes:boxeo",
+      "category": "Deportes",
+      "word": "Boxeo"
+    },
+    {
+      "id": "deportes:golf",
+      "category": "Deportes",
+      "word": "Golf"
+    },
+    {
+      "id": "deportes:voleibol",
+      "category": "Deportes",
+      "word": "Voleibol"
+    },
+    {
+      "id": "deportes:balonmano",
+      "category": "Deportes",
+      "word": "Balonmano"
+    },
+    {
+      "id": "deportes:padel",
+      "category": "Deportes",
+      "word": "Pádel"
+    },
+    {
+      "id": "deportes:esqui",
+      "category": "Deportes",
+      "word": "Esquí"
+    },
+    {
+      "id": "deportes:surf",
+      "category": "Deportes",
+      "word": "Surf"
+    },
+    {
+      "id": "deportes:atletismo",
+      "category": "Deportes",
+      "word": "Atletismo"
+    },
+    {
+      "id": "deportes:escalada",
+      "category": "Deportes",
+      "word": "Escalada"
+    },
+    {
+      "id": "deportes:rugby",
+      "category": "Deportes",
+      "word": "Rugby"
+    },
+    {
+      "id": "deportes:beisbol",
+      "category": "Deportes",
+      "word": "Béisbol"
+    },
+    {
+      "id": "deportes:patinaje",
+      "category": "Deportes",
+      "word": "Patinaje"
+    },
+    {
+      "id": "deportes:karate",
+      "category": "Deportes",
+      "word": "Karate"
+    },
+    {
+      "id": "deportes:ajedrez",
+      "category": "Deportes",
+      "word": "Ajedrez"
+    },
+    {
+      "id": "deportes:formula-1",
+      "category": "Deportes",
+      "word": "Fórmula 1"
+    },
+    {
+      "id": "deportes:waterpolo",
+      "category": "Deportes",
+      "word": "Waterpolo"
+    },
+    {
+      "id": "deportes:badminton",
+      "category": "Deportes",
+      "word": "Bádminton"
+    },
+    {
+      "id": "deportes:gimnasia-ritmica",
+      "category": "Deportes",
+      "word": "Gimnasia rítmica"
+    },
+    {
+      "id": "deportes:hockey",
+      "category": "Deportes",
+      "word": "Hockey"
+    },
+    {
+      "id": "objetos-deportivos:balon",
+      "category": "Objetos deportivos",
+      "word": "Balón"
+    },
+    {
+      "id": "objetos-deportivos:raqueta",
+      "category": "Objetos deportivos",
+      "word": "Raqueta"
+    },
+    {
+      "id": "objetos-deportivos:canasta",
+      "category": "Objetos deportivos",
+      "word": "Canasta"
+    },
+    {
+      "id": "objetos-deportivos:porteria",
+      "category": "Objetos deportivos",
+      "word": "Portería"
+    },
+    {
+      "id": "objetos-deportivos:bicicleta-estatica",
+      "category": "Objetos deportivos",
+      "word": "Bicicleta estática"
+    },
+    {
+      "id": "objetos-deportivos:pesas",
+      "category": "Objetos deportivos",
+      "word": "Pesas"
+    },
+    {
+      "id": "objetos-deportivos:patines",
+      "category": "Objetos deportivos",
+      "word": "Patines"
+    },
+    {
+      "id": "objetos-deportivos:tabla-de-surf",
+      "category": "Objetos deportivos",
+      "word": "Tabla de surf"
+    },
+    {
+      "id": "objetos-deportivos:guantes-de-boxeo",
+      "category": "Objetos deportivos",
+      "word": "Guantes de boxeo"
+    },
+    {
+      "id": "objetos-deportivos:casco",
+      "category": "Objetos deportivos",
+      "word": "Casco"
+    },
+    {
+      "id": "objetos-deportivos:red",
+      "category": "Objetos deportivos",
+      "word": "Red"
+    },
+    {
+      "id": "objetos-deportivos:silbato",
+      "category": "Objetos deportivos",
+      "word": "Silbato"
+    },
+    {
+      "id": "objetos-deportivos:medalla",
+      "category": "Objetos deportivos",
+      "word": "Medalla"
+    },
+    {
+      "id": "objetos-deportivos:trofeo",
+      "category": "Objetos deportivos",
+      "word": "Trofeo"
+    },
+    {
+      "id": "objetos-deportivos:esterilla-de-yoga",
+      "category": "Objetos deportivos",
+      "word": "Esterilla de yoga"
+    },
+    {
+      "id": "objetos-deportivos:cronometro",
+      "category": "Objetos deportivos",
+      "word": "Cronómetro"
+    },
+    {
+      "id": "videojuegos:minecraft",
+      "category": "Videojuegos",
+      "word": "Minecraft"
+    },
+    {
+      "id": "videojuegos:fortnite",
+      "category": "Videojuegos",
+      "word": "Fortnite"
+    },
+    {
+      "id": "videojuegos:among-us",
+      "category": "Videojuegos",
+      "word": "Among Us"
+    },
+    {
+      "id": "videojuegos:tetris",
+      "category": "Videojuegos",
+      "word": "Tetris"
+    },
+    {
+      "id": "videojuegos:pac-man",
+      "category": "Videojuegos",
+      "word": "Pac-Man"
+    },
+    {
+      "id": "videojuegos:super-mario-bros",
+      "category": "Videojuegos",
+      "word": "Super Mario Bros"
+    },
+    {
+      "id": "videojuegos:the-legend-of-zelda",
+      "category": "Videojuegos",
+      "word": "The Legend of Zelda"
+    },
+    {
+      "id": "videojuegos:pokemon",
+      "category": "Videojuegos",
+      "word": "Pokémon"
+    },
+    {
+      "id": "videojuegos:grand-theft-auto",
+      "category": "Videojuegos",
+      "word": "Grand Theft Auto"
+    },
+    {
+      "id": "videojuegos:call-of-duty",
+      "category": "Videojuegos",
+      "word": "Call of Duty"
+    },
+    {
+      "id": "videojuegos:league-of-legends",
+      "category": "Videojuegos",
+      "word": "League of Legends"
+    },
+    {
+      "id": "videojuegos:valorant",
+      "category": "Videojuegos",
+      "word": "Valorant"
+    },
+    {
+      "id": "videojuegos:counter-strike",
+      "category": "Videojuegos",
+      "word": "Counter-Strike"
+    },
+    {
+      "id": "videojuegos:fifa",
+      "category": "Videojuegos",
+      "word": "FIFA"
+    },
+    {
+      "id": "videojuegos:rocket-league",
+      "category": "Videojuegos",
+      "word": "Rocket League"
+    },
+    {
+      "id": "videojuegos:the-sims",
+      "category": "Videojuegos",
+      "word": "The Sims"
+    },
+    {
+      "id": "videojuegos:animal-crossing",
+      "category": "Videojuegos",
+      "word": "Animal Crossing"
+    },
+    {
+      "id": "videojuegos:mario-kart",
+      "category": "Videojuegos",
+      "word": "Mario Kart"
+    },
+    {
+      "id": "videojuegos:clash-royale",
+      "category": "Videojuegos",
+      "word": "Clash Royale"
+    },
+    {
+      "id": "videojuegos:roblox",
+      "category": "Videojuegos",
+      "word": "Roblox"
+    },
+    {
+      "id": "videojuegos:fall-guys",
+      "category": "Videojuegos",
+      "word": "Fall Guys"
+    },
+    {
+      "id": "videojuegos:overwatch",
+      "category": "Videojuegos",
+      "word": "Overwatch"
+    },
+    {
+      "id": "videojuegos:street-fighter",
+      "category": "Videojuegos",
+      "word": "Street Fighter"
+    },
+    {
+      "id": "videojuegos:sonic-the-hedgehog",
+      "category": "Videojuegos",
+      "word": "Sonic the Hedgehog"
+    },
+    {
+      "id": "videojuegos:candy-crush",
+      "category": "Videojuegos",
+      "word": "Candy Crush"
+    },
+    {
+      "id": "videojuegos:angry-birds",
+      "category": "Videojuegos",
+      "word": "Angry Birds"
+    },
+    {
+      "id": "videojuegos:geometry-dash",
+      "category": "Videojuegos",
+      "word": "Geometry Dash"
+    },
+    {
+      "id": "videojuegos:brawl-stars",
+      "category": "Videojuegos",
+      "word": "Brawl Stars"
+    },
+    {
+      "id": "videojuegos:elden-ring",
+      "category": "Videojuegos",
+      "word": "Elden Ring"
+    },
+    {
+      "id": "videojuegos:hollow-knight",
+      "category": "Videojuegos",
+      "word": "Hollow Knight"
+    },
+    {
+      "id": "videojuegos:red-dead-redemption",
+      "category": "Videojuegos",
+      "word": "Red Dead Redemption"
+    },
+    {
+      "id": "videojuegos:portal",
+      "category": "Videojuegos",
+      "word": "Portal"
+    },
+    {
+      "id": "videojuegos:halo",
+      "category": "Videojuegos",
+      "word": "Halo"
+    },
+    {
+      "id": "videojuegos:doom",
+      "category": "Videojuegos",
+      "word": "Doom"
+    },
+    {
+      "id": "videojuegos:stardew-valley",
+      "category": "Videojuegos",
+      "word": "Stardew Valley"
+    },
+    {
+      "id": "videojuegos:splatoon",
+      "category": "Videojuegos",
+      "word": "Splatoon"
+    },
+    {
+      "id": "consolas-y-gaming:playstation",
+      "category": "Consolas y gaming",
+      "word": "PlayStation"
+    },
+    {
+      "id": "consolas-y-gaming:xbox",
+      "category": "Consolas y gaming",
+      "word": "Xbox"
+    },
+    {
+      "id": "consolas-y-gaming:nintendo-switch",
+      "category": "Consolas y gaming",
+      "word": "Nintendo Switch"
+    },
+    {
+      "id": "consolas-y-gaming:game-boy",
+      "category": "Consolas y gaming",
+      "word": "Game Boy"
+    },
+    {
+      "id": "consolas-y-gaming:mando",
+      "category": "Consolas y gaming",
+      "word": "Mando"
+    },
+    {
+      "id": "consolas-y-gaming:auriculares-gaming",
+      "category": "Consolas y gaming",
+      "word": "Auriculares gaming"
+    },
+    {
+      "id": "consolas-y-gaming:raton",
+      "category": "Consolas y gaming",
+      "word": "Ratón"
+    },
+    {
+      "id": "consolas-y-gaming:teclado-mecanico",
+      "category": "Consolas y gaming",
+      "word": "Teclado mecánico"
+    },
+    {
+      "id": "consolas-y-gaming:silla-gamer",
+      "category": "Consolas y gaming",
+      "word": "Silla gamer"
+    },
+    {
+      "id": "consolas-y-gaming:recreativa",
+      "category": "Consolas y gaming",
+      "word": "Recreativa"
+    },
+    {
+      "id": "consolas-y-gaming:gafas-de-realidad-virtual",
+      "category": "Consolas y gaming",
+      "word": "Gafas de realidad virtual"
+    },
+    {
+      "id": "consolas-y-gaming:streaming",
+      "category": "Consolas y gaming",
+      "word": "Streaming"
+    },
+    {
+      "id": "peliculas:titanic",
+      "category": "Películas",
+      "word": "Titanic"
+    },
+    {
+      "id": "peliculas:avatar",
+      "category": "Películas",
+      "word": "Avatar"
+    },
+    {
+      "id": "peliculas:el-rey-leon",
+      "category": "Películas",
+      "word": "El Rey León"
+    },
+    {
+      "id": "peliculas:toy-story",
+      "category": "Películas",
+      "word": "Toy Story"
+    },
+    {
+      "id": "peliculas:shrek",
+      "category": "Películas",
+      "word": "Shrek"
+    },
+    {
+      "id": "peliculas:frozen",
+      "category": "Películas",
+      "word": "Frozen"
+    },
+    {
+      "id": "peliculas:jurassic-park",
+      "category": "Películas",
+      "word": "Jurassic Park"
+    },
+    {
+      "id": "peliculas:star-wars",
+      "category": "Películas",
+      "word": "Star Wars"
+    },
+    {
+      "id": "peliculas:harry-potter",
+      "category": "Películas",
+      "word": "Harry Potter"
+    },
+    {
+      "id": "peliculas:el-senor-de-los-anillos",
+      "category": "Películas",
+      "word": "El señor de los anillos"
+    },
+    {
+      "id": "peliculas:matrix",
+      "category": "Películas",
+      "word": "Matrix"
+    },
+    {
+      "id": "peliculas:regreso-al-futuro",
+      "category": "Películas",
+      "word": "Regreso al futuro"
+    },
+    {
+      "id": "peliculas:buscando-a-nemo",
+      "category": "Películas",
+      "word": "Buscando a Nemo"
+    },
+    {
+      "id": "peliculas:los-vengadores",
+      "category": "Películas",
+      "word": "Los Vengadores"
+    },
+    {
+      "id": "peliculas:piratas-del-caribe",
+      "category": "Películas",
+      "word": "Piratas del Caribe"
+    },
+    {
+      "id": "peliculas:tiburon",
+      "category": "Películas",
+      "word": "Tiburón"
+    },
+    {
+      "id": "peliculas:e-t",
+      "category": "Películas",
+      "word": "E.T."
+    },
+    {
+      "id": "peliculas:coco",
+      "category": "Películas",
+      "word": "Coco"
+    },
+    {
+      "id": "peliculas:up",
+      "category": "Películas",
+      "word": "Up"
+    },
+    {
+      "id": "peliculas:los-increibles",
+      "category": "Películas",
+      "word": "Los Increíbles"
+    },
+    {
+      "id": "peliculas:spider-man",
+      "category": "Películas",
+      "word": "Spider-Man"
+    },
+    {
+      "id": "peliculas:batman",
+      "category": "Películas",
+      "word": "Batman"
+    },
+    {
+      "id": "peliculas:barbie",
+      "category": "Películas",
+      "word": "Barbie"
+    },
+    {
+      "id": "peliculas:oppenheimer",
+      "category": "Películas",
+      "word": "Oppenheimer"
+    },
+    {
+      "id": "peliculas:ocho-apellidos-vascos",
+      "category": "Películas",
+      "word": "Ocho apellidos vascos"
+    },
+    {
+      "id": "peliculas:torrente",
+      "category": "Películas",
+      "word": "Torrente"
+    },
+    {
+      "id": "peliculas:gru-mi-villano-favorito",
+      "category": "Películas",
+      "word": "Gru mi villano favorito"
+    },
+    {
+      "id": "peliculas:cars",
+      "category": "Películas",
+      "word": "Cars"
+    },
+    {
+      "id": "peliculas:ratatouille",
+      "category": "Películas",
+      "word": "Ratatouille"
+    },
+    {
+      "id": "peliculas:mamma-mia",
+      "category": "Películas",
+      "word": "Mamma Mia"
+    },
+    {
+      "id": "series:friends",
+      "category": "Series",
+      "word": "Friends"
+    },
+    {
+      "id": "series:breaking-bad",
+      "category": "Series",
+      "word": "Breaking Bad"
+    },
+    {
+      "id": "series:juego-de-tronos",
+      "category": "Series",
+      "word": "Juego de Tronos"
+    },
+    {
+      "id": "series:stranger-things",
+      "category": "Series",
+      "word": "Stranger Things"
+    },
+    {
+      "id": "series:la-casa-de-papel",
+      "category": "Series",
+      "word": "La casa de papel"
+    },
+    {
+      "id": "series:los-simpson",
+      "category": "Series",
+      "word": "Los Simpson"
+    },
+    {
+      "id": "series:bob-esponja",
+      "category": "Series",
+      "word": "Bob Esponja"
+    },
+    {
+      "id": "series:elite",
+      "category": "Series",
+      "word": "Élite"
+    },
+    {
+      "id": "series:la-que-se-avecina",
+      "category": "Series",
+      "word": "La que se avecina"
+    },
+    {
+      "id": "series:aqui-no-hay-quien-viva",
+      "category": "Series",
+      "word": "Aquí no hay quien viva"
+    },
+    {
+      "id": "series:fisica-o-quimica",
+      "category": "Series",
+      "word": "Física o Química"
+    },
+    {
+      "id": "series:merli",
+      "category": "Series",
+      "word": "Merlí"
+    },
+    {
+      "id": "series:narcos",
+      "category": "Series",
+      "word": "Narcos"
+    },
+    {
+      "id": "series:the-office",
+      "category": "Series",
+      "word": "The Office"
+    },
+    {
+      "id": "series:peaky-blinders",
+      "category": "Series",
+      "word": "Peaky Blinders"
+    },
+    {
+      "id": "series:squid-game",
+      "category": "Series",
+      "word": "Squid Game"
+    },
+    {
+      "id": "series:wednesday",
+      "category": "Series",
+      "word": "Wednesday"
+    },
+    {
+      "id": "series:padre-de-familia",
+      "category": "Series",
+      "word": "Padre de familia"
+    },
+    {
+      "id": "series:rick-y-morty",
+      "category": "Series",
+      "word": "Rick y Morty"
+    },
+    {
+      "id": "series:doctor-who",
+      "category": "Series",
+      "word": "Doctor Who"
+    },
+    {
+      "id": "series:the-walking-dead",
+      "category": "Series",
+      "word": "The Walking Dead"
+    },
+    {
+      "id": "series:los-serrano",
+      "category": "Series",
+      "word": "Los Serrano"
+    },
+    {
+      "id": "series:vis-a-vis",
+      "category": "Series",
+      "word": "Vis a vis"
+    },
+    {
+      "id": "series:paquita-salas",
+      "category": "Series",
+      "word": "Paquita Salas"
+    },
+    {
+      "id": "series:cuentame-como-paso",
+      "category": "Series",
+      "word": "Cuéntame cómo pasó"
+    },
+    {
+      "id": "series:el-ministerio-del-tiempo",
+      "category": "Series",
+      "word": "El Ministerio del Tiempo"
+    },
+    {
+      "id": "series:hospital-central",
+      "category": "Series",
+      "word": "Hospital Central"
+    },
+    {
+      "id": "dibujos-animados:pokemon",
+      "category": "Dibujos animados",
+      "word": "Pokémon"
+    },
+    {
+      "id": "dibujos-animados:doraemon",
+      "category": "Dibujos animados",
+      "word": "Doraemon"
+    },
+    {
+      "id": "dibujos-animados:shin-chan",
+      "category": "Dibujos animados",
+      "word": "Shin-chan"
+    },
+    {
+      "id": "dibujos-animados:dragon-ball",
+      "category": "Dibujos animados",
+      "word": "Dragon Ball"
+    },
+    {
+      "id": "dibujos-animados:naruto",
+      "category": "Dibujos animados",
+      "word": "Naruto"
+    },
+    {
+      "id": "dibujos-animados:one-piece",
+      "category": "Dibujos animados",
+      "word": "One Piece"
+    },
+    {
+      "id": "dibujos-animados:pocoyo",
+      "category": "Dibujos animados",
+      "word": "Pocoyó"
+    },
+    {
+      "id": "dibujos-animados:peppa-pig",
+      "category": "Dibujos animados",
+      "word": "Peppa Pig"
+    },
+    {
+      "id": "dibujos-animados:las-supernenas",
+      "category": "Dibujos animados",
+      "word": "Las Supernenas"
+    },
+    {
+      "id": "dibujos-animados:hora-de-aventuras",
+      "category": "Dibujos animados",
+      "word": "Hora de aventuras"
+    },
+    {
+      "id": "dibujos-animados:phineas-y-ferb",
+      "category": "Dibujos animados",
+      "word": "Phineas y Ferb"
+    },
+    {
+      "id": "dibujos-animados:scooby-doo",
+      "category": "Dibujos animados",
+      "word": "Scooby-Doo"
+    },
+    {
+      "id": "dibujos-animados:tom-y-jerry",
+      "category": "Dibujos animados",
+      "word": "Tom y Jerry"
+    },
+    {
+      "id": "dibujos-animados:los-picapiedra",
+      "category": "Dibujos animados",
+      "word": "Los Picapiedra"
+    },
+    {
+      "id": "dibujos-animados:oliver-y-benji",
+      "category": "Dibujos animados",
+      "word": "Oliver y Benji"
+    },
+    {
+      "id": "dibujos-animados:mortadelo-y-filemon",
+      "category": "Dibujos animados",
+      "word": "Mortadelo y Filemón"
+    },
+    {
+      "id": "dibujos-animados:bluey",
+      "category": "Dibujos animados",
+      "word": "Bluey"
+    },
+    {
+      "id": "dibujos-animados:gumball",
+      "category": "Dibujos animados",
+      "word": "Gumball"
+    },
+    {
+      "id": "dibujos-animados:ben-10",
+      "category": "Dibujos animados",
+      "word": "Ben 10"
+    },
+    {
+      "id": "personajes-ficticios:mario",
+      "category": "Personajes ficticios",
+      "word": "Mario"
+    },
+    {
+      "id": "personajes-ficticios:pikachu",
+      "category": "Personajes ficticios",
+      "word": "Pikachu"
+    },
+    {
+      "id": "personajes-ficticios:sonic",
+      "category": "Personajes ficticios",
+      "word": "Sonic"
+    },
+    {
+      "id": "personajes-ficticios:mickey-mouse",
+      "category": "Personajes ficticios",
+      "word": "Mickey Mouse"
+    },
+    {
+      "id": "personajes-ficticios:bob-esponja",
+      "category": "Personajes ficticios",
+      "word": "Bob Esponja"
+    },
+    {
+      "id": "personajes-ficticios:homer-simpson",
+      "category": "Personajes ficticios",
+      "word": "Homer Simpson"
+    },
+    {
+      "id": "personajes-ficticios:darth-vader",
+      "category": "Personajes ficticios",
+      "word": "Darth Vader"
+    },
+    {
+      "id": "personajes-ficticios:harry-potter",
+      "category": "Personajes ficticios",
+      "word": "Harry Potter"
+    },
+    {
+      "id": "personajes-ficticios:shrek",
+      "category": "Personajes ficticios",
+      "word": "Shrek"
+    },
+    {
+      "id": "personajes-ficticios:batman",
+      "category": "Personajes ficticios",
+      "word": "Batman"
+    },
+    {
+      "id": "personajes-ficticios:superman",
+      "category": "Personajes ficticios",
+      "word": "Superman"
+    },
+    {
+      "id": "personajes-ficticios:spider-man",
+      "category": "Personajes ficticios",
+      "word": "Spider-Man"
+    },
+    {
+      "id": "personajes-ficticios:elsa",
+      "category": "Personajes ficticios",
+      "word": "Elsa"
+    },
+    {
+      "id": "personajes-ficticios:gandalf",
+      "category": "Personajes ficticios",
+      "word": "Gandalf"
+    },
+    {
+      "id": "personajes-ficticios:sherlock-holmes",
+      "category": "Personajes ficticios",
+      "word": "Sherlock Holmes"
+    },
+    {
+      "id": "personajes-ficticios:don-quijote",
+      "category": "Personajes ficticios",
+      "word": "Don Quijote"
+    },
+    {
+      "id": "personajes-ficticios:pinocho",
+      "category": "Personajes ficticios",
+      "word": "Pinocho"
+    },
+    {
+      "id": "personajes-ficticios:caperucita-roja",
+      "category": "Personajes ficticios",
+      "word": "Caperucita Roja"
+    },
+    {
+      "id": "personajes-ficticios:dracula",
+      "category": "Personajes ficticios",
+      "word": "Drácula"
+    },
+    {
+      "id": "personajes-ficticios:frankenstein",
+      "category": "Personajes ficticios",
+      "word": "Frankenstein"
+    },
+    {
+      "id": "personajes-ficticios:iron-man",
+      "category": "Personajes ficticios",
+      "word": "Iron Man"
+    },
+    {
+      "id": "personajes-ficticios:hulk",
+      "category": "Personajes ficticios",
+      "word": "Hulk"
+    },
+    {
+      "id": "personajes-ficticios:yoda",
+      "category": "Personajes ficticios",
+      "word": "Yoda"
+    },
+    {
+      "id": "personajes-ficticios:gollum",
+      "category": "Personajes ficticios",
+      "word": "Gollum"
+    },
+    {
+      "id": "personajes-ficticios:jack-sparrow",
+      "category": "Personajes ficticios",
+      "word": "Jack Sparrow"
+    },
+    {
+      "id": "personajes-ficticios:lara-croft",
+      "category": "Personajes ficticios",
+      "word": "Lara Croft"
+    },
+    {
+      "id": "personajes-ficticios:kirby",
+      "category": "Personajes ficticios",
+      "word": "Kirby"
+    },
+    {
+      "id": "personajes-ficticios:link",
+      "category": "Personajes ficticios",
+      "word": "Link"
+    },
+    {
+      "id": "personajes-ficticios:goku",
+      "category": "Personajes ficticios",
+      "word": "Goku"
+    },
+    {
+      "id": "personajes-ficticios:naruto",
+      "category": "Personajes ficticios",
+      "word": "Naruto"
+    },
+    {
+      "id": "personajes-ficticios:mafalda",
+      "category": "Personajes ficticios",
+      "word": "Mafalda"
+    },
+    {
+      "id": "personajes-ficticios:mortadelo",
+      "category": "Personajes ficticios",
+      "word": "Mortadelo"
+    },
+    {
+      "id": "personajes-ficticios:torrente",
+      "category": "Personajes ficticios",
+      "word": "Torrente"
+    },
+    {
+      "id": "personajes-ficticios:barbie",
+      "category": "Personajes ficticios",
+      "word": "Barbie"
+    },
+    {
+      "id": "personajes-ficticios:buzz-lightyear",
+      "category": "Personajes ficticios",
+      "word": "Buzz Lightyear"
+    },
+    {
+      "id": "personajes-ficticios:woody",
+      "category": "Personajes ficticios",
+      "word": "Woody"
+    },
+    {
+      "id": "personajes-ficticios:el-grinch",
+      "category": "Personajes ficticios",
+      "word": "El Grinch"
+    },
+    {
+      "id": "personajes-ficticios:papa-noel",
+      "category": "Personajes ficticios",
+      "word": "Papá Noel"
+    },
+    {
+      "id": "personajes-ficticios:ratoncito-perez",
+      "category": "Personajes ficticios",
+      "word": "Ratoncito Pérez"
+    },
+    {
+      "id": "personajes-ficticios:hello-kitty",
+      "category": "Personajes ficticios",
+      "word": "Hello Kitty"
+    },
+    {
+      "id": "personajes-ficticios:capitan-america",
+      "category": "Personajes ficticios",
+      "word": "Capitán América"
+    },
+    {
+      "id": "personajes-ficticios:wolverine",
+      "category": "Personajes ficticios",
+      "word": "Wolverine"
+    },
+    {
+      "id": "personajes-ficticios:joker",
+      "category": "Personajes ficticios",
+      "word": "Joker"
+    },
+    {
+      "id": "personajes-ficticios:peter-pan",
+      "category": "Personajes ficticios",
+      "word": "Peter Pan"
+    },
+    {
+      "id": "personajes-ficticios:garfield",
+      "category": "Personajes ficticios",
+      "word": "Garfield"
+    },
+    {
+      "id": "personajes-ficticios:snoopy",
+      "category": "Personajes ficticios",
+      "word": "Snoopy"
+    },
+    {
+      "id": "personajes-ficticios:scooby-doo",
+      "category": "Personajes ficticios",
+      "word": "Scooby-Doo"
+    },
+    {
+      "id": "superheroes-y-villanos:batman",
+      "category": "Superhéroes y villanos",
+      "word": "Batman"
+    },
+    {
+      "id": "superheroes-y-villanos:superman",
+      "category": "Superhéroes y villanos",
+      "word": "Superman"
+    },
+    {
+      "id": "superheroes-y-villanos:spider-man",
+      "category": "Superhéroes y villanos",
+      "word": "Spider-Man"
+    },
+    {
+      "id": "superheroes-y-villanos:wonder-woman",
+      "category": "Superhéroes y villanos",
+      "word": "Wonder Woman"
+    },
+    {
+      "id": "superheroes-y-villanos:iron-man",
+      "category": "Superhéroes y villanos",
+      "word": "Iron Man"
+    },
+    {
+      "id": "superheroes-y-villanos:thor",
+      "category": "Superhéroes y villanos",
+      "word": "Thor"
+    },
+    {
+      "id": "superheroes-y-villanos:hulk",
+      "category": "Superhéroes y villanos",
+      "word": "Hulk"
+    },
+    {
+      "id": "superheroes-y-villanos:capitan-america",
+      "category": "Superhéroes y villanos",
+      "word": "Capitán América"
+    },
+    {
+      "id": "superheroes-y-villanos:viuda-negra",
+      "category": "Superhéroes y villanos",
+      "word": "Viuda Negra"
+    },
+    {
+      "id": "superheroes-y-villanos:deadpool",
+      "category": "Superhéroes y villanos",
+      "word": "Deadpool"
+    },
+    {
+      "id": "superheroes-y-villanos:joker",
+      "category": "Superhéroes y villanos",
+      "word": "Joker"
+    },
+    {
+      "id": "superheroes-y-villanos:thanos",
+      "category": "Superhéroes y villanos",
+      "word": "Thanos"
+    },
+    {
+      "id": "superheroes-y-villanos:lex-luthor",
+      "category": "Superhéroes y villanos",
+      "word": "Lex Luthor"
+    },
+    {
+      "id": "superheroes-y-villanos:magneto",
+      "category": "Superhéroes y villanos",
+      "word": "Magneto"
+    },
+    {
+      "id": "superheroes-y-villanos:venom",
+      "category": "Superhéroes y villanos",
+      "word": "Venom"
+    },
+    {
+      "id": "superheroes-y-villanos:catwoman",
+      "category": "Superhéroes y villanos",
+      "word": "Catwoman"
+    },
+    {
+      "id": "superheroes-y-villanos:flash",
+      "category": "Superhéroes y villanos",
+      "word": "Flash"
+    },
+    {
+      "id": "superheroes-y-villanos:aquaman",
+      "category": "Superhéroes y villanos",
+      "word": "Aquaman"
+    },
+    {
+      "id": "superheroes-y-villanos:pantera-negra",
+      "category": "Superhéroes y villanos",
+      "word": "Pantera Negra"
+    },
+    {
+      "id": "superheroes-y-villanos:doctor-strange",
+      "category": "Superhéroes y villanos",
+      "word": "Doctor Strange"
+    },
+    {
+      "id": "personas-conocidas-espana:rosalia",
+      "category": "Personas conocidas (España)",
+      "word": "Rosalía"
+    },
+    {
+      "id": "personas-conocidas-espana:rafa-nadal",
+      "category": "Personas conocidas (España)",
+      "word": "Rafa Nadal"
+    },
+    {
+      "id": "personas-conocidas-espana:ibai-llanos",
+      "category": "Personas conocidas (España)",
+      "word": "Ibai Llanos"
+    },
+    {
+      "id": "personas-conocidas-espana:antonio-banderas",
+      "category": "Personas conocidas (España)",
+      "word": "Antonio Banderas"
+    },
+    {
+      "id": "personas-conocidas-espana:penelope-cruz",
+      "category": "Personas conocidas (España)",
+      "word": "Penélope Cruz"
+    },
+    {
+      "id": "personas-conocidas-espana:fernando-alonso",
+      "category": "Personas conocidas (España)",
+      "word": "Fernando Alonso"
+    },
+    {
+      "id": "personas-conocidas-espana:pau-gasol",
+      "category": "Personas conocidas (España)",
+      "word": "Pau Gasol"
+    },
+    {
+      "id": "personas-conocidas-espana:alejandro-sanz",
+      "category": "Personas conocidas (España)",
+      "word": "Alejandro Sanz"
+    },
+    {
+      "id": "personas-conocidas-espana:david-bisbal",
+      "category": "Personas conocidas (España)",
+      "word": "David Bisbal"
+    },
+    {
+      "id": "personas-conocidas-espana:iker-casillas",
+      "category": "Personas conocidas (España)",
+      "word": "Iker Casillas"
+    },
+    {
+      "id": "personas-conocidas-espana:andres-iniesta",
+      "category": "Personas conocidas (España)",
+      "word": "Andrés Iniesta"
+    },
+    {
+      "id": "personas-conocidas-espana:sergio-ramos",
+      "category": "Personas conocidas (España)",
+      "word": "Sergio Ramos"
+    },
+    {
+      "id": "personas-conocidas-espana:belen-esteban",
+      "category": "Personas conocidas (España)",
+      "word": "Belén Esteban"
+    },
+    {
+      "id": "personas-conocidas-espana:pedro-almodovar",
+      "category": "Personas conocidas (España)",
+      "word": "Pedro Almodóvar"
+    },
+    {
+      "id": "personas-conocidas-espana:el-rubius",
+      "category": "Personas conocidas (España)",
+      "word": "El Rubius"
+    },
+    {
+      "id": "personas-conocidas-espana:auronplay",
+      "category": "Personas conocidas (España)",
+      "word": "AuronPlay"
+    },
+    {
+      "id": "personas-conocidas-espana:isabel-pantoja",
+      "category": "Personas conocidas (España)",
+      "word": "Isabel Pantoja"
+    },
+    {
+      "id": "personas-conocidas-espana:julio-iglesias",
+      "category": "Personas conocidas (España)",
+      "word": "Julio Iglesias"
+    },
+    {
+      "id": "personas-conocidas-espana:enrique-iglesias",
+      "category": "Personas conocidas (España)",
+      "word": "Enrique Iglesias"
+    },
+    {
+      "id": "personas-conocidas-espana:carlos-alcaraz",
+      "category": "Personas conocidas (España)",
+      "word": "Carlos Alcaraz"
+    },
+    {
+      "id": "personas-conocidas-espana:aitana",
+      "category": "Personas conocidas (España)",
+      "word": "Aitana"
+    },
+    {
+      "id": "personas-conocidas-espana:quevedo",
+      "category": "Personas conocidas (España)",
+      "word": "Quevedo"
+    },
+    {
+      "id": "personas-conocidas-espana:c-tangana",
+      "category": "Personas conocidas (España)",
+      "word": "C. Tangana"
+    },
+    {
+      "id": "personas-conocidas-espana:lola-flores",
+      "category": "Personas conocidas (España)",
+      "word": "Lola Flores"
+    },
+    {
+      "id": "personas-conocidas-espana:raphael",
+      "category": "Personas conocidas (España)",
+      "word": "Raphael"
+    },
+    {
+      "id": "personas-conocidas-espana:david-broncano",
+      "category": "Personas conocidas (España)",
+      "word": "David Broncano"
+    },
+    {
+      "id": "personas-conocidas-espana:pablo-motos",
+      "category": "Personas conocidas (España)",
+      "word": "Pablo Motos"
+    },
+    {
+      "id": "personas-conocidas-espana:alberto-chicote",
+      "category": "Personas conocidas (España)",
+      "word": "Alberto Chicote"
+    },
+    {
+      "id": "personas-conocidas-espana:karlos-arguinano",
+      "category": "Personas conocidas (España)",
+      "word": "Karlos Arguiñano"
+    },
+    {
+      "id": "personas-conocidas-espana:jordi-hurtado",
+      "category": "Personas conocidas (España)",
+      "word": "Jordi Hurtado"
+    },
+    {
+      "id": "personas-conocidas-espana:ana-obregon",
+      "category": "Personas conocidas (España)",
+      "word": "Ana Obregón"
+    },
+    {
+      "id": "personas-conocidas-espana:dani-martin",
+      "category": "Personas conocidas (España)",
+      "word": "Dani Martín"
+    },
+    {
+      "id": "personas-conocidas-espana:melendi",
+      "category": "Personas conocidas (España)",
+      "word": "Melendi"
+    },
+    {
+      "id": "personas-conocidas-espana:lamine-yamal",
+      "category": "Personas conocidas (España)",
+      "word": "Lamine Yamal"
+    },
+    {
+      "id": "personas-conocidas-espana:marc-marquez",
+      "category": "Personas conocidas (España)",
+      "word": "Marc Márquez"
+    },
+    {
+      "id": "personas-conocidas-espana:ferran-adria",
+      "category": "Personas conocidas (España)",
+      "word": "Ferran Adrià"
+    },
+    {
+      "id": "personas-conocidas-espana:amaia",
+      "category": "Personas conocidas (España)",
+      "word": "Amaia"
+    },
+    {
+      "id": "personas-conocidas-espana:chanel",
+      "category": "Personas conocidas (España)",
+      "word": "Chanel"
+    },
+    {
+      "id": "personas-conocidas-espana:mario-casas",
+      "category": "Personas conocidas (España)",
+      "word": "Mario Casas"
+    },
+    {
+      "id": "personas-conocidas-espana:ursula-corbero",
+      "category": "Personas conocidas (España)",
+      "word": "Úrsula Corberó"
+    },
+    {
+      "id": "personas-conocidas-espana:javier-bardem",
+      "category": "Personas conocidas (España)",
+      "word": "Javier Bardem"
+    },
+    {
+      "id": "personas-conocidas-espana:santiago-segura",
+      "category": "Personas conocidas (España)",
+      "word": "Santiago Segura"
+    },
+    {
+      "id": "personas-conocidas-espana:rocio-jurado",
+      "category": "Personas conocidas (España)",
+      "word": "Rocío Jurado"
+    },
+    {
+      "id": "personas-conocidas-espana:paz-padilla",
+      "category": "Personas conocidas (España)",
+      "word": "Paz Padilla"
+    },
+    {
+      "id": "personas-conocidas-espana:jorge-javier-vazquez",
+      "category": "Personas conocidas (España)",
+      "word": "Jorge Javier Vázquez"
+    },
+    {
+      "id": "personas-conocidas-espana:inaki-gabilondo",
+      "category": "Personas conocidas (España)",
+      "word": "Iñaki Gabilondo"
+    },
+    {
+      "id": "personas-conocidas-espana:vegetta777",
+      "category": "Personas conocidas (España)",
+      "word": "Vegetta777"
+    },
+    {
+      "id": "personas-conocidas-espana:thegrefg",
+      "category": "Personas conocidas (España)",
+      "word": "TheGrefg"
+    },
+    {
+      "id": "personas-conocidas-espana:xokas",
+      "category": "Personas conocidas (España)",
+      "word": "Xokas"
+    },
+    {
+      "id": "personas-conocidas-espana:ana-peleteiro",
+      "category": "Personas conocidas (España)",
+      "word": "Ana Peleteiro"
+    },
+    {
+      "id": "personas-conocidas-espana:mireia-belmonte",
+      "category": "Personas conocidas (España)",
+      "word": "Mireia Belmonte"
+    },
+    {
+      "id": "personas-conocidas-espana:alexia-putellas",
+      "category": "Personas conocidas (España)",
+      "word": "Alexia Putellas"
+    },
+    {
+      "id": "personas-conocidas-espana:fernando-torres",
+      "category": "Personas conocidas (España)",
+      "word": "Fernando Torres"
+    },
+    {
+      "id": "personas-conocidas-espana:gerard-pique",
+      "category": "Personas conocidas (España)",
+      "word": "Gerard Piqué"
+    },
+    {
+      "id": "personas-conocidas-espana:shakira",
+      "category": "Personas conocidas (España)",
+      "word": "Shakira"
+    },
+    {
+      "id": "personas-conocidas-espana:bad-bunny",
+      "category": "Personas conocidas (España)",
+      "word": "Bad Bunny"
+    },
+    {
+      "id": "personajes-historicos:cristobal-colon",
+      "category": "Personajes históricos",
+      "word": "Cristóbal Colón"
+    },
+    {
+      "id": "personajes-historicos:napoleon",
+      "category": "Personajes históricos",
+      "word": "Napoleón"
+    },
+    {
+      "id": "personajes-historicos:cleopatra",
+      "category": "Personajes históricos",
+      "word": "Cleopatra"
+    },
+    {
+      "id": "personajes-historicos:julio-cesar",
+      "category": "Personajes históricos",
+      "word": "Julio César"
+    },
+    {
+      "id": "personajes-historicos:albert-einstein",
+      "category": "Personajes históricos",
+      "word": "Albert Einstein"
+    },
+    {
+      "id": "personajes-historicos:leonardo-da-vinci",
+      "category": "Personajes históricos",
+      "word": "Leonardo da Vinci"
+    },
+    {
+      "id": "personajes-historicos:picasso",
+      "category": "Personajes históricos",
+      "word": "Picasso"
+    },
+    {
+      "id": "personajes-historicos:cervantes",
+      "category": "Personajes históricos",
+      "word": "Cervantes"
+    },
+    {
+      "id": "personajes-historicos:isabel-la-catolica",
+      "category": "Personajes históricos",
+      "word": "Isabel la Católica"
+    },
+    {
+      "id": "personajes-historicos:mozart",
+      "category": "Personajes históricos",
+      "word": "Mozart"
+    },
+    {
+      "id": "personajes-historicos:beethoven",
+      "category": "Personajes históricos",
+      "word": "Beethoven"
+    },
+    {
+      "id": "personajes-historicos:frida-kahlo",
+      "category": "Personajes históricos",
+      "word": "Frida Kahlo"
+    },
+    {
+      "id": "personajes-historicos:marie-curie",
+      "category": "Personajes históricos",
+      "word": "Marie Curie"
+    },
+    {
+      "id": "personajes-historicos:isaac-newton",
+      "category": "Personajes históricos",
+      "word": "Isaac Newton"
+    },
+    {
+      "id": "personajes-historicos:galileo",
+      "category": "Personajes históricos",
+      "word": "Galileo"
+    },
+    {
+      "id": "personajes-historicos:gandhi",
+      "category": "Personajes históricos",
+      "word": "Gandhi"
+    },
+    {
+      "id": "personajes-historicos:tutankamon",
+      "category": "Personajes históricos",
+      "word": "Tutankamón"
+    },
+    {
+      "id": "personajes-historicos:juana-de-arco",
+      "category": "Personajes históricos",
+      "word": "Juana de Arco"
+    },
+    {
+      "id": "personajes-historicos:velazquez",
+      "category": "Personajes históricos",
+      "word": "Velázquez"
+    },
+    {
+      "id": "personajes-historicos:goya",
+      "category": "Personajes históricos",
+      "word": "Goya"
+    },
+    {
+      "id": "personajes-historicos:salvador-dali",
+      "category": "Personajes históricos",
+      "word": "Salvador Dalí"
+    },
+    {
+      "id": "personajes-historicos:federico-garcia-lorca",
+      "category": "Personajes históricos",
+      "word": "Federico García Lorca"
+    },
+    {
+      "id": "personajes-historicos:shakespeare",
+      "category": "Personajes históricos",
+      "word": "Shakespeare"
+    },
+    {
+      "id": "personajes-historicos:charles-darwin",
+      "category": "Personajes históricos",
+      "word": "Charles Darwin"
+    },
+    {
+      "id": "lugares-del-mundo:torre-eiffel",
+      "category": "Lugares del mundo",
+      "word": "Torre Eiffel"
+    },
+    {
+      "id": "lugares-del-mundo:estatua-de-la-libertad",
+      "category": "Lugares del mundo",
+      "word": "Estatua de la Libertad"
+    },
+    {
+      "id": "lugares-del-mundo:gran-muralla-china",
+      "category": "Lugares del mundo",
+      "word": "Gran Muralla China"
+    },
+    {
+      "id": "lugares-del-mundo:piramides-de-egipto",
+      "category": "Lugares del mundo",
+      "word": "Pirámides de Egipto"
+    },
+    {
+      "id": "lugares-del-mundo:coliseo",
+      "category": "Lugares del mundo",
+      "word": "Coliseo"
+    },
+    {
+      "id": "lugares-del-mundo:machu-picchu",
+      "category": "Lugares del mundo",
+      "word": "Machu Picchu"
+    },
+    {
+      "id": "lugares-del-mundo:taj-mahal",
+      "category": "Lugares del mundo",
+      "word": "Taj Mahal"
+    },
+    {
+      "id": "lugares-del-mundo:big-ben",
+      "category": "Lugares del mundo",
+      "word": "Big Ben"
+    },
+    {
+      "id": "lugares-del-mundo:sagrada-familia",
+      "category": "Lugares del mundo",
+      "word": "Sagrada Familia"
+    },
+    {
+      "id": "lugares-del-mundo:alhambra",
+      "category": "Lugares del mundo",
+      "word": "Alhambra"
+    },
+    {
+      "id": "lugares-del-mundo:times-square",
+      "category": "Lugares del mundo",
+      "word": "Times Square"
+    },
+    {
+      "id": "lugares-del-mundo:monte-everest",
+      "category": "Lugares del mundo",
+      "word": "Monte Everest"
+    },
+    {
+      "id": "lugares-del-mundo:cataratas-del-niagara",
+      "category": "Lugares del mundo",
+      "word": "Cataratas del Niágara"
+    },
+    {
+      "id": "lugares-del-mundo:gran-canon",
+      "category": "Lugares del mundo",
+      "word": "Gran Cañón"
+    },
+    {
+      "id": "lugares-del-mundo:venecia",
+      "category": "Lugares del mundo",
+      "word": "Venecia"
+    },
+    {
+      "id": "lugares-del-mundo:torre-de-pisa",
+      "category": "Lugares del mundo",
+      "word": "Torre de Pisa"
+    },
+    {
+      "id": "lugares-del-mundo:disneyland",
+      "category": "Lugares del mundo",
+      "word": "Disneyland"
+    },
+    {
+      "id": "lugares-del-mundo:las-vegas",
+      "category": "Lugares del mundo",
+      "word": "Las Vegas"
+    },
+    {
+      "id": "lugares-del-mundo:hollywood",
+      "category": "Lugares del mundo",
+      "word": "Hollywood"
+    },
+    {
+      "id": "lugares-del-mundo:stonehenge",
+      "category": "Lugares del mundo",
+      "word": "Stonehenge"
+    },
+    {
+      "id": "lugares-del-mundo:chichen-itza",
+      "category": "Lugares del mundo",
+      "word": "Chichén Itzá"
+    },
+    {
+      "id": "lugares-del-mundo:opera-de-sidney",
+      "category": "Lugares del mundo",
+      "word": "Ópera de Sídney"
+    },
+    {
+      "id": "lugares-del-mundo:acropolis",
+      "category": "Lugares del mundo",
+      "word": "Acrópolis"
+    },
+    {
+      "id": "lugares-del-mundo:cristo-redentor",
+      "category": "Lugares del mundo",
+      "word": "Cristo Redentor"
+    },
+    {
+      "id": "lugares-del-mundo:kremlin",
+      "category": "Lugares del mundo",
+      "word": "Kremlin"
+    },
+    {
+      "id": "lugares-del-mundo:petra",
+      "category": "Lugares del mundo",
+      "word": "Petra"
+    },
+    {
+      "id": "lugares-del-mundo:polo-norte",
+      "category": "Lugares del mundo",
+      "word": "Polo Norte"
+    },
+    {
+      "id": "lugares-del-mundo:amazonas",
+      "category": "Lugares del mundo",
+      "word": "Amazonas"
+    },
+    {
+      "id": "lugares-del-mundo:sahara",
+      "category": "Lugares del mundo",
+      "word": "Sáhara"
+    },
+    {
+      "id": "lugares-del-mundo:islas-canarias",
+      "category": "Lugares del mundo",
+      "word": "Islas Canarias"
+    },
+    {
+      "id": "ciudades:madrid",
+      "category": "Ciudades",
+      "word": "Madrid"
+    },
+    {
+      "id": "ciudades:barcelona",
+      "category": "Ciudades",
+      "word": "Barcelona"
+    },
+    {
+      "id": "ciudades:sevilla",
+      "category": "Ciudades",
+      "word": "Sevilla"
+    },
+    {
+      "id": "ciudades:valencia",
+      "category": "Ciudades",
+      "word": "Valencia"
+    },
+    {
+      "id": "ciudades:bilbao",
+      "category": "Ciudades",
+      "word": "Bilbao"
+    },
+    {
+      "id": "ciudades:granada",
+      "category": "Ciudades",
+      "word": "Granada"
+    },
+    {
+      "id": "ciudades:malaga",
+      "category": "Ciudades",
+      "word": "Málaga"
+    },
+    {
+      "id": "ciudades:zaragoza",
+      "category": "Ciudades",
+      "word": "Zaragoza"
+    },
+    {
+      "id": "ciudades:salamanca",
+      "category": "Ciudades",
+      "word": "Salamanca"
+    },
+    {
+      "id": "ciudades:santiago-de-compostela",
+      "category": "Ciudades",
+      "word": "Santiago de Compostela"
+    },
+    {
+      "id": "ciudades:paris",
+      "category": "Ciudades",
+      "word": "París"
+    },
+    {
+      "id": "ciudades:londres",
+      "category": "Ciudades",
+      "word": "Londres"
+    },
+    {
+      "id": "ciudades:roma",
+      "category": "Ciudades",
+      "word": "Roma"
+    },
+    {
+      "id": "ciudades:nueva-york",
+      "category": "Ciudades",
+      "word": "Nueva York"
+    },
+    {
+      "id": "ciudades:tokio",
+      "category": "Ciudades",
+      "word": "Tokio"
+    },
+    {
+      "id": "ciudades:berlin",
+      "category": "Ciudades",
+      "word": "Berlín"
+    },
+    {
+      "id": "ciudades:amsterdam",
+      "category": "Ciudades",
+      "word": "Ámsterdam"
+    },
+    {
+      "id": "ciudades:lisboa",
+      "category": "Ciudades",
+      "word": "Lisboa"
+    },
+    {
+      "id": "ciudades:dubai",
+      "category": "Ciudades",
+      "word": "Dubái"
+    },
+    {
+      "id": "ciudades:rio-de-janeiro",
+      "category": "Ciudades",
+      "word": "Río de Janeiro"
+    },
+    {
+      "id": "ciudades:buenos-aires",
+      "category": "Ciudades",
+      "word": "Buenos Aires"
+    },
+    {
+      "id": "ciudades:ciudad-de-mexico",
+      "category": "Ciudades",
+      "word": "Ciudad de México"
+    },
+    {
+      "id": "ciudades:los-angeles",
+      "category": "Ciudades",
+      "word": "Los Ángeles"
+    },
+    {
+      "id": "ciudades:moscu",
+      "category": "Ciudades",
+      "word": "Moscú"
+    },
+    {
+      "id": "ciudades:el-cairo",
+      "category": "Ciudades",
+      "word": "El Cairo"
+    },
+    {
+      "id": "ciudades:estambul",
+      "category": "Ciudades",
+      "word": "Estambul"
+    },
+    {
+      "id": "ciudades:pekin",
+      "category": "Ciudades",
+      "word": "Pekín"
+    },
+    {
+      "id": "ciudades:atenas",
+      "category": "Ciudades",
+      "word": "Atenas"
+    },
+    {
+      "id": "paises:espana",
+      "category": "Países",
+      "word": "España"
+    },
+    {
+      "id": "paises:francia",
+      "category": "Países",
+      "word": "Francia"
+    },
+    {
+      "id": "paises:italia",
+      "category": "Países",
+      "word": "Italia"
+    },
+    {
+      "id": "paises:alemania",
+      "category": "Países",
+      "word": "Alemania"
+    },
+    {
+      "id": "paises:portugal",
+      "category": "Países",
+      "word": "Portugal"
+    },
+    {
+      "id": "paises:japon",
+      "category": "Países",
+      "word": "Japón"
+    },
+    {
+      "id": "paises:china",
+      "category": "Países",
+      "word": "China"
+    },
+    {
+      "id": "paises:brasil",
+      "category": "Países",
+      "word": "Brasil"
+    },
+    {
+      "id": "paises:argentina",
+      "category": "Países",
+      "word": "Argentina"
+    },
+    {
+      "id": "paises:mexico",
+      "category": "Países",
+      "word": "México"
+    },
+    {
+      "id": "paises:estados-unidos",
+      "category": "Países",
+      "word": "Estados Unidos"
+    },
+    {
+      "id": "paises:canada",
+      "category": "Países",
+      "word": "Canadá"
+    },
+    {
+      "id": "paises:australia",
+      "category": "Países",
+      "word": "Australia"
+    },
+    {
+      "id": "paises:egipto",
+      "category": "Países",
+      "word": "Egipto"
+    },
+    {
+      "id": "paises:india",
+      "category": "Países",
+      "word": "India"
+    },
+    {
+      "id": "paises:rusia",
+      "category": "Países",
+      "word": "Rusia"
+    },
+    {
+      "id": "paises:marruecos",
+      "category": "Países",
+      "word": "Marruecos"
+    },
+    {
+      "id": "paises:grecia",
+      "category": "Países",
+      "word": "Grecia"
+    },
+    {
+      "id": "paises:suiza",
+      "category": "Países",
+      "word": "Suiza"
+    },
+    {
+      "id": "paises:noruega",
+      "category": "Países",
+      "word": "Noruega"
+    },
+    {
+      "id": "paises:islandia",
+      "category": "Países",
+      "word": "Islandia"
+    },
+    {
+      "id": "paises:corea-del-sur",
+      "category": "Países",
+      "word": "Corea del Sur"
+    },
+    {
+      "id": "paises:turquia",
+      "category": "Países",
+      "word": "Turquía"
+    },
+    {
+      "id": "paises:reino-unido",
+      "category": "Países",
+      "word": "Reino Unido"
+    },
+    {
+      "id": "paises:irlanda",
+      "category": "Países",
+      "word": "Irlanda"
+    },
+    {
+      "id": "paises:peru",
+      "category": "Países",
+      "word": "Perú"
+    },
+    {
+      "id": "paises:colombia",
+      "category": "Países",
+      "word": "Colombia"
+    },
+    {
+      "id": "paises:cuba",
+      "category": "Países",
+      "word": "Cuba"
+    },
+    {
+      "id": "paises:nueva-zelanda",
+      "category": "Países",
+      "word": "Nueva Zelanda"
+    },
+    {
+      "id": "paises:jamaica",
+      "category": "Países",
+      "word": "Jamaica"
+    },
+    {
+      "id": "lugares-cotidianos:hospital",
+      "category": "Lugares cotidianos",
+      "word": "Hospital"
+    },
+    {
+      "id": "lugares-cotidianos:colegio",
+      "category": "Lugares cotidianos",
+      "word": "Colegio"
+    },
+    {
+      "id": "lugares-cotidianos:supermercado",
+      "category": "Lugares cotidianos",
+      "word": "Supermercado"
+    },
+    {
+      "id": "lugares-cotidianos:biblioteca",
+      "category": "Lugares cotidianos",
+      "word": "Biblioteca"
+    },
+    {
+      "id": "lugares-cotidianos:gimnasio",
+      "category": "Lugares cotidianos",
+      "word": "Gimnasio"
+    },
+    {
+      "id": "lugares-cotidianos:aeropuerto",
+      "category": "Lugares cotidianos",
+      "word": "Aeropuerto"
+    },
+    {
+      "id": "lugares-cotidianos:estacion-de-tren",
+      "category": "Lugares cotidianos",
+      "word": "Estación de tren"
+    },
+    {
+      "id": "lugares-cotidianos:cine",
+      "category": "Lugares cotidianos",
+      "word": "Cine"
+    },
+    {
+      "id": "lugares-cotidianos:playa",
+      "category": "Lugares cotidianos",
+      "word": "Playa"
+    },
+    {
+      "id": "lugares-cotidianos:piscina",
+      "category": "Lugares cotidianos",
+      "word": "Piscina"
+    },
+    {
+      "id": "lugares-cotidianos:parque-de-atracciones",
+      "category": "Lugares cotidianos",
+      "word": "Parque de atracciones"
+    },
+    {
+      "id": "lugares-cotidianos:museo",
+      "category": "Lugares cotidianos",
+      "word": "Museo"
+    },
+    {
+      "id": "lugares-cotidianos:zoo",
+      "category": "Lugares cotidianos",
+      "word": "Zoo"
+    },
+    {
+      "id": "lugares-cotidianos:iglesia",
+      "category": "Lugares cotidianos",
+      "word": "Iglesia"
+    },
+    {
+      "id": "lugares-cotidianos:farmacia",
+      "category": "Lugares cotidianos",
+      "word": "Farmacia"
+    },
+    {
+      "id": "lugares-cotidianos:peluqueria",
+      "category": "Lugares cotidianos",
+      "word": "Peluquería"
+    },
+    {
+      "id": "lugares-cotidianos:discoteca",
+      "category": "Lugares cotidianos",
+      "word": "Discoteca"
+    },
+    {
+      "id": "lugares-cotidianos:restaurante",
+      "category": "Lugares cotidianos",
+      "word": "Restaurante"
+    },
+    {
+      "id": "lugares-cotidianos:carcel",
+      "category": "Lugares cotidianos",
+      "word": "Cárcel"
+    },
+    {
+      "id": "lugares-cotidianos:cementerio",
+      "category": "Lugares cotidianos",
+      "word": "Cementerio"
+    },
+    {
+      "id": "lugares-cotidianos:estadio",
+      "category": "Lugares cotidianos",
+      "word": "Estadio"
+    },
+    {
+      "id": "lugares-cotidianos:camping",
+      "category": "Lugares cotidianos",
+      "word": "Camping"
+    },
+    {
+      "id": "lugares-cotidianos:ayuntamiento",
+      "category": "Lugares cotidianos",
+      "word": "Ayuntamiento"
+    },
+    {
+      "id": "lugares-cotidianos:gasolinera",
+      "category": "Lugares cotidianos",
+      "word": "Gasolinera"
+    },
+    {
+      "id": "lugares-cotidianos:panaderia",
+      "category": "Lugares cotidianos",
+      "word": "Panadería"
+    },
+    {
+      "id": "lugares-cotidianos:centro-comercial",
+      "category": "Lugares cotidianos",
+      "word": "Centro comercial"
+    },
+    {
+      "id": "lugares-cotidianos:montana-rusa",
+      "category": "Lugares cotidianos",
+      "word": "Montaña rusa"
+    },
+    {
+      "id": "lugares-cotidianos:ascensor",
+      "category": "Lugares cotidianos",
+      "word": "Ascensor"
+    },
+    {
+      "id": "transporte:coche",
+      "category": "Transporte",
+      "word": "Coche"
+    },
+    {
+      "id": "transporte:moto",
+      "category": "Transporte",
+      "word": "Moto"
+    },
+    {
+      "id": "transporte:bicicleta",
+      "category": "Transporte",
+      "word": "Bicicleta"
+    },
+    {
+      "id": "transporte:autobus",
+      "category": "Transporte",
+      "word": "Autobús"
+    },
+    {
+      "id": "transporte:tren",
+      "category": "Transporte",
+      "word": "Tren"
+    },
+    {
+      "id": "transporte:avion",
+      "category": "Transporte",
+      "word": "Avión"
+    },
+    {
+      "id": "transporte:barco",
+      "category": "Transporte",
+      "word": "Barco"
+    },
+    {
+      "id": "transporte:submarino",
+      "category": "Transporte",
+      "word": "Submarino"
+    },
+    {
+      "id": "transporte:helicoptero",
+      "category": "Transporte",
+      "word": "Helicóptero"
+    },
+    {
+      "id": "transporte:metro",
+      "category": "Transporte",
+      "word": "Metro"
+    },
+    {
+      "id": "transporte:tranvia",
+      "category": "Transporte",
+      "word": "Tranvía"
+    },
+    {
+      "id": "transporte:patinete-electrico",
+      "category": "Transporte",
+      "word": "Patinete eléctrico"
+    },
+    {
+      "id": "transporte:taxi",
+      "category": "Transporte",
+      "word": "Taxi"
+    },
+    {
+      "id": "transporte:ambulancia",
+      "category": "Transporte",
+      "word": "Ambulancia"
+    },
+    {
+      "id": "transporte:camion-de-bomberos",
+      "category": "Transporte",
+      "word": "Camión de bomberos"
+    },
+    {
+      "id": "transporte:cohete",
+      "category": "Transporte",
+      "word": "Cohete"
+    },
+    {
+      "id": "transporte:globo-aerostatico",
+      "category": "Transporte",
+      "word": "Globo aerostático"
+    },
+    {
+      "id": "transporte:velero",
+      "category": "Transporte",
+      "word": "Velero"
+    },
+    {
+      "id": "transporte:tractor",
+      "category": "Transporte",
+      "word": "Tractor"
+    },
+    {
+      "id": "transporte:monopatin",
+      "category": "Transporte",
+      "word": "Monopatín"
+    },
+    {
+      "id": "transporte:yate",
+      "category": "Transporte",
+      "word": "Yate"
+    },
+    {
+      "id": "transporte:teleferico",
+      "category": "Transporte",
+      "word": "Teleférico"
+    },
+    {
+      "id": "transporte:caravana",
+      "category": "Transporte",
+      "word": "Caravana"
+    },
+    {
+      "id": "transporte:trineo",
+      "category": "Transporte",
+      "word": "Trineo"
+    },
+    {
+      "id": "transporte:moto-de-agua",
+      "category": "Transporte",
+      "word": "Moto de agua"
+    },
+    {
+      "id": "transporte:grua",
+      "category": "Transporte",
+      "word": "Grúa"
+    },
+    {
+      "id": "transporte:camion",
+      "category": "Transporte",
+      "word": "Camión"
+    },
+    {
+      "id": "transporte:limusina",
+      "category": "Transporte",
+      "word": "Limusina"
+    },
+    {
+      "id": "transporte:furgoneta",
+      "category": "Transporte",
+      "word": "Furgoneta"
+    },
+    {
+      "id": "transporte:carrito-de-la-compra",
+      "category": "Transporte",
+      "word": "Carrito de la compra"
+    },
+    {
+      "id": "tecnologia:movil",
+      "category": "Tecnología",
+      "word": "Móvil"
+    },
+    {
+      "id": "tecnologia:ordenador-portatil",
+      "category": "Tecnología",
+      "word": "Ordenador portátil"
+    },
+    {
+      "id": "tecnologia:tablet",
+      "category": "Tecnología",
+      "word": "Tablet"
+    },
+    {
+      "id": "tecnologia:television",
+      "category": "Tecnología",
+      "word": "Televisión"
+    },
+    {
+      "id": "tecnologia:wifi",
+      "category": "Tecnología",
+      "word": "Wifi"
+    },
+    {
+      "id": "tecnologia:bluetooth",
+      "category": "Tecnología",
+      "word": "Bluetooth"
+    },
+    {
+      "id": "tecnologia:cargador",
+      "category": "Tecnología",
+      "word": "Cargador"
+    },
+    {
+      "id": "tecnologia:auriculares",
+      "category": "Tecnología",
+      "word": "Auriculares"
+    },
+    {
+      "id": "tecnologia:altavoz-inteligente",
+      "category": "Tecnología",
+      "word": "Altavoz inteligente"
+    },
+    {
+      "id": "tecnologia:impresora",
+      "category": "Tecnología",
+      "word": "Impresora"
+    },
+    {
+      "id": "tecnologia:dron",
+      "category": "Tecnología",
+      "word": "Dron"
+    },
+    {
+      "id": "tecnologia:robot-aspirador",
+      "category": "Tecnología",
+      "word": "Robot aspirador"
+    },
+    {
+      "id": "tecnologia:smartwatch",
+      "category": "Tecnología",
+      "word": "Smartwatch"
+    },
+    {
+      "id": "tecnologia:pendrive",
+      "category": "Tecnología",
+      "word": "Pendrive"
+    },
+    {
+      "id": "tecnologia:router",
+      "category": "Tecnología",
+      "word": "Router"
+    },
+    {
+      "id": "tecnologia:camara-de-fotos",
+      "category": "Tecnología",
+      "word": "Cámara de fotos"
+    },
+    {
+      "id": "tecnologia:webcam",
+      "category": "Tecnología",
+      "word": "Webcam"
+    },
+    {
+      "id": "tecnologia:inteligencia-artificial",
+      "category": "Tecnología",
+      "word": "Inteligencia artificial"
+    },
+    {
+      "id": "tecnologia:videollamada",
+      "category": "Tecnología",
+      "word": "Videollamada"
+    },
+    {
+      "id": "tecnologia:contrasena",
+      "category": "Tecnología",
+      "word": "Contraseña"
+    },
+    {
+      "id": "tecnologia:bateria-externa",
+      "category": "Tecnología",
+      "word": "Batería externa"
+    },
+    {
+      "id": "tecnologia:proyector",
+      "category": "Tecnología",
+      "word": "Proyector"
+    },
+    {
+      "id": "tecnologia:consola",
+      "category": "Tecnología",
+      "word": "Consola"
+    },
+    {
+      "id": "tecnologia:disco-duro",
+      "category": "Tecnología",
+      "word": "Disco duro"
+    },
+    {
+      "id": "tecnologia:codigo-qr",
+      "category": "Tecnología",
+      "word": "Código QR"
+    },
+    {
+      "id": "tecnologia:emoji",
+      "category": "Tecnología",
+      "word": "Emoji"
+    },
+    {
+      "id": "redes-sociales-y-apps:instagram",
+      "category": "Redes sociales y apps",
+      "word": "Instagram"
+    },
+    {
+      "id": "redes-sociales-y-apps:tiktok",
+      "category": "Redes sociales y apps",
+      "word": "TikTok"
+    },
+    {
+      "id": "redes-sociales-y-apps:youtube",
+      "category": "Redes sociales y apps",
+      "word": "YouTube"
+    },
+    {
+      "id": "redes-sociales-y-apps:whatsapp",
+      "category": "Redes sociales y apps",
+      "word": "WhatsApp"
+    },
+    {
+      "id": "redes-sociales-y-apps:twitch",
+      "category": "Redes sociales y apps",
+      "word": "Twitch"
+    },
+    {
+      "id": "redes-sociales-y-apps:discord",
+      "category": "Redes sociales y apps",
+      "word": "Discord"
+    },
+    {
+      "id": "redes-sociales-y-apps:twitter",
+      "category": "Redes sociales y apps",
+      "word": "Twitter"
+    },
+    {
+      "id": "redes-sociales-y-apps:spotify",
+      "category": "Redes sociales y apps",
+      "word": "Spotify"
+    },
+    {
+      "id": "redes-sociales-y-apps:netflix",
+      "category": "Redes sociales y apps",
+      "word": "Netflix"
+    },
+    {
+      "id": "redes-sociales-y-apps:google-maps",
+      "category": "Redes sociales y apps",
+      "word": "Google Maps"
+    },
+    {
+      "id": "redes-sociales-y-apps:telegram",
+      "category": "Redes sociales y apps",
+      "word": "Telegram"
+    },
+    {
+      "id": "redes-sociales-y-apps:snapchat",
+      "category": "Redes sociales y apps",
+      "word": "Snapchat"
+    },
+    {
+      "id": "redes-sociales-y-apps:facebook",
+      "category": "Redes sociales y apps",
+      "word": "Facebook"
+    },
+    {
+      "id": "redes-sociales-y-apps:wallapop",
+      "category": "Redes sociales y apps",
+      "word": "Wallapop"
+    },
+    {
+      "id": "redes-sociales-y-apps:amazon",
+      "category": "Redes sociales y apps",
+      "word": "Amazon"
+    },
+    {
+      "id": "redes-sociales-y-apps:pinterest",
+      "category": "Redes sociales y apps",
+      "word": "Pinterest"
+    },
+    {
+      "id": "redes-sociales-y-apps:tinder",
+      "category": "Redes sociales y apps",
+      "word": "Tinder"
+    },
+    {
+      "id": "redes-sociales-y-apps:reddit",
+      "category": "Redes sociales y apps",
+      "word": "Reddit"
+    },
+    {
+      "id": "redes-sociales-y-apps:linkedin",
+      "category": "Redes sociales y apps",
+      "word": "LinkedIn"
+    },
+    {
+      "id": "redes-sociales-y-apps:uber",
+      "category": "Redes sociales y apps",
+      "word": "Uber"
+    },
+    {
+      "id": "redes-sociales-y-apps:glovo",
+      "category": "Redes sociales y apps",
+      "word": "Glovo"
+    },
+    {
+      "id": "redes-sociales-y-apps:duolingo",
+      "category": "Redes sociales y apps",
+      "word": "Duolingo"
+    },
+    {
+      "id": "redes-sociales-y-apps:chatgpt",
+      "category": "Redes sociales y apps",
+      "word": "ChatGPT"
+    },
+    {
+      "id": "redes-sociales-y-apps:shazam",
+      "category": "Redes sociales y apps",
+      "word": "Shazam"
+    },
+    {
+      "id": "marcas:nike",
+      "category": "Marcas",
+      "word": "Nike"
+    },
+    {
+      "id": "marcas:adidas",
+      "category": "Marcas",
+      "word": "Adidas"
+    },
+    {
+      "id": "marcas:coca-cola",
+      "category": "Marcas",
+      "word": "Coca-Cola"
+    },
+    {
+      "id": "marcas:mcdonald-s",
+      "category": "Marcas",
+      "word": "McDonald's"
+    },
+    {
+      "id": "marcas:apple",
+      "category": "Marcas",
+      "word": "Apple"
+    },
+    {
+      "id": "marcas:samsung",
+      "category": "Marcas",
+      "word": "Samsung"
+    },
+    {
+      "id": "marcas:zara",
+      "category": "Marcas",
+      "word": "Zara"
+    },
+    {
+      "id": "marcas:ikea",
+      "category": "Marcas",
+      "word": "IKEA"
+    },
+    {
+      "id": "marcas:lego",
+      "category": "Marcas",
+      "word": "LEGO"
+    },
+    {
+      "id": "marcas:ferrari",
+      "category": "Marcas",
+      "word": "Ferrari"
+    },
+    {
+      "id": "marcas:mercadona",
+      "category": "Marcas",
+      "word": "Mercadona"
+    },
+    {
+      "id": "marcas:disney",
+      "category": "Marcas",
+      "word": "Disney"
+    },
+    {
+      "id": "marcas:starbucks",
+      "category": "Marcas",
+      "word": "Starbucks"
+    },
+    {
+      "id": "marcas:burger-king",
+      "category": "Marcas",
+      "word": "Burger King"
+    },
+    {
+      "id": "marcas:mercedes",
+      "category": "Marcas",
+      "word": "Mercedes"
+    },
+    {
+      "id": "marcas:pepsi",
+      "category": "Marcas",
+      "word": "Pepsi"
+    },
+    {
+      "id": "marcas:nintendo",
+      "category": "Marcas",
+      "word": "Nintendo"
+    },
+    {
+      "id": "marcas:sony",
+      "category": "Marcas",
+      "word": "Sony"
+    },
+    {
+      "id": "marcas:google",
+      "category": "Marcas",
+      "word": "Google"
+    },
+    {
+      "id": "marcas:telepizza",
+      "category": "Marcas",
+      "word": "Telepizza"
+    },
+    {
+      "id": "marcas:el-corte-ingles",
+      "category": "Marcas",
+      "word": "El Corte Inglés"
+    },
+    {
+      "id": "marcas:chupa-chups",
+      "category": "Marcas",
+      "word": "Chupa Chups"
+    },
+    {
+      "id": "marcas:nocilla",
+      "category": "Marcas",
+      "word": "Nocilla"
+    },
+    {
+      "id": "marcas:colacao",
+      "category": "Marcas",
+      "word": "ColaCao"
+    },
+    {
+      "id": "marcas:seat",
+      "category": "Marcas",
+      "word": "Seat"
+    },
+    {
+      "id": "marcas:tesla",
+      "category": "Marcas",
+      "word": "Tesla"
+    },
+    {
+      "id": "marcas:puma",
+      "category": "Marcas",
+      "word": "Puma"
+    },
+    {
+      "id": "marcas:levi-s",
+      "category": "Marcas",
+      "word": "Levi's"
+    },
+    {
+      "id": "marcas:ray-ban",
+      "category": "Marcas",
+      "word": "Ray-Ban"
+    },
+    {
+      "id": "marcas:red-bull",
+      "category": "Marcas",
+      "word": "Red Bull"
+    },
+    {
+      "id": "marcas:kinder",
+      "category": "Marcas",
+      "word": "Kinder"
+    },
+    {
+      "id": "marcas:lacasitos",
+      "category": "Marcas",
+      "word": "Lacasitos"
+    },
+    {
+      "id": "marcas:primark",
+      "category": "Marcas",
+      "word": "Primark"
+    },
+    {
+      "id": "marcas:decathlon",
+      "category": "Marcas",
+      "word": "Decathlon"
+    },
+    {
+      "id": "musica-y-generos:regueton",
+      "category": "Música y géneros",
+      "word": "Reguetón"
+    },
+    {
+      "id": "musica-y-generos:flamenco",
+      "category": "Música y géneros",
+      "word": "Flamenco"
+    },
+    {
+      "id": "musica-y-generos:rock",
+      "category": "Música y géneros",
+      "word": "Rock"
+    },
+    {
+      "id": "musica-y-generos:pop",
+      "category": "Música y géneros",
+      "word": "Pop"
+    },
+    {
+      "id": "musica-y-generos:rap",
+      "category": "Música y géneros",
+      "word": "Rap"
+    },
+    {
+      "id": "musica-y-generos:jazz",
+      "category": "Música y géneros",
+      "word": "Jazz"
+    },
+    {
+      "id": "musica-y-generos:musica-clasica",
+      "category": "Música y géneros",
+      "word": "Música clásica"
+    },
+    {
+      "id": "musica-y-generos:heavy-metal",
+      "category": "Música y géneros",
+      "word": "Heavy metal"
+    },
+    {
+      "id": "musica-y-generos:trap",
+      "category": "Música y géneros",
+      "word": "Trap"
+    },
+    {
+      "id": "musica-y-generos:salsa",
+      "category": "Música y géneros",
+      "word": "Salsa"
+    },
+    {
+      "id": "musica-y-generos:techno",
+      "category": "Música y géneros",
+      "word": "Techno"
+    },
+    {
+      "id": "musica-y-generos:blues",
+      "category": "Música y géneros",
+      "word": "Blues"
+    },
+    {
+      "id": "musica-y-generos:bachata",
+      "category": "Música y géneros",
+      "word": "Bachata"
+    },
+    {
+      "id": "musica-y-generos:opera",
+      "category": "Música y géneros",
+      "word": "Ópera"
+    },
+    {
+      "id": "musica-y-generos:reggae",
+      "category": "Música y géneros",
+      "word": "Reggae"
+    },
+    {
+      "id": "musica-y-generos:k-pop",
+      "category": "Música y géneros",
+      "word": "K-pop"
+    },
+    {
+      "id": "musica-y-generos:country",
+      "category": "Música y géneros",
+      "word": "Country"
+    },
+    {
+      "id": "musica-y-generos:punk",
+      "category": "Música y géneros",
+      "word": "Punk"
+    },
+    {
+      "id": "musica-y-generos:sevillanas",
+      "category": "Música y géneros",
+      "word": "Sevillanas"
+    },
+    {
+      "id": "musica-y-generos:eurovision",
+      "category": "Música y géneros",
+      "word": "Eurovisión"
+    },
+    {
+      "id": "musica-y-generos:karaoke",
+      "category": "Música y géneros",
+      "word": "Karaoke"
+    },
+    {
+      "id": "musica-y-generos:concierto",
+      "category": "Música y géneros",
+      "word": "Concierto"
+    },
+    {
+      "id": "musica-y-generos:festival-de-musica",
+      "category": "Música y géneros",
+      "word": "Festival de música"
+    },
+    {
+      "id": "musica-y-generos:disco-de-vinilo",
+      "category": "Música y géneros",
+      "word": "Disco de vinilo"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:michael-jackson",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Michael Jackson"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:taylor-swift",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Taylor Swift"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:the-beatles",
+      "category": "Cantantes y grupos internacionales",
+      "word": "The Beatles"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:queen",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Queen"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:madonna",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Madonna"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:shakira",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Shakira"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:bad-bunny",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Bad Bunny"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:ed-sheeran",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Ed Sheeran"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:beyonce",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Beyoncé"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:elvis-presley",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Elvis Presley"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:lady-gaga",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Lady Gaga"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:rihanna",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Rihanna"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:eminem",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Eminem"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:coldplay",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Coldplay"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:bts",
+      "category": "Cantantes y grupos internacionales",
+      "word": "BTS"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:billie-eilish",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Billie Eilish"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:daddy-yankee",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Daddy Yankee"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:dua-lipa",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Dua Lipa"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:bruno-mars",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Bruno Mars"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:justin-bieber",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Justin Bieber"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:abba",
+      "category": "Cantantes y grupos internacionales",
+      "word": "ABBA"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:ac-dc",
+      "category": "Cantantes y grupos internacionales",
+      "word": "AC/DC"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:freddie-mercury",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Freddie Mercury"
+    },
+    {
+      "id": "cantantes-y-grupos-internacionales:karol-g",
+      "category": "Cantantes y grupos internacionales",
+      "word": "Karol G"
+    },
+    {
+      "id": "instrumentos-musicales:guitarra",
+      "category": "Instrumentos musicales",
+      "word": "Guitarra"
+    },
+    {
+      "id": "instrumentos-musicales:piano",
+      "category": "Instrumentos musicales",
+      "word": "Piano"
+    },
+    {
+      "id": "instrumentos-musicales:bateria",
+      "category": "Instrumentos musicales",
+      "word": "Batería"
+    },
+    {
+      "id": "instrumentos-musicales:violin",
+      "category": "Instrumentos musicales",
+      "word": "Violín"
+    },
+    {
+      "id": "instrumentos-musicales:flauta",
+      "category": "Instrumentos musicales",
+      "word": "Flauta"
+    },
+    {
+      "id": "instrumentos-musicales:trompeta",
+      "category": "Instrumentos musicales",
+      "word": "Trompeta"
+    },
+    {
+      "id": "instrumentos-musicales:saxofon",
+      "category": "Instrumentos musicales",
+      "word": "Saxofón"
+    },
+    {
+      "id": "instrumentos-musicales:arpa",
+      "category": "Instrumentos musicales",
+      "word": "Arpa"
+    },
+    {
+      "id": "instrumentos-musicales:acordeon",
+      "category": "Instrumentos musicales",
+      "word": "Acordeón"
+    },
+    {
+      "id": "instrumentos-musicales:ukelele",
+      "category": "Instrumentos musicales",
+      "word": "Ukelele"
+    },
+    {
+      "id": "instrumentos-musicales:bajo-electrico",
+      "category": "Instrumentos musicales",
+      "word": "Bajo eléctrico"
+    },
+    {
+      "id": "instrumentos-musicales:castanuelas",
+      "category": "Instrumentos musicales",
+      "word": "Castañuelas"
+    },
+    {
+      "id": "instrumentos-musicales:pandereta",
+      "category": "Instrumentos musicales",
+      "word": "Pandereta"
+    },
+    {
+      "id": "instrumentos-musicales:xilofono",
+      "category": "Instrumentos musicales",
+      "word": "Xilófono"
+    },
+    {
+      "id": "instrumentos-musicales:gaita",
+      "category": "Instrumentos musicales",
+      "word": "Gaita"
+    },
+    {
+      "id": "instrumentos-musicales:violonchelo",
+      "category": "Instrumentos musicales",
+      "word": "Violonchelo"
+    },
+    {
+      "id": "instrumentos-musicales:armonica",
+      "category": "Instrumentos musicales",
+      "word": "Armónica"
+    },
+    {
+      "id": "instrumentos-musicales:clarinete",
+      "category": "Instrumentos musicales",
+      "word": "Clarinete"
+    },
+    {
+      "id": "instrumentos-musicales:tambor",
+      "category": "Instrumentos musicales",
+      "word": "Tambor"
+    },
+    {
+      "id": "instrumentos-musicales:triangulo",
+      "category": "Instrumentos musicales",
+      "word": "Triángulo"
+    },
+    {
+      "id": "instrumentos-musicales:organo",
+      "category": "Instrumentos musicales",
+      "word": "Órgano"
+    },
+    {
+      "id": "instrumentos-musicales:cajon-flamenco",
+      "category": "Instrumentos musicales",
+      "word": "Cajón flamenco"
+    },
+    {
+      "id": "instrumentos-musicales:maracas",
+      "category": "Instrumentos musicales",
+      "word": "Maracas"
+    },
+    {
+      "id": "instrumentos-musicales:banjo",
+      "category": "Instrumentos musicales",
+      "word": "Banjo"
+    },
+    {
+      "id": "actividades-y-aficiones:leer",
+      "category": "Actividades y aficiones",
+      "word": "Leer"
+    },
+    {
+      "id": "actividades-y-aficiones:cocinar",
+      "category": "Actividades y aficiones",
+      "word": "Cocinar"
+    },
+    {
+      "id": "actividades-y-aficiones:bailar",
+      "category": "Actividades y aficiones",
+      "word": "Bailar"
+    },
+    {
+      "id": "actividades-y-aficiones:pintar",
+      "category": "Actividades y aficiones",
+      "word": "Pintar"
+    },
+    {
+      "id": "actividades-y-aficiones:hacer-senderismo",
+      "category": "Actividades y aficiones",
+      "word": "Hacer senderismo"
+    },
+    {
+      "id": "actividades-y-aficiones:pescar",
+      "category": "Actividades y aficiones",
+      "word": "Pescar"
+    },
+    {
+      "id": "actividades-y-aficiones:jardineria",
+      "category": "Actividades y aficiones",
+      "word": "Jardinería"
+    },
+    {
+      "id": "actividades-y-aficiones:hacer-puzles",
+      "category": "Actividades y aficiones",
+      "word": "Hacer puzles"
+    },
+    {
+      "id": "actividades-y-aficiones:fotografia",
+      "category": "Actividades y aficiones",
+      "word": "Fotografía"
+    },
+    {
+      "id": "actividades-y-aficiones:cantar-en-la-ducha",
+      "category": "Actividades y aficiones",
+      "word": "Cantar en la ducha"
+    },
+    {
+      "id": "actividades-y-aficiones:jugar-a-las-cartas",
+      "category": "Actividades y aficiones",
+      "word": "Jugar a las cartas"
+    },
+    {
+      "id": "actividades-y-aficiones:hacer-yoga",
+      "category": "Actividades y aficiones",
+      "word": "Hacer yoga"
+    },
+    {
+      "id": "actividades-y-aficiones:acampar",
+      "category": "Actividades y aficiones",
+      "word": "Acampar"
+    },
+    {
+      "id": "actividades-y-aficiones:tejer",
+      "category": "Actividades y aficiones",
+      "word": "Tejer"
+    },
+    {
+      "id": "actividades-y-aficiones:ir-de-compras",
+      "category": "Actividades y aficiones",
+      "word": "Ir de compras"
+    },
+    {
+      "id": "actividades-y-aficiones:ver-series",
+      "category": "Actividades y aficiones",
+      "word": "Ver series"
+    },
+    {
+      "id": "actividades-y-aficiones:montar-en-bici",
+      "category": "Actividades y aficiones",
+      "word": "Montar en bici"
+    },
+    {
+      "id": "actividades-y-aficiones:hacer-una-barbacoa",
+      "category": "Actividades y aficiones",
+      "word": "Hacer una barbacoa"
+    },
+    {
+      "id": "actividades-y-aficiones:ir-al-cine",
+      "category": "Actividades y aficiones",
+      "word": "Ir al cine"
+    },
+    {
+      "id": "actividades-y-aficiones:coleccionar-sellos",
+      "category": "Actividades y aficiones",
+      "word": "Coleccionar sellos"
+    },
+    {
+      "id": "actividades-y-aficiones:hacer-streaming",
+      "category": "Actividades y aficiones",
+      "word": "Hacer streaming"
+    },
+    {
+      "id": "actividades-y-aficiones:viajar",
+      "category": "Actividades y aficiones",
+      "word": "Viajar"
+    },
+    {
+      "id": "actividades-y-aficiones:dormir-la-siesta",
+      "category": "Actividades y aficiones",
+      "word": "Dormir la siesta"
+    },
+    {
+      "id": "actividades-y-aficiones:hacer-magia",
+      "category": "Actividades y aficiones",
+      "word": "Hacer magia"
+    },
+    {
+      "id": "fiestas-y-celebraciones:navidad",
+      "category": "Fiestas y celebraciones",
+      "word": "Navidad"
+    },
+    {
+      "id": "fiestas-y-celebraciones:nochevieja",
+      "category": "Fiestas y celebraciones",
+      "word": "Nochevieja"
+    },
+    {
+      "id": "fiestas-y-celebraciones:halloween",
+      "category": "Fiestas y celebraciones",
+      "word": "Halloween"
+    },
+    {
+      "id": "fiestas-y-celebraciones:carnaval",
+      "category": "Fiestas y celebraciones",
+      "word": "Carnaval"
+    },
+    {
+      "id": "fiestas-y-celebraciones:san-fermin",
+      "category": "Fiestas y celebraciones",
+      "word": "San Fermín"
+    },
+    {
+      "id": "fiestas-y-celebraciones:las-fallas",
+      "category": "Fiestas y celebraciones",
+      "word": "Las Fallas"
+    },
+    {
+      "id": "fiestas-y-celebraciones:la-tomatina",
+      "category": "Fiestas y celebraciones",
+      "word": "La Tomatina"
+    },
+    {
+      "id": "fiestas-y-celebraciones:feria-de-abril",
+      "category": "Fiestas y celebraciones",
+      "word": "Feria de Abril"
+    },
+    {
+      "id": "fiestas-y-celebraciones:semana-santa",
+      "category": "Fiestas y celebraciones",
+      "word": "Semana Santa"
+    },
+    {
+      "id": "fiestas-y-celebraciones:cumpleanos",
+      "category": "Fiestas y celebraciones",
+      "word": "Cumpleaños"
+    },
+    {
+      "id": "fiestas-y-celebraciones:boda",
+      "category": "Fiestas y celebraciones",
+      "word": "Boda"
+    },
+    {
+      "id": "fiestas-y-celebraciones:reyes-magos",
+      "category": "Fiestas y celebraciones",
+      "word": "Reyes Magos"
+    },
+    {
+      "id": "fiestas-y-celebraciones:san-valentin",
+      "category": "Fiestas y celebraciones",
+      "word": "San Valentín"
+    },
+    {
+      "id": "fiestas-y-celebraciones:graduacion",
+      "category": "Fiestas y celebraciones",
+      "word": "Graduación"
+    },
+    {
+      "id": "fiestas-y-celebraciones:despedida-de-soltero",
+      "category": "Fiestas y celebraciones",
+      "word": "Despedida de soltero"
+    },
+    {
+      "id": "fiestas-y-celebraciones:bautizo",
+      "category": "Fiestas y celebraciones",
+      "word": "Bautizo"
+    },
+    {
+      "id": "fiestas-y-celebraciones:fiesta-sorpresa",
+      "category": "Fiestas y celebraciones",
+      "word": "Fiesta sorpresa"
+    },
+    {
+      "id": "fiestas-y-celebraciones:ano-nuevo-chino",
+      "category": "Fiestas y celebraciones",
+      "word": "Año Nuevo chino"
+    },
+    {
+      "id": "fiestas-y-celebraciones:oktoberfest",
+      "category": "Fiestas y celebraciones",
+      "word": "Oktoberfest"
+    },
+    {
+      "id": "fiestas-y-celebraciones:dia-de-muertos",
+      "category": "Fiestas y celebraciones",
+      "word": "Día de Muertos"
+    },
+    {
+      "id": "naturaleza-y-clima:volcan",
+      "category": "Naturaleza y clima",
+      "word": "Volcán"
+    },
+    {
+      "id": "naturaleza-y-clima:arcoiris",
+      "category": "Naturaleza y clima",
+      "word": "Arcoíris"
+    },
+    {
+      "id": "naturaleza-y-clima:tormenta",
+      "category": "Naturaleza y clima",
+      "word": "Tormenta"
+    },
+    {
+      "id": "naturaleza-y-clima:tornado",
+      "category": "Naturaleza y clima",
+      "word": "Tornado"
+    },
+    {
+      "id": "naturaleza-y-clima:cascada",
+      "category": "Naturaleza y clima",
+      "word": "Cascada"
+    },
+    {
+      "id": "naturaleza-y-clima:desierto",
+      "category": "Naturaleza y clima",
+      "word": "Desierto"
+    },
+    {
+      "id": "naturaleza-y-clima:selva",
+      "category": "Naturaleza y clima",
+      "word": "Selva"
+    },
+    {
+      "id": "naturaleza-y-clima:glaciar",
+      "category": "Naturaleza y clima",
+      "word": "Glaciar"
+    },
+    {
+      "id": "naturaleza-y-clima:playa",
+      "category": "Naturaleza y clima",
+      "word": "Playa"
+    },
+    {
+      "id": "naturaleza-y-clima:cueva",
+      "category": "Naturaleza y clima",
+      "word": "Cueva"
+    },
+    {
+      "id": "naturaleza-y-clima:isla",
+      "category": "Naturaleza y clima",
+      "word": "Isla"
+    },
+    {
+      "id": "naturaleza-y-clima:lago",
+      "category": "Naturaleza y clima",
+      "word": "Lago"
+    },
+    {
+      "id": "naturaleza-y-clima:rio",
+      "category": "Naturaleza y clima",
+      "word": "Río"
+    },
+    {
+      "id": "naturaleza-y-clima:nieve",
+      "category": "Naturaleza y clima",
+      "word": "Nieve"
+    },
+    {
+      "id": "naturaleza-y-clima:rayo",
+      "category": "Naturaleza y clima",
+      "word": "Rayo"
+    },
+    {
+      "id": "naturaleza-y-clima:terremoto",
+      "category": "Naturaleza y clima",
+      "word": "Terremoto"
+    },
+    {
+      "id": "naturaleza-y-clima:aurora-boreal",
+      "category": "Naturaleza y clima",
+      "word": "Aurora boreal"
+    },
+    {
+      "id": "naturaleza-y-clima:eclipse",
+      "category": "Naturaleza y clima",
+      "word": "Eclipse"
+    },
+    {
+      "id": "naturaleza-y-clima:huracan",
+      "category": "Naturaleza y clima",
+      "word": "Huracán"
+    },
+    {
+      "id": "naturaleza-y-clima:niebla",
+      "category": "Naturaleza y clima",
+      "word": "Niebla"
+    },
+    {
+      "id": "naturaleza-y-clima:granizo",
+      "category": "Naturaleza y clima",
+      "word": "Granizo"
+    },
+    {
+      "id": "naturaleza-y-clima:ola",
+      "category": "Naturaleza y clima",
+      "word": "Ola"
+    },
+    {
+      "id": "naturaleza-y-clima:arrecife-de-coral",
+      "category": "Naturaleza y clima",
+      "word": "Arrecife de coral"
+    },
+    {
+      "id": "naturaleza-y-clima:duna",
+      "category": "Naturaleza y clima",
+      "word": "Duna"
+    },
+    {
+      "id": "espacio-y-astronomia:sol",
+      "category": "Espacio y astronomía",
+      "word": "Sol"
+    },
+    {
+      "id": "espacio-y-astronomia:luna",
+      "category": "Espacio y astronomía",
+      "word": "Luna"
+    },
+    {
+      "id": "espacio-y-astronomia:marte",
+      "category": "Espacio y astronomía",
+      "word": "Marte"
+    },
+    {
+      "id": "espacio-y-astronomia:saturno",
+      "category": "Espacio y astronomía",
+      "word": "Saturno"
+    },
+    {
+      "id": "espacio-y-astronomia:jupiter",
+      "category": "Espacio y astronomía",
+      "word": "Júpiter"
+    },
+    {
+      "id": "espacio-y-astronomia:estrella-fugaz",
+      "category": "Espacio y astronomía",
+      "word": "Estrella fugaz"
+    },
+    {
+      "id": "espacio-y-astronomia:agujero-negro",
+      "category": "Espacio y astronomía",
+      "word": "Agujero negro"
+    },
+    {
+      "id": "espacio-y-astronomia:cometa",
+      "category": "Espacio y astronomía",
+      "word": "Cometa"
+    },
+    {
+      "id": "espacio-y-astronomia:galaxia",
+      "category": "Espacio y astronomía",
+      "word": "Galaxia"
+    },
+    {
+      "id": "espacio-y-astronomia:astronauta",
+      "category": "Espacio y astronomía",
+      "word": "Astronauta"
+    },
+    {
+      "id": "espacio-y-astronomia:cohete",
+      "category": "Espacio y astronomía",
+      "word": "Cohete"
+    },
+    {
+      "id": "espacio-y-astronomia:satelite",
+      "category": "Espacio y astronomía",
+      "word": "Satélite"
+    },
+    {
+      "id": "espacio-y-astronomia:extraterrestre",
+      "category": "Espacio y astronomía",
+      "word": "Extraterrestre"
+    },
+    {
+      "id": "espacio-y-astronomia:ovni",
+      "category": "Espacio y astronomía",
+      "word": "OVNI"
+    },
+    {
+      "id": "espacio-y-astronomia:telescopio",
+      "category": "Espacio y astronomía",
+      "word": "Telescopio"
+    },
+    {
+      "id": "espacio-y-astronomia:estacion-espacial",
+      "category": "Espacio y astronomía",
+      "word": "Estación espacial"
+    },
+    {
+      "id": "espacio-y-astronomia:via-lactea",
+      "category": "Espacio y astronomía",
+      "word": "Vía Láctea"
+    },
+    {
+      "id": "espacio-y-astronomia:meteorito",
+      "category": "Espacio y astronomía",
+      "word": "Meteorito"
+    },
+    {
+      "id": "espacio-y-astronomia:planeta-tierra",
+      "category": "Espacio y astronomía",
+      "word": "Planeta Tierra"
+    },
+    {
+      "id": "espacio-y-astronomia:constelacion",
+      "category": "Espacio y astronomía",
+      "word": "Constelación"
+    },
+    {
+      "id": "fantasia-y-mitologia:dragon",
+      "category": "Fantasía y mitología",
+      "word": "Dragón"
+    },
+    {
+      "id": "fantasia-y-mitologia:unicornio",
+      "category": "Fantasía y mitología",
+      "word": "Unicornio"
+    },
+    {
+      "id": "fantasia-y-mitologia:sirena",
+      "category": "Fantasía y mitología",
+      "word": "Sirena"
+    },
+    {
+      "id": "fantasia-y-mitologia:vampiro",
+      "category": "Fantasía y mitología",
+      "word": "Vampiro"
+    },
+    {
+      "id": "fantasia-y-mitologia:hombre-lobo",
+      "category": "Fantasía y mitología",
+      "word": "Hombre lobo"
+    },
+    {
+      "id": "fantasia-y-mitologia:zombi",
+      "category": "Fantasía y mitología",
+      "word": "Zombi"
+    },
+    {
+      "id": "fantasia-y-mitologia:fantasma",
+      "category": "Fantasía y mitología",
+      "word": "Fantasma"
+    },
+    {
+      "id": "fantasia-y-mitologia:bruja",
+      "category": "Fantasía y mitología",
+      "word": "Bruja"
+    },
+    {
+      "id": "fantasia-y-mitologia:mago",
+      "category": "Fantasía y mitología",
+      "word": "Mago"
+    },
+    {
+      "id": "fantasia-y-mitologia:hada",
+      "category": "Fantasía y mitología",
+      "word": "Hada"
+    },
+    {
+      "id": "fantasia-y-mitologia:duende",
+      "category": "Fantasía y mitología",
+      "word": "Duende"
+    },
+    {
+      "id": "fantasia-y-mitologia:ogro",
+      "category": "Fantasía y mitología",
+      "word": "Ogro"
+    },
+    {
+      "id": "fantasia-y-mitologia:centauro",
+      "category": "Fantasía y mitología",
+      "word": "Centauro"
+    },
+    {
+      "id": "fantasia-y-mitologia:minotauro",
+      "category": "Fantasía y mitología",
+      "word": "Minotauro"
+    },
+    {
+      "id": "fantasia-y-mitologia:fenix",
+      "category": "Fantasía y mitología",
+      "word": "Fénix"
+    },
+    {
+      "id": "fantasia-y-mitologia:pegaso",
+      "category": "Fantasía y mitología",
+      "word": "Pegaso"
+    },
+    {
+      "id": "fantasia-y-mitologia:medusa",
+      "category": "Fantasía y mitología",
+      "word": "Medusa"
+    },
+    {
+      "id": "fantasia-y-mitologia:kraken",
+      "category": "Fantasía y mitología",
+      "word": "Kraken"
+    },
+    {
+      "id": "fantasia-y-mitologia:troll",
+      "category": "Fantasía y mitología",
+      "word": "Troll"
+    },
+    {
+      "id": "fantasia-y-mitologia:genio-de-la-lampara",
+      "category": "Fantasía y mitología",
+      "word": "Genio de la lámpara"
+    },
+    {
+      "id": "fantasia-y-mitologia:elfo",
+      "category": "Fantasía y mitología",
+      "word": "Elfo"
+    },
+    {
+      "id": "fantasia-y-mitologia:momia",
+      "category": "Fantasía y mitología",
+      "word": "Momia"
+    },
+    {
+      "id": "fantasia-y-mitologia:yeti",
+      "category": "Fantasía y mitología",
+      "word": "Yeti"
+    },
+    {
+      "id": "fantasia-y-mitologia:ciclope",
+      "category": "Fantasía y mitología",
+      "word": "Cíclope"
+    },
+    {
+      "id": "partes-del-cuerpo:nariz",
+      "category": "Partes del cuerpo",
+      "word": "Nariz"
+    },
+    {
+      "id": "partes-del-cuerpo:codo",
+      "category": "Partes del cuerpo",
+      "word": "Codo"
+    },
+    {
+      "id": "partes-del-cuerpo:rodilla",
+      "category": "Partes del cuerpo",
+      "word": "Rodilla"
+    },
+    {
+      "id": "partes-del-cuerpo:ombligo",
+      "category": "Partes del cuerpo",
+      "word": "Ombligo"
+    },
+    {
+      "id": "partes-del-cuerpo:ceja",
+      "category": "Partes del cuerpo",
+      "word": "Ceja"
+    },
+    {
+      "id": "partes-del-cuerpo:lengua",
+      "category": "Partes del cuerpo",
+      "word": "Lengua"
+    },
+    {
+      "id": "partes-del-cuerpo:oreja",
+      "category": "Partes del cuerpo",
+      "word": "Oreja"
+    },
+    {
+      "id": "partes-del-cuerpo:tobillo",
+      "category": "Partes del cuerpo",
+      "word": "Tobillo"
+    },
+    {
+      "id": "partes-del-cuerpo:muneca",
+      "category": "Partes del cuerpo",
+      "word": "Muñeca"
+    },
+    {
+      "id": "partes-del-cuerpo:hombro",
+      "category": "Partes del cuerpo",
+      "word": "Hombro"
+    },
+    {
+      "id": "partes-del-cuerpo:cuello",
+      "category": "Partes del cuerpo",
+      "word": "Cuello"
+    },
+    {
+      "id": "partes-del-cuerpo:pestana",
+      "category": "Partes del cuerpo",
+      "word": "Pestaña"
+    },
+    {
+      "id": "partes-del-cuerpo:una",
+      "category": "Partes del cuerpo",
+      "word": "Uña"
+    },
+    {
+      "id": "partes-del-cuerpo:barbilla",
+      "category": "Partes del cuerpo",
+      "word": "Barbilla"
+    },
+    {
+      "id": "partes-del-cuerpo:talon",
+      "category": "Partes del cuerpo",
+      "word": "Talón"
+    },
+    {
+      "id": "partes-del-cuerpo:corazon",
+      "category": "Partes del cuerpo",
+      "word": "Corazón"
+    },
+    {
+      "id": "partes-del-cuerpo:cerebro",
+      "category": "Partes del cuerpo",
+      "word": "Cerebro"
+    },
+    {
+      "id": "partes-del-cuerpo:pulmon",
+      "category": "Partes del cuerpo",
+      "word": "Pulmón"
+    },
+    {
+      "id": "partes-del-cuerpo:diente",
+      "category": "Partes del cuerpo",
+      "word": "Diente"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:parchis",
+      "category": "Juegos de mesa y de calle",
+      "word": "Parchís"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:monopoly",
+      "category": "Juegos de mesa y de calle",
+      "word": "Monopoly"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:ajedrez",
+      "category": "Juegos de mesa y de calle",
+      "word": "Ajedrez"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:damas",
+      "category": "Juegos de mesa y de calle",
+      "word": "Damas"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:uno",
+      "category": "Juegos de mesa y de calle",
+      "word": "Uno"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:pictionary",
+      "category": "Juegos de mesa y de calle",
+      "word": "Pictionary"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:trivial",
+      "category": "Juegos de mesa y de calle",
+      "word": "Trivial"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:cluedo",
+      "category": "Juegos de mesa y de calle",
+      "word": "Cluedo"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:jenga",
+      "category": "Juegos de mesa y de calle",
+      "word": "Jenga"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:domino",
+      "category": "Juegos de mesa y de calle",
+      "word": "Dominó"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:escondite",
+      "category": "Juegos de mesa y de calle",
+      "word": "Escondite"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:pilla-pilla",
+      "category": "Juegos de mesa y de calle",
+      "word": "Pilla pilla"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:comba",
+      "category": "Juegos de mesa y de calle",
+      "word": "Comba"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:rayuela",
+      "category": "Juegos de mesa y de calle",
+      "word": "Rayuela"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:canicas",
+      "category": "Juegos de mesa y de calle",
+      "word": "Canicas"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:escape-room",
+      "category": "Juegos de mesa y de calle",
+      "word": "Escape room"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:mus",
+      "category": "Juegos de mesa y de calle",
+      "word": "Mus"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:poker",
+      "category": "Juegos de mesa y de calle",
+      "word": "Póker"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:sudoku",
+      "category": "Juegos de mesa y de calle",
+      "word": "Sudoku"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:twister",
+      "category": "Juegos de mesa y de calle",
+      "word": "Twister"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:scrabble",
+      "category": "Juegos de mesa y de calle",
+      "word": "Scrabble"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:hundir-la-flota",
+      "category": "Juegos de mesa y de calle",
+      "word": "Hundir la flota"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:cartas-pokemon",
+      "category": "Juegos de mesa y de calle",
+      "word": "Cartas Pokémon"
+    },
+    {
+      "id": "juegos-de-mesa-y-de-calle:peonza",
+      "category": "Juegos de mesa y de calle",
+      "word": "Peonza"
+    },
+    {
+      "id": "emociones-y-sensaciones:verguenza",
+      "category": "Emociones y sensaciones",
+      "word": "Vergüenza"
+    },
+    {
+      "id": "emociones-y-sensaciones:celos",
+      "category": "Emociones y sensaciones",
+      "word": "Celos"
+    },
+    {
+      "id": "emociones-y-sensaciones:nostalgia",
+      "category": "Emociones y sensaciones",
+      "word": "Nostalgia"
+    },
+    {
+      "id": "emociones-y-sensaciones:miedo",
+      "category": "Emociones y sensaciones",
+      "word": "Miedo"
+    },
+    {
+      "id": "emociones-y-sensaciones:alegria",
+      "category": "Emociones y sensaciones",
+      "word": "Alegría"
+    },
+    {
+      "id": "emociones-y-sensaciones:aburrimiento",
+      "category": "Emociones y sensaciones",
+      "word": "Aburrimiento"
+    },
+    {
+      "id": "emociones-y-sensaciones:sorpresa",
+      "category": "Emociones y sensaciones",
+      "word": "Sorpresa"
+    },
+    {
+      "id": "emociones-y-sensaciones:enfado",
+      "category": "Emociones y sensaciones",
+      "word": "Enfado"
+    },
+    {
+      "id": "emociones-y-sensaciones:hambre",
+      "category": "Emociones y sensaciones",
+      "word": "Hambre"
+    },
+    {
+      "id": "emociones-y-sensaciones:sueno",
+      "category": "Emociones y sensaciones",
+      "word": "Sueño"
+    },
+    {
+      "id": "emociones-y-sensaciones:cosquillas",
+      "category": "Emociones y sensaciones",
+      "word": "Cosquillas"
+    },
+    {
+      "id": "emociones-y-sensaciones:vertigo",
+      "category": "Emociones y sensaciones",
+      "word": "Vértigo"
+    },
+    {
+      "id": "emociones-y-sensaciones:agujetas",
+      "category": "Emociones y sensaciones",
+      "word": "Agujetas"
+    },
+    {
+      "id": "emociones-y-sensaciones:resaca",
+      "category": "Emociones y sensaciones",
+      "word": "Resaca"
+    },
+    {
+      "id": "emociones-y-sensaciones:hipo",
+      "category": "Emociones y sensaciones",
+      "word": "Hipo"
+    },
+    {
+      "id": "emociones-y-sensaciones:estornudo",
+      "category": "Emociones y sensaciones",
+      "word": "Estornudo"
+    },
+    {
+      "id": "emociones-y-sensaciones:bostezo",
+      "category": "Emociones y sensaciones",
+      "word": "Bostezo"
+    },
+    {
+      "id": "emociones-y-sensaciones:escalofrio",
+      "category": "Emociones y sensaciones",
+      "word": "Escalofrío"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:examen",
+      "category": "Cosas de clase y trabajo",
+      "word": "Examen"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:recreo",
+      "category": "Cosas de clase y trabajo",
+      "word": "Recreo"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:deberes",
+      "category": "Cosas de clase y trabajo",
+      "word": "Deberes"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:reunion",
+      "category": "Cosas de clase y trabajo",
+      "word": "Reunión"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:jefe",
+      "category": "Cosas de clase y trabajo",
+      "word": "Jefe"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:becario",
+      "category": "Cosas de clase y trabajo",
+      "word": "Becario"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:vacaciones",
+      "category": "Cosas de clase y trabajo",
+      "word": "Vacaciones"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:lunes",
+      "category": "Cosas de clase y trabajo",
+      "word": "Lunes"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:viernes",
+      "category": "Cosas de clase y trabajo",
+      "word": "Viernes"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:excursion",
+      "category": "Cosas de clase y trabajo",
+      "word": "Excursión"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:pupitre",
+      "category": "Cosas de clase y trabajo",
+      "word": "Pupitre"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:fotocopiadora",
+      "category": "Cosas de clase y trabajo",
+      "word": "Fotocopiadora"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:correo-electronico",
+      "category": "Cosas de clase y trabajo",
+      "word": "Correo electrónico"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:teletrabajo",
+      "category": "Cosas de clase y trabajo",
+      "word": "Teletrabajo"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:nomina",
+      "category": "Cosas de clase y trabajo",
+      "word": "Nómina"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:huelga",
+      "category": "Cosas de clase y trabajo",
+      "word": "Huelga"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:uniforme",
+      "category": "Cosas de clase y trabajo",
+      "word": "Uniforme"
+    },
+    {
+      "id": "cosas-de-clase-y-trabajo:selectividad",
+      "category": "Cosas de clase y trabajo",
+      "word": "Selectividad"
+    },
+    {
+      "id": "cosas-de-internet:meme",
+      "category": "Cosas de Internet",
+      "word": "Meme"
+    },
+    {
+      "id": "cosas-de-internet:influencer",
+      "category": "Cosas de Internet",
+      "word": "Influencer"
+    },
+    {
+      "id": "cosas-de-internet:directo",
+      "category": "Cosas de Internet",
+      "word": "Directo"
+    },
+    {
+      "id": "cosas-de-internet:like",
+      "category": "Cosas de Internet",
+      "word": "Like"
+    },
+    {
+      "id": "cosas-de-internet:hashtag",
+      "category": "Cosas de Internet",
+      "word": "Hashtag"
+    },
+    {
+      "id": "cosas-de-internet:spam",
+      "category": "Cosas de Internet",
+      "word": "Spam"
+    },
+    {
+      "id": "cosas-de-internet:captcha",
+      "category": "Cosas de Internet",
+      "word": "Captcha"
+    },
+    {
+      "id": "cosas-de-internet:virus-informatico",
+      "category": "Cosas de Internet",
+      "word": "Virus informático"
+    },
+    {
+      "id": "cosas-de-internet:hacker",
+      "category": "Cosas de Internet",
+      "word": "Hacker"
+    },
+    {
+      "id": "cosas-de-internet:podcast",
+      "category": "Cosas de Internet",
+      "word": "Podcast"
+    },
+    {
+      "id": "cosas-de-internet:unboxing",
+      "category": "Cosas de Internet",
+      "word": "Unboxing"
+    },
+    {
+      "id": "cosas-de-internet:clickbait",
+      "category": "Cosas de Internet",
+      "word": "Clickbait"
+    },
+    {
+      "id": "cosas-de-internet:selfie",
+      "category": "Cosas de Internet",
+      "word": "Selfie"
+    },
+    {
+      "id": "cosas-de-internet:filtro",
+      "category": "Cosas de Internet",
+      "word": "Filtro"
+    },
+    {
+      "id": "cosas-de-internet:gif",
+      "category": "Cosas de Internet",
+      "word": "GIF"
+    },
+    {
+      "id": "cosas-de-internet:pantallazo",
+      "category": "Cosas de Internet",
+      "word": "Pantallazo"
+    },
+    {
+      "id": "cosas-de-internet:troll",
+      "category": "Cosas de Internet",
+      "word": "Troll"
+    },
+    {
+      "id": "cosas-de-internet:spoiler",
+      "category": "Cosas de Internet",
+      "word": "Spoiler"
+    },
+    {
+      "id": "cosas-de-internet:algoritmo",
+      "category": "Cosas de Internet",
+      "word": "Algoritmo"
+    },
+    {
+      "id": "cosas-de-internet:contrasena-olvidada",
+      "category": "Cosas de Internet",
+      "word": "Contraseña olvidada"
+    },
+    {
+      "id": "juguetes:peluche",
+      "category": "Juguetes",
+      "word": "Peluche"
+    },
+    {
+      "id": "juguetes:muneca",
+      "category": "Juguetes",
+      "word": "Muñeca"
+    },
+    {
+      "id": "juguetes:yoyo",
+      "category": "Juguetes",
+      "word": "Yoyó"
+    },
+    {
+      "id": "juguetes:cubo-de-rubik",
+      "category": "Juguetes",
+      "word": "Cubo de Rubik"
+    },
+    {
+      "id": "juguetes:pelota-saltarina",
+      "category": "Juguetes",
+      "word": "Pelota saltarina"
+    },
+    {
+      "id": "juguetes:cometa",
+      "category": "Juguetes",
+      "word": "Cometa"
+    },
+    {
+      "id": "juguetes:plastilina",
+      "category": "Juguetes",
+      "word": "Plastilina"
+    },
+    {
+      "id": "juguetes:coche-teledirigido",
+      "category": "Juguetes",
+      "word": "Coche teledirigido"
+    },
+    {
+      "id": "juguetes:tren-de-juguete",
+      "category": "Juguetes",
+      "word": "Tren de juguete"
+    },
+    {
+      "id": "juguetes:puzzle",
+      "category": "Juguetes",
+      "word": "Puzzle"
+    },
+    {
+      "id": "juguetes:pistola-de-agua",
+      "category": "Juguetes",
+      "word": "Pistola de agua"
+    },
+    {
+      "id": "juguetes:peonza",
+      "category": "Juguetes",
+      "word": "Peonza"
+    },
+    {
+      "id": "juguetes:tamagotchi",
+      "category": "Juguetes",
+      "word": "Tamagotchi"
+    },
+    {
+      "id": "juguetes:bloques-de-construccion",
+      "category": "Juguetes",
+      "word": "Bloques de construcción"
+    },
+    {
+      "id": "juguetes:caleidoscopio",
+      "category": "Juguetes",
+      "word": "Caleidoscopio"
+    },
+    {
+      "id": "juguetes:columpio",
+      "category": "Juguetes",
+      "word": "Columpio"
+    },
+    {
+      "id": "juguetes:tobogan",
+      "category": "Juguetes",
+      "word": "Tobogán"
+    },
+    {
+      "id": "juguetes:castillo-hinchable",
+      "category": "Juguetes",
+      "word": "Castillo hinchable"
+    }
+  ]
+}

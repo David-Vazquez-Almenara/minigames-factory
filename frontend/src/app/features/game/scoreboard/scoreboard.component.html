@@ -1,4 +1,4 @@
-<section class="scoreboard-screen" aria-label="Resultados de la tanda">
+﻿<section class="scoreboard-screen" aria-label="Marcador global">
   @if (showWinner()) {
   <main
     class="winner-showcase"
@@ -25,26 +25,38 @@
   </main>
   } @else {
   <main class="scoreboard-panel">
+    @if (rows().length) {
+    <app-mii-stage class="score-miis" [players]="scoreMiis()" mode="scoreboard" />
+    }
+
     <header>
-      <p>Tanda {{ scoreboard()?.roundNumber || match()?.questionRoundNumber || 1 }}</p>
-      <h1>Resultados</h1>
+      <p>Ronda {{ match()?.roundNumber }} de {{ match()?.totalRounds }}</p>
+      <h1>Marcador</h1>
     </header>
+
+    @if (!rows().length) {
+    <p class="calculating" aria-live="polite">Sumando puntos<span class="loader" aria-hidden="true"></span></p>
+    }
 
     <div class="score-list" [class.positions-settled]="positionsSettled()">
       @for (row of rows(); track row.playerId) {
       <div class="score-row-shell">
         <article
           class="score-row"
-          [class.score-up]="row.scoreIncreased && scoreAnimationStarted()"
+          [class.score-up]="row.scoreIncreased && row.scoreDelta > 0 && scoreAnimationStarted()"
+          [class.score-down]="row.scoreDelta < 0 && scoreAnimationStarted()"
           [class.rank-gold]="row.position === 1"
           [class.rank-silver]="row.position === 2"
           [class.rank-bronze]="row.position === 3"
           [style.transform]="rowOffset(row)"
           [style.opacity]="rowOpacity(row)"
         >
-          <strong class="position">{{ row.position }}o</strong>
+          <strong class="position">{{ row.position }}º</strong>
           <span class="player-name">
-            {{ row.playerName }}
+            <span class="name-line">
+              <app-player-avatar [avatarUrl]="playerAvatar(row.playerId)" [name]="row.playerName" [color]="playerColor(row.playerId)" [size]="32" />
+              {{ row.playerName }}
+            </span>
             @if (row.minigameVoteCount !== undefined) {
             <small>{{ row.minigameVoteCount || 0 }} votos</small>
             } @else if (row.minigameAnsweredCount !== undefined) {
@@ -54,8 +66,10 @@
           <strong class="score">{{ row.displayScore }} pts</strong>
         </article>
 
-        @if (scoreAnimationStarted() && row.scoreDelta > 0) {
-        <strong class="score-delta">+{{ row.scoreDelta }}</strong>
+        @if (scoreAnimationStarted() && row.scoreDelta !== 0) {
+        <strong class="score-delta" [class.negative]="row.scoreDelta < 0">
+          {{ row.scoreDelta > 0 ? '+' : '' }}{{ row.scoreDelta }}
+        </strong>
         }
       </div>
       }
@@ -70,7 +84,7 @@
 
   @if (isHost() && !showWinner()) {
   <button class="continue-button" type="button" [disabled]="!canContinue()" (click)="continueToNextBatch()">
-    {{ loading() ? 'Continuando...' : 'Continuar' }}
+    {{ loading() ? 'Continuando...' : isLastRound() ? 'Ver podio final' : 'Siguiente ronda' }}
   </button>
   }
 </section>

@@ -1,5 +1,28 @@
 * {
   box-sizing: border-box;
+  // Barras de desplazamiento finas: pulgar amarillo pastel (como los botones del menu) sobre gris claro.
+  scrollbar-width: thin;
+  scrollbar-color: #ffe27a #ececec;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #ececec;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #ffe27a;
+  border: 2px solid #ececec;
+  border-radius: 999px;
+
+  &:hover {
+    background-color: #ffd23f;
+  }
 }
 
 html,

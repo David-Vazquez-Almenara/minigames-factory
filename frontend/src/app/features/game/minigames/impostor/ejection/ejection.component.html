@@ -1,0 +1,26 @@
+<section class="space" aria-live="polite" [attr.aria-label]="text()">
+  <div class="starfield" aria-hidden="true">
+    @for (star of stars; track $index) {
+    <i
+      [style.top.%]="star.top"
+      [style.left.%]="star.left"
+      [style.width.px]="star.size"
+      [style.height.px]="star.size"
+      [style.animation-delay.ms]="star.delay"
+    ></i>
+    }
+  </div>
+
+  @if (ejectedColor(); as color) {
+  <div class="ejected-body" aria-hidden="true">
+    <app-crewmate [color]="color" [size]="110" />
+  </div>
+  }
+
+  <div class="verdict">
+    <p class="typed">{{ typedText() }}<span class="caret" aria-hidden="true">|</span></p>
+    @if (showSubtitle() && subtitle()) {
+    <p class="subtitle">{{ subtitle() }}</p>
+    }
+  </div>
+</section>

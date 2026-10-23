@@ -1,4 +1,4 @@
-:host {
+﻿:host {
   display: block;
   width: min(1080px, 100%);
 }
@@ -90,8 +90,6 @@
   }
 }
 
-.toolbar button,
-.clear-button,
 .ready-button,
 .drawing-card {
   color: #000;
@@ -101,28 +99,6 @@
   border: 3px solid #000;
   border-radius: 14px;
   cursor: pointer;
-}
-
-.clear-button {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 3;
-  min-height: 42px;
-  padding: 8px 12px;
-  background-color: #fff;
-  box-shadow: 0 3px 0 #000;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 0 #000;
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(1px);
-    box-shadow: 0 1px 0 #000;
-  }
 }
 
 .timer-box {
@@ -173,142 +149,6 @@
   }
 }
 
-.toolbar {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  
-  // Animation size 1 to 0 transitions
-  transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
-  transform-origin: top center;
-  max-height: 300px;
-  opacity: 1;
-  overflow: hidden;
-
-  &.hide-tools {
-    max-height: 0;
-    opacity: 0;
-    transform: scaleY(0);
-    padding-top: 0;
-    padding-bottom: 0;
-    margin-top: 0;
-    margin-bottom: 0;
-    border-width: 0;
-    pointer-events: none;
-  }
-
-  button,
-  select,
-  input[type='color'] {
-    min-height: 38px;
-  }
-
-  button {
-    padding: 7px 10px;
-    background-color: #fff;
-    box-shadow: 0 3px 0 #000;
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 0 #000;
-    }
-
-    &:active {
-      transform: translateY(1px);
-      box-shadow: 0 1px 0 #000;
-    }
-  }
-
-  button.active {
-    background-color: #b9f7a7;
-  }
-
-  select {
-    padding: 7px 8px;
-    color: #000;
-    font: inherit;
-    font-weight: 900;
-    background-color: #fff;
-    border: 3px solid #000;
-    border-radius: 12px;
-    box-shadow: 0 3px 0 #000;
-  }
-
-  input[type='color'] {
-    border: 3px solid #000;
-    border-radius: 12px;
-    background: #fff;
-    cursor: pointer;
-    width: 44px;
-    height: 38px;
-    padding: 2px;
-    box-shadow: 0 3px 0 #000;
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
-
-    &::-webkit-color-swatch-wrapper {
-      padding: 0;
-    }
-    &::-webkit-color-swatch {
-      border: none;
-      border-radius: 8px;
-    }
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 0 #000;
-    }
-    &:active {
-      transform: translateY(1px);
-      box-shadow: 0 1px 0 #000;
-    }
-  }
-
-  label {
-    display: grid;
-    gap: 2px;
-    min-width: 118px;
-    font-size: 0.74rem;
-    font-weight: 950;
-
-    input[type='range'] {
-      width: 118px;
-      cursor: pointer;
-    }
-  }
-}
-
-.canvas-shell {
-  position: relative;
-  width: min(100%, 860px);
-  aspect-ratio: 86 / 47;
-  overflow: hidden;
-  background-color: #fff;
-  border: 4px solid #000;
-  border-radius: 18px;
-  box-shadow: 0 6px 0 #000;
-}
-
-.canvas-shell canvas {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-canvas.paint-canvas {
-  touch-action: none;
-  background-color: #fff;
-}
-
-.preview-canvas {
-  pointer-events: none;
-}
-
 .submit-row {
   display: flex;
   gap: 14px;
@@ -333,7 +173,6 @@ canvas.paint-canvas {
 }
 
 .ready-button:disabled,
-.clear-button:disabled,
 .drawing-card:disabled {
   cursor: no-drop;
   opacity: 0.7;
@@ -406,16 +245,6 @@ canvas.paint-canvas {
 
   .paint-panel {
     padding-top: 64px;
-  }
-
-  .clear-button {
-    top: 12px;
-    left: 12px;
-    min-height: 38px;
-  }
-
-  .toolbar {
-    flex-wrap: wrap;
   }
 
   .paint-header {

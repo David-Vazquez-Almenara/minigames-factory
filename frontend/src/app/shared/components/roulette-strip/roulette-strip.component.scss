@@ -1,0 +1,150 @@
+// La pista mide miles de pixeles (max-content). contain: inline-size evita que ese ancho intrinseco
+// infle el grid del padre y desplace toda la pantalla fuera de la vista.
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  contain: inline-size;
+}
+
+.roulette {
+  --card-width: clamp(150px, 24vw, 230px);
+  --card-gap: 14px;
+  position: relative;
+  width: 100%;
+  padding: 18px 0;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.roulette.number-variant {
+  --card-width: clamp(78px, 15vw, 124px);
+}
+
+.viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+}
+
+.track {
+  position: relative;
+  display: flex;
+  gap: var(--card-gap);
+  width: max-content;
+  will-change: transform;
+}
+
+.roulette-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto;
+  flex: 0 0 var(--card-width);
+  width: var(--card-width);
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+  background-color: var(--card-accent);
+  border: 3px solid #000;
+  border-radius: 16px;
+  user-select: none;
+
+  img,
+  .image-fallback {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    background-color: #fff;
+    border: 3px solid #000;
+    border-radius: 10px;
+  }
+
+  .image-fallback {
+    display: grid;
+    place-items: center;
+    font-size: 3rem;
+    font-weight: 1000;
+  }
+
+  .card-label {
+    overflow: hidden;
+    font-size: 1rem;
+    font-weight: 950;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.number-variant .roulette-card {
+  grid-template-rows: 1fr;
+  aspect-ratio: 3 / 4;
+  place-items: center;
+  padding: 0;
+
+  .card-label {
+    font-size: clamp(2.6rem, 8vw, 4.4rem);
+    font-weight: 1000;
+    line-height: 1;
+    -webkit-text-stroke: 2px #000;
+    color: #fff;
+    paint-order: stroke fill;
+  }
+}
+
+.roulette-card.winner {
+  z-index: 1;
+  animation: winner-pulse 900ms cubic-bezier(0.18, 0.88, 0.3, 1.2) 2 both;
+  box-shadow: 0 0 0 4px #ffe891, 0 0 26px 6px rgba(255, 199, 0, 0.75);
+}
+
+.marker {
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 4px;
+  background-color: #000;
+  transform: translateX(-50%);
+  pointer-events: none;
+
+  &::before,
+  &::after {
+    position: absolute;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-right: 13px solid transparent;
+    border-left: 13px solid transparent;
+    transform: translateX(-50%);
+    content: '';
+  }
+
+  &::before {
+    top: 0;
+    border-top: 18px solid #ff9b9b;
+  }
+
+  &::after {
+    bottom: 0;
+    border-bottom: 18px solid #ff9b9b;
+  }
+}
+
+.landed .marker {
+  background-color: #ff4f4f;
+}
+
+@keyframes winner-pulse {
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roulette-card.winner {
+    animation: none;
+  }
+}

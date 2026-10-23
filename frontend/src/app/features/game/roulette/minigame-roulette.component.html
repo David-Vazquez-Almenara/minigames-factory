@@ -1,0 +1,29 @@
+<section class="roulette-screen" aria-label="Ruleta de minijuegos">
+  <header class="roulette-header">
+    <p>Ronda {{ roulette()?.roundNumber }} de {{ match()?.totalRounds }}</p>
+    <h1>Ruleta de minijuegos</h1>
+  </header>
+
+  @if (roulette(); as currentRoulette) {
+  <app-roulette-strip
+    class="minigame-strip"
+    [items]="items()"
+    [winnerIndex]="currentRoulette.winnerIndex"
+    [spinStartsAt]="currentRoulette.spinStartsAt"
+    [spinDurationMs]="currentRoulette.spinDurationMs"
+    [landingOffset]="currentRoulette.landingOffset"
+    (landed)="onLanded($event)"
+  />
+  }
+
+  <div class="reveal-slot" aria-live="polite">
+    @if (revealedMinigame(); as minigame) {
+    <article class="reveal-card" [style.--reveal-accent]="minigame.accent">
+      <span>Toca jugar a</span>
+      <h2>{{ minigame.title }}</h2>
+    </article>
+    } @else {
+    <p class="spinning-hint">Girando<span class="dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>
+    }
+  </div>
+</section>

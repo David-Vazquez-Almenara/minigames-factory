@@ -1,0 +1,32 @@
+﻿<aside class="volume-controls" aria-label="Volumen">
+  <div class="volume-row">
+    <button type="button" class="icon" [class.muted]="!musicVolume()" (click)="toggleMusic()"
+      [attr.aria-label]="musicVolume() ? 'Silenciar musica' : 'Activar musica'" title="Musica">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="6" cy="18" r="3" fill="currentColor" />
+        <circle cx="17" cy="16" r="3" fill="currentColor" />
+      </svg>
+    </button>
+    <input type="range" min="0" max="100" [value]="musicVolume()" (input)="setMusic($any($event.target).value)"
+      aria-label="Volumen de la musica" [style.--fill]="musicVolume() + '%'" />
+    <span class="value">{{ musicVolume() }}</span>
+  </div>
+
+  <div class="volume-row">
+    <button type="button" class="icon" [class.muted]="!effectsVolume()" (click)="toggleEffects()"
+      [attr.aria-label]="effectsVolume() ? 'Silenciar efectos' : 'Activar efectos'" title="Efectos">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+        @if (effectsVolume()) {
+        <path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+        } @else {
+        <path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+        }
+      </svg>
+    </button>
+    <input type="range" min="0" max="100" [value]="effectsVolume()" (input)="setEffects($any($event.target).value)"
+      (change)="previewEffects()" aria-label="Volumen de los efectos" [style.--fill]="effectsVolume() + '%'" />
+    <span class="value">{{ effectsVolume() }}</span>
+  </div>
+</aside>

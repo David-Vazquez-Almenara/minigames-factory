@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+﻿import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { BackendWakeService } from '../../core/services/backend-wake.service';
 import { ConfigService } from '../../core/services/config.service';
 import { SocketService } from '../../core/services/socket.service';
@@ -28,15 +28,29 @@ export class MainMenuComponent implements OnInit {
   readonly setupMode = signal<'create' | 'join' | null>(null);
   readonly setupRoomCode = signal('');
   readonly setupAutoJoin = signal(false);
+  readonly setupResumeLobby = signal(false);
 
-  readonly youtubeUrl = 'https://www.youtube.com/';
-  readonly githubUrl = 'https://github.com/David-Vazquez-Almenara/quien-es-quien_Angular_NodeJS';
+  readonly youtubeUrl = 'https://www.youtube.com/@DVaz-Dev';
+  readonly githubUrl = 'https://github.com/David-Vazquez-Almenara';
 
   constructor() {
     effect(() => {
       if (this.backendWakeService.online()) {
         this.socketService.connect();
       }
+    });
+
+    // Al terminar una partida el host devuelve a todos al lobby de la misma sala.
+    effect(() => {
+      if (!this.socketService.returnedToLobby()) {
+        return;
+      }
+
+      this.socketService.returnedToLobby.set(null);
+      this.setupRoomCode.set('');
+      this.setupAutoJoin.set(false);
+      this.setupResumeLobby.set(true);
+      this.setupMode.set('join');
     });
   }
 
@@ -69,6 +83,7 @@ export class MainMenuComponent implements OnInit {
 
   closeSetup(): void {
     this.setupMode.set(null);
+    this.setupResumeLobby.set(false);
     this.setupRoomCode.set('');
     this.setupAutoJoin.set(false);
   }

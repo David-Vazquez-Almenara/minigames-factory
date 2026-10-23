@@ -1,4 +1,4 @@
-:host {
+﻿:host {
   display: block;
   min-height: 100vh;
   color: #000;
@@ -10,8 +10,8 @@
   display: grid;
   min-height: 100vh;
   place-items: center;
-  padding: 28px 20px;
-  overflow: hidden;
+  padding: 28px 20px 110px;
+  overflow-x: clip;
 }
 
 .special-title {
@@ -106,8 +106,9 @@
   display: grid;
   width: min(1080px, 100%);
   justify-items: center;
-  margin-top: 96px;
-  animation: rise-in 420ms ease-out both;
+  margin-top: clamp(112px, 16vw, 136px);
+  // "backwards" y no "both": un transform retenido convertiria en relativas las capas fixed de los minijuegos.
+  animation: rise-in 420ms ease-out backwards;
 }
 
 .pacman-timer {
@@ -140,6 +141,11 @@
   border: 3px solid #000;
   border-radius: 16px;
   cursor: pointer;
+}
+
+.skip-button.results-ready {
+  background-color: #b9f7a7;
+  animation: ready-nudge 1600ms ease-in-out infinite;
 }
 
 .skip-button:disabled {
@@ -182,6 +188,13 @@
   }
   to {
     transform: translateX(-50%) scale(1) rotate(0);
+  }
+}
+
+@keyframes ready-nudge {
+  50% {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 0 #000;
   }
 }
 

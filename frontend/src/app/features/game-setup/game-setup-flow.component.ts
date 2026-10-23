@@ -1,5 +1,6 @@
+﻿import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Component, OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import {
   CreateRoomSettings,
   LobbyPlayer,
@@ -7,75 +8,57 @@ import {
   SocketService,
 } from '../../core/services/socket.service';
 import { MatchService } from '../../core/services/match.service';
+import { MusicDirectorService } from '../../core/services/music-director.service';
+import { MiiStageComponent, MiiStagePlayer } from '../../shared/components/mii-stage/mii-stage.component';
+import { PlayerAvatarComponent } from '../../shared/components/player-avatar/player-avatar.component';
 
 type SetupMode = 'create' | 'join';
 type FlowStep = 'name' | 'create-settings' | 'join-code' | 'lobby';
 
 const PLAYER_NAME_KEY = 'quien-soy-online-player-name';
+const PLAYER_AVATAR_KEY = 'quien-soy-online-player-avatar';
+const ROUND_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20];
 
 @Component({
   selector: 'app-game-setup-flow',
-  imports: [FormsModule],
+  imports: [FormsModule, MiiStageComponent, NgTemplateOutlet, PlayerAvatarComponent],
   templateUrl: './game-setup-flow.component.html',
   styleUrl: './game-setup-flow.component.scss',
 })
-export class GameSetupFlowComponent {
+export class GameSetupFlowComponent implements OnInit {
   private readonly socketService = inject(SocketService);
   private readonly matchService = inject(MatchService);
+  private readonly musicDirector = inject(MusicDirectorService);
+  private catalogApplied = false;
 
   readonly mode = input.required<SetupMode>();
   readonly initialRoomCode = input('');
   readonly autoJoinAfterName = input(false);
+  /** Al volver de una partida terminada se abre directamente el lobby ya existente. */
+  readonly resumeLobby = input(false);
   readonly closed = output<void>();
 
+  readonly roundOptions = ROUND_OPTIONS;
   readonly step = signal<FlowStep>('name');
   readonly playerName = signal(localStorage.getItem(PLAYER_NAME_KEY) || '');
+  readonly avatarUrl = signal(localStorage.getItem(PLAYER_AVATAR_KEY) || '');
   readonly roomCode = signal('');
-  readonly themeInput = signal('');
-  readonly characterTypeInput = signal('');
   readonly errorMessage = signal('');
   readonly loading = signal(false);
   readonly lobby = signal<LobbyState | null>(null);
   readonly pendingKickPlayer = signal<LobbyPlayer | null>(null);
   readonly showLobbySettings = signal(false);
+  readonly minigameCatalog = this.socketService.minigameCatalog;
 
   readonly settings = signal<CreateRoomSettings>({
-    customQuestionsEnabled: true,
-    randomThemePerPlayer: true,
-    randomCharacterTypePerPlayer: true,
-    questionDuration: 30,
-    respondQuestionTime: 10,
     rounds: 5,
-    specialRounds: [],
-    minigamesOnly: false,
-    themeCategories: [],
-    characterTypes: [],
+    enabledMinigames: [],
   });
 
-  readonly themeLimitReached = computed(
-    () => !this.settings().randomThemePerPlayer && this.settings().themeCategories.length >= this.settings().rounds,
-  );
-
-  readonly characterTypeLimitReached = computed(
-    () =>
-      !this.settings().randomCharacterTypePerPlayer &&
-      this.settings().characterTypes.length >= this.settings().rounds,
-  );
-
-  readonly themeCountInvalid = computed(() => {
-    const settings = this.settings();
-    return !settings.randomThemePerPlayer && settings.themeCategories.length !== settings.rounds;
-  });
-
-  readonly characterTypeCountInvalid = computed(() => {
-    const settings = this.settings();
-    return !settings.randomCharacterTypePerPlayer && settings.characterTypes.length !== settings.rounds;
-  });
-
+  readonly enabledMinigameCount = computed(() => this.resolvedEnabledMinigames().length);
   readonly canContinueCreate = computed(
-    () => !this.loading() && !this.themeCountInvalid() && !this.characterTypeCountInvalid(),
+    () => !this.loading() && (this.enabledMinigameCount() > 0 || !this.minigameCatalog().length),
   );
-
   readonly currentPlayerId = this.socketService.playerId;
   readonly isHost = computed(() => this.socketService.isCurrentPlayerHost(this.lobby()));
   readonly canStartGame = computed(() => {
@@ -86,6 +69,22 @@ export class GameSetupFlowComponent {
     }
 
     return lobby.players.filter((player) => player.id !== lobby.hostId).every((player) => player.ready);
+  });
+  readonly lobbyMiis = computed<MiiStagePlayer[]>(() => {
+    const lobby = this.lobby();
+
+    return (lobby?.players || []).map((player) => ({
+      id: player.id,
+      name: player.name,
+      avatarUrl: player.avatarUrl,
+      color: player.color,
+      label: (player.id === lobby?.hostId ? '👑 ' : player.ready ? '✓ ' : '') + player.name + (player.id === this.currentPlayerId ? ' (tú)' : ''),
+      labelTone: 'name',
+    }));
+  });
+  readonly lockedMinigames = computed(() => {
+    const playerCount = this.lobby()?.players.length || 0;
+    return this.minigameCatalog().filter((minigame) => this.isMinigameEnabled(minigame.id) && minigame.minPlayers > playerCount);
   });
 
   readonly title = computed(() => {
@@ -107,6 +106,16 @@ export class GameSetupFlowComponent {
   readonly nextLabel = computed(() => (this.mode() === 'create' ? 'Continuar' : 'Siguiente'));
 
   constructor() {
+    effect(() => {
+      const catalog = this.minigameCatalog();
+
+      // Un lobby nuevo arranca con todos los minijuegos del catalogo activos.
+      if (catalog.length && !this.catalogApplied && !this.lobby() && !untracked(this.settings).enabledMinigames.length) {
+        this.catalogApplied = true;
+        this.patchSettings({ enabledMinigames: catalog.map((minigame) => minigame.id) });
+      }
+    });
+
     effect(() => {
       const lobby = this.socketService.lobby();
       const currentLobby = this.lobby();
@@ -158,6 +167,15 @@ export class GameSetupFlowComponent {
   }
 
   ngOnInit(): void {
+    const existingLobby = this.socketService.lobby();
+
+    if (this.resumeLobby() && existingLobby) {
+      this.lobby.set(existingLobby);
+      this.settings.set(existingLobby.settings);
+      this.step.set('lobby');
+      return;
+    }
+
     if (!this.initialRoomCode()) {
       return;
     }
@@ -169,7 +187,7 @@ export class GameSetupFlowComponent {
     this.closed.emit();
   }
 
-  continueFromName(): void {
+  async continueFromName(): Promise<void> {
     const name = this.playerName().trim();
 
     if (!name) {
@@ -177,7 +195,29 @@ export class GameSetupFlowComponent {
       return;
     }
 
+    const avatarUrl = this.avatarUrl().trim();
+
+    if (!avatarUrl) {
+      this.errorMessage.set('La foto de perfil es obligatoria: pega la URL de una imagen.');
+      return;
+    }
+
+    if (!/^https?:\/\/\S+$/i.test(avatarUrl)) {
+      this.errorMessage.set('La imagen debe ser una URL que empiece por http:// o https://');
+      return;
+    }
+
+    this.loading.set(true);
+    const loads = await this.imageLoads(avatarUrl);
+    this.loading.set(false);
+
+    if (!loads) {
+      this.errorMessage.set('No se pudo cargar esa imagen. Prueba con otra URL.');
+      return;
+    }
+
     localStorage.setItem(PLAYER_NAME_KEY, name);
+    localStorage.setItem(PLAYER_AVATAR_KEY, avatarUrl);
     this.errorMessage.set('');
 
     if (this.mode() === 'join' && this.autoJoinAfterName() && this.roomCode()) {
@@ -192,98 +232,45 @@ export class GameSetupFlowComponent {
     this.playerName.set(value);
   }
 
+  updateAvatarUrl(value: string): void {
+    this.avatarUrl.set(value);
+  }
+
   updateRoomCode(value: string): void {
     this.roomCode.set(value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
   }
 
-  updateCustomQuestions(value: boolean): void {
-    this.patchSettings({ customQuestionsEnabled: value });
+  updateRounds(value: string | number): void {
+    this.patchSettings({ rounds: Number(value) });
   }
 
-  updateRandomTheme(value: boolean): void {
-    this.patchSettings({ randomThemePerPlayer: value });
+  isMinigameEnabled(minigameId: string): boolean {
+    return this.resolvedEnabledMinigames().includes(minigameId);
   }
 
-  updateRandomCharacterType(value: boolean): void {
-    this.patchSettings({ randomCharacterTypePerPlayer: value });
+  toggleMinigame(minigameId: string, enabled: boolean): void {
+    const current = this.resolvedEnabledMinigames();
+    const next = enabled ? [...new Set([...current, minigameId])] : current.filter((id) => id !== minigameId);
+    this.patchSettings({ enabledMinigames: next });
   }
 
-  updateMinigamesOnly(value: boolean): void {
-    const rounds = this.settings().rounds;
-    this.patchSettings({
-      minigamesOnly: value,
-      specialRounds: value ? this.buildAllMinigameRounds(rounds) : [],
-    });
-  }
-
-  updateQuestionDuration(value: string): void {
-    this.patchSettings({ questionDuration: Number(value) as 15 | 30 | 60 });
-  }
-
-  updateRespondQuestionTime(value: string): void {
-    this.patchSettings({ respondQuestionTime: Number(value) as 5 | 10 | 15 });
-  }
-
-  updateRounds(value: string): void {
-    const rounds = Number(value);
-    this.patchSettings({
-      rounds,
-      specialRounds: this.settings().minigamesOnly ? this.buildAllMinigameRounds(rounds) : this.settings().specialRounds,
-    });
-  }
-
-  updateThemeInput(value: string): void {
-    this.themeInput.set(value);
-  }
-
-  updateCharacterTypeInput(value: string): void {
-    this.characterTypeInput.set(value);
-  }
-
-  addThemeCategory(): void {
-    const category = this.themeInput().trim();
-
-    if (!category || this.themeLimitReached()) {
-      return;
-    }
-
-    this.patchSettings({ themeCategories: [...this.settings().themeCategories, category] });
-    this.themeInput.set('');
-  }
-
-  removeThemeCategory(categoryIndex: number): void {
-    this.patchSettings({
-      themeCategories: this.settings().themeCategories.filter((_, index) => index !== categoryIndex),
-    });
-  }
-
-  addCharacterType(): void {
-    const characterType = this.characterTypeInput().trim();
-
-    if (!characterType || this.characterTypeLimitReached()) {
-      return;
-    }
-
-    this.patchSettings({ characterTypes: [...this.settings().characterTypes, characterType] });
-    this.characterTypeInput.set('');
-  }
-
-  removeCharacterType(characterTypeIndex: number): void {
-    this.patchSettings({
-      characterTypes: this.settings().characterTypes.filter((_, index) => index !== characterTypeIndex),
-    });
+  minigameTitle(minigameId: string): string {
+    return this.minigameCatalog().find((minigame) => minigame.id === minigameId)?.title || minigameId;
   }
 
   async createRoom(): Promise<void> {
     if (!this.canContinueCreate()) {
-      this.errorMessage.set('Ajusta las categorias o tipos para que coincidan con las rondas.');
+      this.errorMessage.set('Activa al menos un minijuego para la ruleta.');
       return;
     }
 
     this.errorMessage.set('');
     this.loading.set(true);
 
-    const response = await this.socketService.createRoom(this.playerName().trim(), this.settings());
+    const response = await this.socketService.createRoom(this.playerName().trim(), this.avatarUrl().trim(), {
+      ...this.settings(),
+      enabledMinigames: this.resolvedEnabledMinigames(),
+    });
     if (response.ok && response.lobby) {
       this.socketService.saveHostForRoom(response.lobby.code);
     }
@@ -302,7 +289,7 @@ export class GameSetupFlowComponent {
     this.loading.set(true);
 
     this.socketService.clearStoredHostIdentity();
-    const response = await this.socketService.joinRoom(this.playerName().trim(), code);
+    const response = await this.socketService.joinRoom(this.playerName().trim(), this.avatarUrl().trim(), code);
     this.handleRoomResponse(response);
   }
 
@@ -389,7 +376,10 @@ export class GameSetupFlowComponent {
     }
 
     this.loading.set(true);
-    const response = await this.socketService.updateRoomSettings(lobby.code, this.settings());
+    const response = await this.socketService.updateRoomSettings(lobby.code, {
+      ...this.settings(),
+      enabledMinigames: this.resolvedEnabledMinigames(),
+    });
     this.loading.set(false);
 
     if (!response.ok) {
@@ -418,6 +408,7 @@ export class GameSetupFlowComponent {
     await this.socketService.leaveRoom(lobby.code);
     this.loading.set(false);
     this.lobby.set(null);
+    this.socketService.lobby.set(null);
     this.cancel();
   }
 
@@ -447,18 +438,25 @@ export class GameSetupFlowComponent {
     return Boolean(this.lobby()?.players.find((player) => player.id === this.currentPlayerId)?.ready);
   }
 
-  themeValidationMessage(): string {
-    const settings = this.settings();
-    return settings.themeCategories.length > settings.rounds
-      ? `Necesitas ${settings.rounds} categorias. Ahora tienes ${settings.themeCategories.length}.`
-      : `Necesitas ${settings.rounds} categorias.`;
+  private imageLoads(url: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const image = new Image();
+      const timer = setTimeout(() => resolve(false), 8000);
+      image.referrerPolicy = 'no-referrer';
+      image.onload = () => {
+        clearTimeout(timer);
+        resolve(image.naturalWidth > 0);
+      };
+      image.onerror = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      image.src = url;
+    });
   }
 
-  characterTypeValidationMessage(): string {
-    const settings = this.settings();
-    return settings.characterTypes.length > settings.rounds
-      ? `Necesitas ${settings.rounds} tipos. Ahora tienes ${settings.characterTypes.length}.`
-      : `Necesitas ${settings.rounds} tipos.`;
+  private resolvedEnabledMinigames(): string[] {
+    return Array.isArray(this.settings().enabledMinigames) ? this.settings().enabledMinigames : [];
   }
 
   private handleRoomResponse(response: { ok: boolean; reason?: string; lobby?: LobbyState }): void {
@@ -470,8 +468,11 @@ export class GameSetupFlowComponent {
     }
 
     this.lobby.set(response.lobby);
+    this.settings.set(response.lobby.settings);
     this.step.set('lobby');
     this.updateLobbyUrl(response.lobby.code);
+    // Tarea secundaria y de baja prioridad: confirmar que la musica del lobby esta sonando.
+    this.musicDirector.verifyMusicSoon();
   }
 
   private updateLobbyUrl(code: string): void {
@@ -486,9 +487,5 @@ export class GameSetupFlowComponent {
       ...currentSettings,
       ...settings,
     }));
-  }
-
-  private buildAllMinigameRounds(totalRounds: number): number[] {
-    return Array.from({ length: Number(totalRounds || 0) + 1 }, (_unused, index) => index);
   }
 }

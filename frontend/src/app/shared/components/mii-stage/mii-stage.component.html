@@ -1,0 +1,16 @@
+﻿<div class="stage" #stage [hidden]="unsupported()" [class.scoreboard]="mode() === 'scoreboard'" [class.podium]="mode() === 'podium'">
+  <canvas #canvas aria-hidden="true"></canvas>
+
+  @for (player of players(); track player.id) {
+  <div class="mii-label" [attr.data-mii-label]="player.id">
+    @if (player.label) {
+    @for (text of [player.label]; track text) {
+    <span [class]="'label-text tone-' + (player.labelTone || 'name')">{{ text }}</span>
+    }
+    }
+    @if (player.badge) {
+    <small class="badge">{{ player.badge }}</small>
+    }
+  </div>
+  }
+</div>

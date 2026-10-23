@@ -1,0 +1,70 @@
+﻿<main class="results" aria-label="Resultados de Es un 10, pero">
+  <header class="secret-reveal">
+    <span>{{ outcome().speakerName }} tenía un…</span>
+    <strong class="secret-number">{{ outcome().secretNumber }}</strong>
+  </header>
+
+  <div class="scale" aria-label="Respuestas sobre la escala del 1 al 10">
+    @for (slot of slots(); track slot.value) {
+    <div class="slot" [class]="'slot ' + slot.zone">
+      <div class="slot-players">
+        @for (player of slot.players; track player.id; let index = $index) {
+        <app-player-avatar
+          class="dropper"
+          [avatarUrl]="player.avatarUrl"
+          [color]="player.color"
+          [size]="30"
+          [name]="player.name"
+          [style.animation-delay.ms]="500 + index * 180 + slot.value * 90"
+        />
+        }
+      </div>
+      <span class="slot-number">{{ slot.value }}</span>
+    </div>
+    }
+  </div>
+
+  <table class="answers-table">
+    <thead>
+      <tr>
+        <th scope="col">Jugador</th>
+        <th scope="col">Respuesta</th>
+        <th scope="col">Diferencia</th>
+        <th scope="col">Puntos</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (answer of outcome().answers; track answer.playerId; let index = $index) {
+      <tr [class]="rowClass(answer.diff)" [class.me]="answer.playerId === currentPlayerId" [style.animation-delay.ms]="1200 + index * 120">
+        <td>
+          <span class="name-cell"><app-player-avatar [avatarUrl]="playerAvatar(answer.playerId)" [name]="answer.playerName" [color]="playerColor(answer.playerId)" [size]="26" />{{ answer.playerName }}</span>
+        </td>
+        <td>{{ answer.number ?? '—' }}</td>
+        <td>{{ answer.diff ?? 'Sin respuesta' }}</td>
+        <td class="points">+{{ answer.points }}</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+
+  <section class="speaker-summary" [class.negative]="outcome().speakerTotal < 0" [class.me]="outcome().speakerId === currentPlayerId">
+    <app-player-avatar [avatarUrl]="playerAvatar(outcome().speakerId)" [name]="outcome().speakerName" [color]="playerColor(outcome().speakerId)" [size]="48" />
+    <div>
+      <strong>Portavoz: {{ outcome().speakerName }}</strong>
+      <p>
+        <b class="plus">+{{ outcome().speakerPositive }}</b> por {{ outcome().validCount }}
+        {{ outcome().validCount === 1 ? 'respuesta válida' : 'respuestas válidas' }} (máx. 15)
+        @if (outcome().speakerPenalty) {
+        · <b class="minus">−{{ outcome().speakerPenalty }}</b> de penalización (máx. {{ outcome().penaltyCap }})
+        }
+      </p>
+    </div>
+    <span class="speaker-total">{{ outcome().speakerTotal > 0 ? '+' : '' }}{{ outcome().speakerTotal }}</span>
+  </section>
+
+  @if (myPoints() !== null) {
+  <p class="my-points" [class.negative]="myPoints()! < 0">
+    Tu resultado en este minijuego: <b>{{ myPoints()! > 0 ? '+' : '' }}{{ myPoints() }} pts</b>
+  </p>
+  }
+</main>

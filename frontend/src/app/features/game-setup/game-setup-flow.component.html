@@ -1,8 +1,8 @@
-<div class="setup-backdrop" aria-label="Flujo de partida">
+﻿<div class="setup-backdrop" aria-label="Flujo de partida">
   <section class="setup-modal" role="dialog" aria-modal="true" aria-labelledby="setup-title"
     (click)="$event.stopPropagation()">
     <header>
-      <p>Quien Soy Online</p>
+      <p>Minijuegos Online</p>
       <h2 id="setup-title">{{ title() }}</h2>
     </header>
 
@@ -10,131 +10,27 @@
     <label class="field">
       <span>Nombre de usuario</span>
       <input type="text" autocomplete="nickname" maxlength="24" [ngModel]="playerName()"
-        (ngModelChange)="updatePlayerName($event)" placeholder="Tu nombre" autofocus />
+        (ngModelChange)="updatePlayerName($event)" (keyup.enter)="continueFromName()" placeholder="Tu nombre" autofocus />
     </label>
+
+    <div class="avatar-field">
+      <app-player-avatar [avatarUrl]="avatarUrl().trim()" [name]="playerName()" [size]="72" />
+      <label class="field">
+        <span>Foto de perfil (URL de una imagen)</span>
+        <input type="url" inputmode="url" maxlength="800" [ngModel]="avatarUrl()" (ngModelChange)="updateAvatarUrl($event)"
+          (keyup.enter)="continueFromName()" placeholder="https://..." />
+      </label>
+    </div>
 
     <div class="action-row">
       <button class="danger-button" type="button" (click)="cancel()">Cancelar</button>
-      <button class="success-button" type="button" (click)="continueFromName()">{{ nextLabel() }}</button>
+      <button class="success-button" type="button" [disabled]="loading()" (click)="continueFromName()">{{ loading() ? 'Comprobando foto...' : nextLabel() }}</button>
     </div>
     }
 
     @if (step() === 'create-settings') {
     <div class="settings-grid">
-      <label class="toggle-row">
-        <span>Preguntas personalizadas</span>
-        <input type="checkbox" [checked]="settings().customQuestionsEnabled"
-          (change)="updateCustomQuestions($any($event.target).checked)" />
-      </label>
-
-      <label class="toggle-row test-toggle">
-        <span>Solo minijuegos (temporal para pruebas)</span>
-        <input type="checkbox" [checked]="settings().minigamesOnly"
-          (change)="updateMinigamesOnly($any($event.target).checked)" />
-      </label>
-
-      <label class="toggle-row">
-        <span>Tematica aleatoria por jugador</span>
-        <input type="checkbox" [checked]="settings().randomThemePerPlayer"
-          (change)="updateRandomTheme($any($event.target).checked)" />
-      </label>
-
-      @if (!settings().randomThemePerPlayer) {
-      <div class="dynamic-list-block">
-        <label class="field">
-          <span>Tematicas de la partida</span>
-          <div class="add-row">
-            <input type="text" maxlength="32" [disabled]="themeLimitReached()" [ngModel]="themeInput()"
-              (ngModelChange)="updateThemeInput($event)" (keyup.enter)="addThemeCategory()"
-              placeholder="Animales, fantasia..." />
-            <button class="icon-button add-button" type="button" aria-label="Anadir tematica"
-              [disabled]="themeLimitReached() || !themeInput().trim()" (click)="addThemeCategory()">
-              +
-            </button>
-          </div>
-        </label>
-
-        @if (themeCountInvalid()) {
-        <p class="validation-message">
-          {{ themeValidationMessage() }}
-        </p>
-        }
-
-        <div class="chip-list" aria-label="Tematicas anadidas">
-          @for (category of settings().themeCategories; track category; let index = $index) {
-          <span class="chip">
-            {{ category }}
-            <button type="button" aria-label="Eliminar tematica" (click)="removeThemeCategory(index)">X</button>
-          </span>
-          }
-        </div>
-      </div>
-      }
-
-      <label class="toggle-row">
-        <span>Tipo de personaje aleatorio</span>
-        <input type="checkbox" [checked]="settings().randomCharacterTypePerPlayer"
-          (change)="updateRandomCharacterType($any($event.target).checked)" />
-      </label>
-
-      @if (!settings().randomCharacterTypePerPlayer) {
-      <div class="dynamic-list-block">
-        <label class="field">
-          <span>Tipos de personaje</span>
-          <div class="add-row">
-            <input type="text" maxlength="32" [disabled]="characterTypeLimitReached()" [ngModel]="characterTypeInput()"
-              (ngModelChange)="updateCharacterTypeInput($event)" (keyup.enter)="addCharacterType()"
-              placeholder="Heroes, villanos..." />
-            <button class="icon-button add-button" type="button" aria-label="Anadir tipo"
-              [disabled]="characterTypeLimitReached() || !characterTypeInput().trim()" (click)="addCharacterType()">
-              +
-            </button>
-          </div>
-        </label>
-
-        @if (characterTypeCountInvalid()) {
-        <p class="validation-message">
-          {{ characterTypeValidationMessage() }}
-        </p>
-        }
-
-        <div class="chip-list" aria-label="Tipos anadidos">
-          @for (characterType of settings().characterTypes; track characterType; let index = $index) {
-          <span class="chip">
-            {{ characterType }}
-            <button type="button" aria-label="Eliminar tipo" (click)="removeCharacterType(index)">X</button>
-          </span>
-          }
-        </div>
-      </div>
-      }
-
-      <label class="field">
-        <span>Duracion por pregunta</span>
-        <select [ngModel]="settings().questionDuration" (ngModelChange)="updateQuestionDuration($event)">
-          <option [ngValue]="15">15 segundos</option>
-          <option [ngValue]="30">30 segundos</option>
-          <option [ngValue]="60">60 segundos</option>
-        </select>
-      </label>
-
-      <label class="field">
-        <span>Tiempo para responder</span>
-        <select [ngModel]="settings().respondQuestionTime" (ngModelChange)="updateRespondQuestionTime($event)">
-          <option [ngValue]="5">5 segundos</option>
-          <option [ngValue]="10">10 segundos</option>
-          <option [ngValue]="15">15 segundos</option>
-        </select>
-      </label>
-
-      <label class="field">
-        <span>Rondas</span>
-        <select [ngModel]="settings().rounds" (ngModelChange)="updateRounds($event)">
-          @for (round of [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]; track round) {
-          <option [ngValue]="round">{{ round }}</option>
-          }
-        </select>
-      </label>
+      <ng-container *ngTemplateOutlet="settingsFields" />
     </div>
 
     <div class="action-row">
@@ -149,7 +45,7 @@
     <label class="field">
       <span>Codigo de sala</span>
       <input class="room-code-input" type="text" maxlength="6" [ngModel]="roomCode()"
-        (ngModelChange)="updateRoomCode($event)" placeholder="ABC123" />
+        (ngModelChange)="updateRoomCode($event)" (keyup.enter)="joinRoom()" placeholder="ABC123" />
     </label>
 
     <div class="action-row">
@@ -167,15 +63,18 @@
     <div class="lobby-summary">
       <span>Codigo de sala</span>
       <strong>{{ lobby()?.code }}</strong>
-      <p>Jugadores en lobby: {{ lobby()?.players?.length || 0 }}</p>
+      <p>Jugadores en lobby: {{ lobby()?.players?.length || 0 }} · {{ lobby()?.settings?.rounds }} rondas</p>
       @if (isHost()) {
       <small>Eres el host</small>
       }
     </div>
 
+    <app-mii-stage class="lobby-miis" [players]="lobbyMiis()" mode="lobby" />
+
     <div class="player-list">
       @for (player of lobby()?.players; track player.id) {
       <span class="player-chip" [class.host-player]="player.id === lobby()?.hostId" [class.ready-player]="player.ready">
+        <app-player-avatar [avatarUrl]="player.avatarUrl" [name]="player.name" [color]="player.color" [size]="28" />
         {{ player.name }}
         @if (player.id === lobby()?.hostId) {
         <small>Host</small>
@@ -188,6 +87,15 @@
       </span>
       }
     </div>
+
+    @if (lockedMinigames().length) {
+    <p class="lobby-hint">
+      Faltan jugadores para:
+      @for (minigame of lockedMinigames(); track minigame.id) {
+      <span>{{ minigame.title }} ({{ minigame.minPlayers }}+)</span>
+      }
+    </p>
+    }
 
     <div class="action-row lobby-actions">
       <button class="danger-button" type="button" [disabled]="loading()" (click)="leaveLobby()">Salir</button>
@@ -229,111 +137,7 @@
         <h3 id="lobby-settings-title">Configuracion del lobby</h3>
 
         @if (isHost()) {
-        <label class="toggle-row compact">
-          <span>Preguntas personalizadas</span>
-          <input type="checkbox" [checked]="settings().customQuestionsEnabled"
-            (change)="updateCustomQuestions($any($event.target).checked)" />
-        </label>
-
-        <label class="toggle-row compact test-toggle">
-          <span>Solo minijuegos (temporal)</span>
-          <input type="checkbox" [checked]="settings().minigamesOnly"
-            (change)="updateMinigamesOnly($any($event.target).checked)" />
-        </label>
-
-        <label class="toggle-row compact">
-          <span>Tematica aleatoria por jugador</span>
-          <input type="checkbox" [checked]="settings().randomThemePerPlayer"
-            (change)="updateRandomTheme($any($event.target).checked)" />
-        </label>
-
-        @if (!settings().randomThemePerPlayer) {
-        <div class="dynamic-list-block compact">
-          <label class="field compact">
-            <span>Tematicas de la partida</span>
-            <div class="add-row">
-              <input type="text" maxlength="32" [disabled]="themeLimitReached()" [ngModel]="themeInput()"
-                (ngModelChange)="updateThemeInput($event)" (keyup.enter)="addThemeCategory()"
-                placeholder="Animales, fantasia..." />
-              <button class="icon-button add-button" type="button" aria-label="Anadir tematica"
-                [disabled]="themeLimitReached() || !themeInput().trim()" (click)="addThemeCategory()">+</button>
-            </div>
-          </label>
-
-          @if (themeCountInvalid()) {
-          <p class="validation-message">{{ themeValidationMessage() }}</p>
-          }
-
-          <div class="chip-list" aria-label="Tematicas anadidas">
-            @for (category of settings().themeCategories; track category; let index = $index) {
-            <span class="chip">
-              {{ category }}
-              <button type="button" aria-label="Eliminar tematica" (click)="removeThemeCategory(index)">X</button>
-            </span>
-            }
-          </div>
-        </div>
-        }
-
-        <label class="toggle-row compact">
-          <span>Tipo de personaje aleatorio</span>
-          <input type="checkbox" [checked]="settings().randomCharacterTypePerPlayer"
-            (change)="updateRandomCharacterType($any($event.target).checked)" />
-        </label>
-
-        @if (!settings().randomCharacterTypePerPlayer) {
-        <div class="dynamic-list-block compact">
-          <label class="field compact">
-            <span>Tipos de personaje</span>
-            <div class="add-row">
-              <input type="text" maxlength="32" [disabled]="characterTypeLimitReached()"
-                [ngModel]="characterTypeInput()" (ngModelChange)="updateCharacterTypeInput($event)"
-                (keyup.enter)="addCharacterType()" placeholder="Heroes, villanos..." />
-              <button class="icon-button add-button" type="button" aria-label="Anadir tipo"
-                [disabled]="characterTypeLimitReached() || !characterTypeInput().trim()"
-                (click)="addCharacterType()">+</button>
-            </div>
-          </label>
-
-          @if (characterTypeCountInvalid()) {
-          <p class="validation-message">{{ characterTypeValidationMessage() }}</p>
-          }
-
-          <div class="chip-list" aria-label="Tipos anadidos">
-            @for (characterType of settings().characterTypes; track characterType; let index = $index) {
-            <span class="chip">
-              {{ characterType }}
-              <button type="button" aria-label="Eliminar tipo" (click)="removeCharacterType(index)">X</button>
-            </span>
-            }
-          </div>
-        </div>
-        }
-
-        <label class="field compact">
-          <span>Duracion por pregunta</span>
-          <select [ngModel]="settings().questionDuration" (ngModelChange)="updateQuestionDuration($event)">
-            <option [ngValue]="15">15 segundos</option>
-            <option [ngValue]="30">30 segundos</option>
-            <option [ngValue]="60">60 segundos</option>
-          </select>
-        </label>
-        <label class="field compact">
-          <span>Tiempo para responder</span>
-          <select [ngModel]="settings().respondQuestionTime" (ngModelChange)="updateRespondQuestionTime($event)">
-            <option [ngValue]="5">5 segundos</option>
-            <option [ngValue]="10">10 segundos</option>
-            <option [ngValue]="15">15 segundos</option>
-          </select>
-        </label>
-        <label class="field compact">
-          <span>Rondas</span>
-          <select [ngModel]="settings().rounds" (ngModelChange)="updateRounds($event)">
-            @for (round of [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]; track round) {
-            <option [ngValue]="round">{{ round }}</option>
-            }
-          </select>
-        </label>
+        <ng-container *ngTemplateOutlet="settingsFields" />
         <div class="action-row">
           <button class="danger-button" type="button" (click)="closeLobbySettings()">Cerrar</button>
           <button class="success-button" type="button" [disabled]="loading() || !canContinueCreate()"
@@ -342,20 +146,13 @@
           </button>
         </div>
         } @else {
-        <label class="toggle-row compact readonly-row">
-          <span>Tematica aleatoria por jugador</span>
-          <input type="checkbox" [checked]="lobby()?.settings?.randomThemePerPlayer" disabled />
-        </label>
-        <label class="toggle-row compact readonly-row">
-          <span>Tipo de personaje aleatorio</span>
-          <input type="checkbox" [checked]="lobby()?.settings?.randomCharacterTypePerPlayer" disabled />
-        </label>
-        <p>Duracion por pregunta: {{ lobby()?.settings?.questionDuration }} segundos</p>
-        <p>Tiempo para responder: {{ lobby()?.settings?.respondQuestionTime }} segundos</p>
         <p>Rondas: {{ lobby()?.settings?.rounds }}</p>
-        @if (lobby()?.settings?.minigamesOnly) {
-        <p>Modo de prueba: solo minijuegos</p>
-        }
+        <p>Minijuegos en la ruleta:</p>
+        <div class="chip-list readonly-minigames">
+          @for (minigameId of lobby()?.settings?.enabledMinigames; track minigameId) {
+          <span class="chip">{{ minigameTitle(minigameId) }}</span>
+          }
+        </div>
         <div class="action-row single">
           <button class="readonly-close-button" type="button" (click)="closeLobbySettings()">Cerrar</button>
         </div>
@@ -365,3 +162,33 @@
     }
   </section>
 </div>
+
+<ng-template #settingsFields>
+  <label class="field compact">
+    <span>Rondas (una ruleta por ronda)</span>
+    <select [ngModel]="settings().rounds" (ngModelChange)="updateRounds($event)">
+      @for (round of roundOptions; track round) {
+      <option [ngValue]="round">{{ round }}</option>
+      }
+    </select>
+  </label>
+
+  <fieldset class="minigame-picker">
+    <legend>Minijuegos de la ruleta</legend>
+    @for (minigame of minigameCatalog(); track minigame.id) {
+    <label class="toggle-row compact minigame-option" [style.--option-accent]="minigame.accent">
+      <span>
+        {{ minigame.title }}
+        <small>{{ minigame.minPlayers > 1 ? minigame.minPlayers + '+ jugadores' : 'Cualquier numero de jugadores' }}</small>
+      </span>
+      <input type="checkbox" [checked]="isMinigameEnabled(minigame.id)"
+        (change)="toggleMinigame(minigame.id, $any($event.target).checked)" />
+    </label>
+    } @empty {
+    <p class="validation-message">Conectando con el servidor para cargar los minijuegos...</p>
+    }
+    @if (minigameCatalog().length && !enabledMinigameCount()) {
+    <p class="validation-message">Activa al menos un minijuego.</p>
+    }
+  </fieldset>
+</ng-template>

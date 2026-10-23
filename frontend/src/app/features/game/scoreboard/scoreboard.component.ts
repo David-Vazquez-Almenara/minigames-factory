@@ -1,5 +1,8 @@
-import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
+﻿import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
+import { AudioService } from '../../../core/services/audio.service';
 import { MatchService } from '../../../core/services/match.service';
+import { MiiStageComponent, MiiStagePlayer } from '../../../shared/components/mii-stage/mii-stage.component';
+import { PlayerAvatarComponent } from '../../../shared/components/player-avatar/player-avatar.component';
 import { PaintSubmissionPayload, ScoreboardEntry } from '../../../core/services/socket.service';
 
 interface AnimatedScoreboardEntry extends ScoreboardEntry {
@@ -19,17 +22,20 @@ interface MinigameWinner {
 
 @Component({
   selector: 'app-scoreboard',
+  imports: [MiiStageComponent, PlayerAvatarComponent],
   templateUrl: './scoreboard.component.html',
   styleUrl: './scoreboard.component.scss',
 })
 export class ScoreboardComponent implements OnDestroy {
   private readonly matchService = inject(MatchService);
+  private readonly audioService = inject(AudioService);
   private animationTimers: Array<ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>> = [];
   private loadedScoreboardKey = '';
 
   readonly match = this.matchService.match;
   readonly scoreboard = this.matchService.scoreboard;
   readonly isHost = this.matchService.isHost;
+  readonly isLastRound = computed(() => Boolean(this.match() && this.match()!.roundNumber >= this.match()!.totalRounds));
   readonly rows = signal<AnimatedScoreboardEntry[]>([]);
   readonly positionsSettled = signal(false);
   readonly scoreAnimationStarted = signal(false);
@@ -45,6 +51,32 @@ export class ScoreboardComponent implements OnDestroy {
   );
   readonly winnerTitle = computed(() => (this.noWinnerMessage() ? 'Sin ganador' : this.winners().length > 1 ? 'Ganadores' : 'Ganador'));
   readonly winnerNames = computed(() => this.noWinnerMessage() || this.winners().map((winner) => winner.playerName).join(', '));
+  readonly playerColor = (playerId: string) => this.matchService.playerColor(playerId);
+  readonly playerAvatar = (playerId: string) => this.matchService.playerAvatar(playerId);
+  // Los Mii van en el orden del lobby (estable) mientras la tabla de abajo se reordena por puntos.
+  readonly scoreMiis = computed<MiiStagePlayer[]>(() => {
+    const rows = new Map(this.rows().map((row) => [row.playerId, row]));
+    const revealed = this.scoreAnimationStarted();
+    // Si nadie ha perdido puntos, los que se han quedado a 0 son los que peor han acabado: tambien se entristecen.
+    const anyNegative = [...rows.values()].some((row) => row.scoreDelta < 0);
+
+    return (this.matchService.lobby()?.players || [])
+      .filter((player) => rows.has(player.id))
+      .map((player) => {
+        const delta = rows.get(player.id)!.scoreDelta;
+        const tone = delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
+
+        return {
+          id: player.id,
+          name: player.name,
+          avatarUrl: player.avatarUrl,
+          color: player.color,
+          mood: revealed ? (delta > 0 ? 'happy' : delta < 0 || !anyNegative ? 'sad' : 'neutral') : 'idle',
+          label: revealed ? (delta > 0 ? `+${delta}` : delta < 0 ? `−${Math.abs(delta)}` : '0') : player.name,
+          labelTone: revealed ? tone : 'name',
+        } satisfies MiiStagePlayer;
+      });
+  });
   readonly winnerHasImages = computed(() => this.winners().some((winner) => Boolean(winner.imageDataUrl)));
 
   constructor() {
@@ -52,6 +84,10 @@ export class ScoreboardComponent implements OnDestroy {
       const scoreboard = this.scoreboard();
 
       if (!scoreboard) {
+        this.loadedScoreboardKey = '';
+        this.clearAnimationTimers();
+        this.rows.set([]);
+        this.positionsSettled.set(false);
         return;
       }
 
@@ -104,8 +140,7 @@ export class ScoreboardComponent implements OnDestroy {
     this.noWinnerMessage.set('');
     this.errorMessage.set('');
 
-    const previousScoreboard = this.matchService.getLocalScoreboardCopy(scoreboard.lobbyId);
-    const previousScores = new Map((previousScoreboard?.scores || []).map((score) => [score.playerId, score]));
+    const previousScores = new Map((scoreboard.previousScores || []).map((score) => [score.playerId, score]));
     const initialRows = nextRows
       .map((row) => {
         const previous = previousScores.get(row.playerId);
@@ -115,8 +150,8 @@ export class ScoreboardComponent implements OnDestroy {
           position: previous?.position || row.position,
           previousPosition: previous?.position || row.position,
           displayScore: previous?.score || 0,
-          scoreDelta: Math.max(0, row.score - (previous?.score || 0)),
-          scoreIncreased: row.score > (previous?.score || 0),
+          scoreDelta: row.score - (previous?.score || 0),
+          scoreIncreased: row.score !== (previous?.score || 0),
           moving: false,
         };
       })
@@ -150,9 +185,19 @@ export class ScoreboardComponent implements OnDestroy {
     this.startScoreDelay(nextRows, 1500);
   }
 
+  /** Efecto de ganar si el jugador local suma puntos; de perder si se queda igual o resta. */
+  private playPersonalResult(): void {
+    const myRow = this.rows().find((row) => row.playerId === this.matchService.currentPlayerId);
+
+    if (myRow) {
+      this.audioService.playFileEffect(myRow.scoreDelta > 0 ? 'win' : 'lose');
+    }
+  }
+
   private startScoreDelay(nextRows: ScoreboardEntry[], delayMs: number): void {
     const scoreDelayTimer = setTimeout(() => {
       this.scoreAnimationStarted.set(true);
+      this.playPersonalResult();
       this.animateScores(nextRows);
     }, delayMs);
     this.animationTimers.push(scoreDelayTimer);
@@ -210,7 +255,6 @@ export class ScoreboardComponent implements OnDestroy {
         }),
       );
       this.positionsSettled.set(true);
-      this.saveCurrentScoreboardCopy();
       return;
     }
 
@@ -234,8 +278,6 @@ export class ScoreboardComponent implements OnDestroy {
         this.rows.update((currentRows) => currentRows.map((row) => ({ ...row, previousPosition: row.position, moving: false })));
       }, 40);
       this.animationTimers.push(settleTimer);
-
-      this.saveCurrentScoreboardCopy();
     }, 420);
 
     this.animationTimers.push(positionTimer);
@@ -262,14 +304,6 @@ export class ScoreboardComponent implements OnDestroy {
     this.animationTimers = [];
   }
 
-  private saveCurrentScoreboardCopy(): void {
-    const scoreboard = this.scoreboard();
-
-    if (scoreboard) {
-      this.matchService.saveLocalScoreboardCopy(scoreboard);
-    }
-  }
-
   private getMinigameNoWinnerMessage(): string {
     const specialRound = this.match()?.specialRound;
 
@@ -282,7 +316,7 @@ export class ScoreboardComponent implements OnDestroy {
       ? Math.max(...submittedResults.map((result) => result.correctCount || 0))
       : 0;
 
-    return maxCorrectCount <= 0 ? 'Nadie ha acertado ninguna pregunta' : '';
+    return maxCorrectCount <= 0 ? 'Nadie ha acertado ninguna operacion' : '';
   }
 
   private getMinigameWinners(): MinigameWinner[] {

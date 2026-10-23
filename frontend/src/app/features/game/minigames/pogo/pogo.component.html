@@ -1,0 +1,114 @@
+<section class="pogo" aria-label="Minijuego Carrera en pogo">
+  @if (state(); as race) {
+  <header class="race-header">
+    <span class="pill">Racha: <b>{{ streak() }}</b> · Mejor: <b>{{ bestStreak() }}</b></span>
+    <span class="pill timer" [class.hurry]="race.stage === 'racing' && raceStarted() && raceTimer.seconds() <= 10">
+      {{ raceStarted() ? raceTimer.seconds() : 60 }}s
+    </span>
+  </header>
+
+  <div class="meter" aria-label="Progreso de la carrera">
+    <span class="meter-label">SALIDA</span>
+    <div class="meter-lines">
+      @for (racer of racers(); track racer.playerId) {
+      <div class="meter-row" [class.mine]="racer.mine">
+        <div class="meter-fill" [style.width.%]="racer.percent" [style.background-color]="racer.color"></div>
+        <span class="meter-avatar" [style.left.%]="racer.percent">
+          <app-player-avatar [avatarUrl]="racer.avatarUrl" [name]="racer.name" [color]="racer.color" [size]="20" />
+        </span>
+      </div>
+      }
+    </div>
+    <span class="meter-label">META</span>
+  </div>
+
+  <div class="track" aria-hidden="true">
+    <div class="finish-line"></div>
+    @for (racer of racers(); track racer.playerId) {
+    <div
+      class="racer"
+      [class.mine]="racer.mine"
+      [class.finished]="racer.finished"
+      [style.left.%]="3 + racer.percent * 0.84"
+      [style.bottom.px]="14 + racer.lane * 26"
+      [style.z-index]="racer.mine ? 100 : 50 - racer.lane"
+      [style.--racer-scale]="racer.mine ? 1 : 0.78 - racer.lane * 0.04"
+    >
+      @for (seq of [racer.jumpSeq]; track seq) {
+      <div class="jumper" [class]="'jumper ' + (seq ? 'jump-' + racer.jumpKind : 'idle')">
+        <app-player-avatar [avatarUrl]="racer.avatarUrl" [name]="racer.name" [color]="racer.color" [size]="racer.mine ? 52 : 44" />
+        <svg class="stick" viewBox="0 0 40 70" width="40" height="70">
+          <line x1="6" y1="6" x2="34" y2="6" stroke="#000" stroke-width="5" stroke-linecap="round" />
+          <line x1="20" y1="6" x2="20" y2="40" [attr.stroke]="racer.color" stroke-width="6" />
+          <line x1="8" y1="40" x2="32" y2="40" stroke="#000" stroke-width="5" stroke-linecap="round" />
+          <polyline points="20,42 12,47 28,52 12,57 28,62 20,66" fill="none" stroke="#555" stroke-width="3" />
+          <line x1="20" y1="20" x2="20" y2="69" stroke="#000" stroke-width="2.5" />
+        </svg>
+      </div>
+      }
+      <span class="racer-name">{{ racer.mine ? 'Tú' : racer.name }}</span>
+    </div>
+    }
+  </div>
+
+  @if (race.stage === 'racing') {
+  <main class="check-panel" [class.disabled]="checkState() !== 'running'">
+    @if (!isRacer()) {
+    <p class="note">Estás viendo la carrera como espectador.</p>
+    } @else if (myFinished()) {
+    <p class="note finished-note">¡Has cruzado la meta! 🏁 Esperando al resto...</p>
+    } @else {
+    <svg class="skill-check" viewBox="0 0 200 200" [class.result-perfect]="lastResult() === 'perfect' && checkState() === 'cooldown'"
+      [class.result-good]="lastResult() === 'good' && checkState() === 'cooldown'" [class.result-miss]="lastResult() === 'miss' && checkState() === 'cooldown'">
+      <circle cx="100" cy="100" r="80" class="ring" />
+      @if (zonePaths(); as zones) {
+      <path [attr.d]="zones.good" class="zone-good" />
+      <path [attr.d]="zones.great" class="zone-great" />
+      }
+      <line x1="100" y1="100" x2="100" y2="12" class="needle" [attr.transform]="checkpointTransform()" />
+      <circle cx="100" cy="100" r="5" fill="#b00000" />
+    </svg>
+
+    <button class="jump-button" type="button" [disabled]="checkState() !== 'running'" (click)="press()">
+      ¡Saltar! <kbd>Espacio</kbd>
+    </button>
+    <p class="result-text" aria-live="polite">
+      @switch (checkState() === 'cooldown' ? lastResult() : null) {
+        @case ('perfect') { ¡PERFECTO! +2 }
+        @case ('good') { ¡Bien! +1 }
+        @case ('miss') { Fallo... }
+        @default { Pulsa cuando la aguja pase por la zona blanca }
+      }
+    </p>
+    }
+  </main>
+  }
+
+  @if (race.stage === 'racing' && !raceStarted()) {
+  <div class="countdown" aria-live="assertive">
+    <strong>{{ startTimer.seconds() }}</strong>
+    <span>¡Prepárate! Pulsa ESPACIO en la zona blanca</span>
+  </div>
+  }
+
+  @if (race.stage === 'results') {
+  <section class="results">
+    <h2>Clasificación</h2>
+    <ol>
+      @for (row of outcomeRows(); track row.playerId) {
+      <li [class.mine]="row.mine" [class.first]="row.position === 1" [style.animation-delay.ms]="row.position * 160">
+        <span class="place">{{ row.position }}º</span>
+        <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.color" [size]="34" />
+        <strong>{{ row.playerName }}</strong>
+        <span class="detail">
+          {{ row.finished ? '🏁 ' + ((row.timeMs || 0) / 1000).toFixed(1) + 's' : row.progress + '/' + race.goal }}
+          · {{ row.perfects }} perfectos
+        </span>
+        <em>+{{ row.points }}</em>
+      </li>
+      }
+    </ol>
+  </section>
+  }
+  }
+</section>

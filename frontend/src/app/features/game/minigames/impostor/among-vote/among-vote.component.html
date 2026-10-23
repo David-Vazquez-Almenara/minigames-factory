@@ -1,0 +1,107 @@
+<section class="tablet" aria-label="Votacion: quien es el impostor">
+  <div class="glass">
+    <header class="tablet-header">
+      <h2>¿Quién es el impostor?</h2>
+      <span class="round-badge">Ronda {{ wordRound() }}/{{ maxRounds() }}</span>
+    </header>
+
+    <div class="vote-grid">
+      @for (participant of participants(); track participant.id; let index = $index) {
+      <div
+        class="vote-card"
+        role="button"
+        tabindex="0"
+        [style.animation-delay.ms]="index * 60"
+        [class.selected]="selectedTarget() === participant.id"
+        [class.self]="participant.id === currentPlayerId()"
+        [class.disconnected]="!participant.active"
+        [class.locked]="locked()"
+        [attr.aria-pressed]="selectedTarget() === participant.id"
+        [attr.aria-label]="'Votar a ' + participant.name"
+        (click)="select(participant.id)"
+        (keyup.enter)="select(participant.id)"
+      >
+        <span class="avatar-slot">
+          <app-crewmate [color]="participant.color" [size]="46" />
+          @if (votedPlayerIds().includes(participant.id)) {
+          <span class="voted-stamp" aria-label="Ha votado">HE<br />VOTADO</span>
+          }
+        </span>
+
+        <span class="card-body">
+          <strong
+            class="crew-name"
+            [class.own-impostor]="participant.id === currentPlayerId() && myRole() === 'impostor'"
+          >{{ participant.name }}</strong>
+
+          @if (revealedResult()) {
+          <span class="vote-chips">
+            @for (color of voterColors(participant.id); track $index) {
+            <app-crewmate class="vote-chip" [color]="color" [size]="18" [style.animation-delay.ms]="$index * 220" />
+            }
+          </span>
+          } @else if (!participant.active) {
+          <small>Desconectado</small>
+          }
+        </span>
+
+        @if (selectedTarget() === participant.id) {
+        <span class="confirm-pair">
+          <button class="confirm-yes" type="button" aria-label="Confirmar voto" (click)="confirm($event)">&#10003;</button>
+          <button class="confirm-no" type="button" aria-label="Cancelar" (click)="cancel($event)">&#10005;</button>
+        </span>
+        }
+      </div>
+      }
+    </div>
+
+    <footer class="tablet-footer">
+      <div class="skip-zone">
+        <div class="skip-row">
+          <button
+            class="skip-button"
+            type="button"
+            [class.selected]="selectedTarget() === 'skip'"
+            [disabled]="!blankVoteAllowed() || locked()"
+            (click)="select('skip')"
+          >
+            SALTAR VOTO
+          </button>
+
+          @if (selectedTarget() === 'skip') {
+          <span class="confirm-pair">
+            <button class="confirm-yes" type="button" aria-label="Confirmar voto en blanco" (click)="confirm($event)">&#10003;</button>
+            <button class="confirm-no" type="button" aria-label="Cancelar" (click)="cancel($event)">&#10005;</button>
+          </span>
+          }
+
+          @if (revealedResult()) {
+          <span class="vote-chips skip-chips">
+            @for (color of voterColors('skip'); track $index) {
+            <app-crewmate class="vote-chip" [color]="color" [size]="18" [style.animation-delay.ms]="$index * 220" />
+            }
+          </span>
+          }
+        </div>
+
+        @if (!blankVoteAllowed()) {
+        <small class="last-round-note">Esta es la última ronda, hay que pulsar a alguien</small>
+        }
+      </div>
+
+      <p class="vote-status" aria-live="polite">
+        @if (revealedResult()) {
+        Recuento terminado
+        } @else if (!canVote()) {
+        Estás mirando esta votación
+        } @else if (hasVoted()) {
+        Voto registrado. Esperando al resto...
+        } @else if (sending()) {
+        Enviando voto...
+        } @else {
+        La votación termina en: {{ timer.seconds() }}s
+        }
+      </p>
+    </footer>
+  </div>
+</section>

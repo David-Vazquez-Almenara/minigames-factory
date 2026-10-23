@@ -1,0 +1,176 @@
+<section class="impostor-game" aria-label="Minijuego El Impostor">
+  @if (!state()) {
+  <div class="info-card">
+    <h2>Preparando la nave</h2>
+    <span class="loader" aria-hidden="true"></span>
+  </div>
+  } @else {
+
+  @if (view() === 'turns' || view() === 'voting' || view() === 'vote-reveal') {
+  @if (isParticipant()) {
+  @if (myRole() === 'impostor') {
+  <button class="role-card impostor" [class.compact]="view() !== 'turns'" [class.hidden-role]="roleHidden()" type="button"
+    (click)="toggleRoleVisibility()" aria-live="polite">
+    <span class="role-kicker">Tu rol</span>
+    <strong class="role-title">IMPOSTOR</strong>
+    <span class="role-secret">Categoría: <b>{{ secretCategory() }}</b></span>
+    @if (view() === 'turns') {
+    <small>No conoces la palabra. Escucha a los demás y pasa desapercibido.</small>
+    }
+    <em class="peek-hint">{{ roleHidden() ? 'Pulsa para mostrar' : 'Pulsa para ocultar' }}</em>
+  </button>
+  } @else if (myRole() === 'innocent') {
+  <button class="role-card innocent" [class.compact]="view() !== 'turns'" [class.hidden-role]="roleHidden()" type="button"
+    (click)="toggleRoleVisibility()" aria-live="polite">
+    <span class="role-kicker">Tu rol: <b class="innocent-label">INOCENTE</b></span>
+    <strong class="role-title">{{ secretWord() }}</strong>
+    @if (view() === 'turns') {
+    <small>Di en voz alta algo relacionado, sin decir la palabra.</small>
+    }
+    <em class="peek-hint">{{ roleHidden() ? 'Pulsa para mostrar' : 'Pulsa para ocultar' }}</em>
+  </button>
+  } @else {
+  <div class="info-card compact-info">
+    <p>Recibiendo tu rol en privado...</p>
+  </div>
+  }
+  } @else {
+  <div class="info-card compact-info spectator">
+    <p>Estás viendo esta partida como espectador. Entrarás en la siguiente ronda.</p>
+  </div>
+  }
+  }
+
+  @switch (view()) {
+    @case ('turns') {
+    <main class="turn-panel" [class.my-turn-done]="myTurnDone() && !isMyTurn()">
+      <header>
+        <p>Ronda de palabras {{ state()?.wordRound }} de {{ state()?.maxRounds }}</p>
+        <h2>Orden de turnos</h2>
+      </header>
+
+      <ol class="turn-list">
+        @for (row of turnRows(); track row.id) {
+        <li class="turn-row" [class]="'turn-row ' + row.status" [class.offline]="!row.active">
+          <span class="turn-order">{{ row.order }}</span>
+          <app-crewmate [color]="row.color" [size]="34" [ghost]="!row.active" />
+          <strong>{{ row.name }}@if (row.id === currentPlayerId) {<small> (tú)</small>}</strong>
+          <span class="turn-status">
+            @switch (row.status) {
+              @case ('done') { ✓ Hecho }
+              @case ('current') { 🎙 Hablando }
+              @default { Pendiente }
+            }
+          </span>
+        </li>
+        }
+      </ol>
+
+      @if (isMyTurn()) {
+      <div class="your-turn" aria-live="assertive">
+        <p>¡Te toca! Di tu palabra por la llamada y después pasa el turno.</p>
+        <button class="primary-button" type="button" [disabled]="sending()" (click)="advanceTurn()">
+          {{ sending() ? 'Pasando...' : 'Ya he dicho mi palabra →' }}
+        </button>
+      </div>
+      } @else if (canHostSkipTurn()) {
+      <div class="your-turn host-skip">
+        <p>{{ playerName(currentTurnPlayerId()) }} se ha desconectado.</p>
+        <button class="secondary-button" type="button" [disabled]="sending()" (click)="advanceTurn()">Saltar su turno</button>
+      </div>
+      } @else if (currentTurnPlayerId()) {
+      <p class="waiting-turn">Escuchando a <b>{{ playerName(currentTurnPlayerId()) }}</b>...</p>
+      }
+    </main>
+    }
+
+    @case ('voting') {
+    <app-among-vote
+      [participants]="participants()"
+      [currentPlayerId]="currentPlayerId"
+      [myRole]="myRole()"
+      [canVote]="isParticipant()"
+      [votedPlayerIds]="state()?.votedPlayerIds || []"
+      [blankVoteAllowed]="state()?.blankVoteAllowed ?? true"
+      [voteEndsAt]="state()?.voteEndsAt || null"
+      [paused]="hostPaused()"
+      [wordRound]="state()?.wordRound || 1"
+      [maxRounds]="state()?.maxRounds || 5"
+      [sending]="sending()"
+      (vote)="castVote($event)"
+    />
+    }
+
+    @case ('vote-reveal') {
+    <app-among-vote
+      [participants]="participants()"
+      [currentPlayerId]="currentPlayerId"
+      [myRole]="myRole()"
+      [votedPlayerIds]="state()?.votedPlayerIds || []"
+      [blankVoteAllowed]="state()?.blankVoteAllowed ?? true"
+      [wordRound]="state()?.wordRound || 1"
+      [maxRounds]="state()?.maxRounds || 5"
+      [revealedResult]="state()?.lastRoundResult || null"
+    />
+    }
+
+    @case ('ejection') {
+    @if (ejection(); as scene) {
+    <app-ejection [ejectedColor]="scene.color" [text]="scene.text" [subtitle]="scene.subtitle" [dramatic]="scene.dramatic" />
+    }
+    }
+
+    @case ('results') {
+    @if (state()?.outcome; as outcome) {
+    <main class="results-card" [class.impostor-won]="outcome.winner === 'impostor'">
+      <p class="winner-banner">{{ outcome.winner === 'impostor' ? '¡Gana el impostor!' : '¡Ganan los inocentes!' }}</p>
+
+      @if (iWon() !== null) {
+      <p class="personal-result" [class.won]="iWon()">{{ iWon() ? 'Has ganado esta ronda' : 'Has perdido esta ronda' }}</p>
+      }
+
+      <div class="impostor-reveal">
+        <app-crewmate [color]="playerColor(outcome.impostorId)" [size]="84" />
+        <div>
+          <span>El impostor era</span>
+          <strong>{{ outcome.impostorName }}</strong>
+        </div>
+      </div>
+
+      <dl class="facts">
+        <div>
+          <dt>Palabra secreta</dt>
+          <dd>{{ outcome.word }}</dd>
+        </div>
+        <div>
+          <dt>Categoría</dt>
+          <dd>{{ outcome.category }}</dd>
+        </div>
+        <div>
+          <dt>Rondas jugadas</dt>
+          <dd>{{ outcome.roundsPlayed }}</dd>
+        </div>
+      </dl>
+
+      <p class="points-line">
+        @if (outcome.winner === 'impostor') {
+        {{ outcome.impostorName }} suma <b>20</b> por ganar + <b>10 × {{ outcome.extraRounds }}</b>
+        {{ outcome.extraRounds === 1 ? 'ronda extra' : 'rondas extra' }} = <b class="total">{{ outcome.impostorPoints }} pts</b>
+        } @else {
+        Los inocentes lo han descubierto: el impostor no suma puntos esta vez.
+        }
+      </p>
+
+      @if (!isHost()) {
+      <small class="next-hint">El host abrirá el marcador en un momento.</small>
+      }
+    </main>
+    }
+    }
+  }
+  }
+
+  @if (errorMessage()) {
+  <p class="error-message" role="alert">{{ errorMessage() }}</p>
+  }
+</section>

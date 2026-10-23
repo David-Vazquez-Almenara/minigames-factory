@@ -1,23 +1,21 @@
 @if (match()) {
   <div class="game-view-shell" [class.entering]="viewTransition() === 'entering'" [class.leaving]="viewTransition() === 'leaving'">
-  @if (activeView() === 'scoreboard') {
-    <app-scoreboard />
-  } @else if (activeView() === 'special') {
-    <app-special-round />
-  } @else if (activeView() === 'questionsComplete') {
-    <section class="questions-complete-screen" aria-label="Fase de preguntas terminada">
-      <div class="questions-complete-card">
-        <p>Preguntas terminadas</p>
-        <h1>Fin de esta fase</h1>
-        <span>Preparando la siguiente seccion...</span>
-      </div>
-    </section>
-  } @else if (activeView() === 'question') {
-    <app-question-round />
-  } @else if (activeView() === 'countdown') {
-    <app-countdown (finished)="finishCountdown()" />
-  } @else {
-    <app-character-selection />
+  @switch (activeView()) {
+    @case ('roulette') {
+      <app-minigame-roulette />
+    }
+    @case ('special') {
+      <app-special-round />
+    }
+    @case ('scoreboard') {
+      <app-scoreboard />
+    }
+    @case ('finished') {
+      <app-match-finished />
+    }
+    @default {
+      <app-countdown />
+    }
   }
   </div>
 
@@ -28,7 +26,7 @@
         <h2>El host se ha desconectado.</h2>
         <p>Estamos esperando a que vuelva a conectarse.</p>
         <p>La partida continuara automaticamente si vuelve a tiempo.</p>
-        <strong>{{ hostWaitSeconds() }}s</strong>
+        <strong>{{ hostWait.seconds() }}s</strong>
         <span class="loading-ring" aria-hidden="true"></span>
         <small>Si el host no vuelve en 60 segundos, la sala se cerrara.</small>
       </section>

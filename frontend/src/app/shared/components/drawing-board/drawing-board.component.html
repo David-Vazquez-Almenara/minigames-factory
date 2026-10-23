@@ -1,0 +1,40 @@
+<div class="toolbar" [class.hide-tools]="disabled()" aria-label="Herramientas de dibujo">
+  <button type="button" class="clear-button" (click)="clearCanvas()">Limpiar</button>
+  <button type="button" [class.active]="tool() === 'brush'" (click)="setTool('brush')">Pincel</button>
+  <input type="color" [ngModel]="color()" (ngModelChange)="color.set($event)" aria-label="Color del pincel" />
+
+  <button type="button" [class.active]="tool() === 'floodfill'" (click)="setTool('floodfill')" title="Cubo de pintura">Cubo</button>
+
+  <button type="button" [class.active]="tool() === 'eraser'" (click)="setTool('eraser')">Goma</button>
+
+  <button type="button" [class.active]="tool() === 'shape'" (click)="setTool('shape')">Forma</button>
+  <select [ngModel]="shape()" (ngModelChange)="shape.set($event)" aria-label="Tipo de forma">
+    <option value="circle">Circulo</option>
+    <option value="square">Cuadrado</option>
+    <option value="triangle">Triangulo</option>
+  </select>
+
+  <label>
+    Pincel
+    <input type="range" min="4" max="36" [ngModel]="brushSize()" (ngModelChange)="setBrushSize($event)" />
+  </label>
+  <label>
+    Goma
+    <input type="range" min="8" max="60" [ngModel]="eraserSize()" (ngModelChange)="setEraserSize($event)" />
+  </label>
+</div>
+
+<div class="canvas-shell">
+  <canvas
+    #paintCanvas
+    [style.cursor]="disabled() ? 'default' : canvasCursorStyle()"
+    [class]="'paint-canvas ' + tool()"
+    width="860"
+    height="470"
+    (pointerdown)="startDrawing($event)"
+    (pointermove)="paint($event)"
+    (pointerup)="stopDrawing()"
+    (pointerleave)="stopDrawing()"
+  ></canvas>
+  <canvas #previewCanvas class="preview-canvas" width="860" height="470" aria-hidden="true"></canvas>
+</div>

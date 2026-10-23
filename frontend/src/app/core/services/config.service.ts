@@ -13,9 +13,13 @@ export interface GameConfig {
 }
 
 const STORAGE_KEY = 'quien-soy-online-config';
+// El volumen de musica tiene clave propia y solo se guarda cuando el usuario lo cambia: asi, quien nunca lo
+// ha tocado recibe el valor por defecto aunque la configuracion general ya estuviera guardada de antes.
+const MUSIC_VOLUME_KEY = 'quien-soy-online-music-volume';
+const DEFAULT_MUSIC_VOLUME = 15;
 
 const DEFAULT_CONFIG: GameConfig = {
-  musicVolume: 50,
+  musicVolume: DEFAULT_MUSIC_VOLUME,
   effectsVolume: 50,
   language: 'es',
   textSize: 'normal',
@@ -38,7 +42,9 @@ export class ConfigService {
   }
 
   updateMusicVolume(value: number): void {
-    this.updateConfig({ musicVolume: this.clampVolume(value) });
+    const musicVolume = this.clampVolume(value);
+    localStorage.setItem(MUSIC_VOLUME_KEY, String(musicVolume));
+    this.updateConfig({ musicVolume });
   }
 
   updateEffectsVolume(value: number): void {
@@ -66,19 +72,23 @@ export class ConfigService {
 
   private loadConfig(): GameConfig {
     const savedConfig = localStorage.getItem(STORAGE_KEY);
+    let config = DEFAULT_CONFIG;
 
-    if (!savedConfig) {
-      return DEFAULT_CONFIG;
+    if (savedConfig) {
+      try {
+        config = { ...DEFAULT_CONFIG, ...JSON.parse(savedConfig) };
+      } catch {
+        config = DEFAULT_CONFIG;
+      }
     }
 
-    try {
-      return {
-        ...DEFAULT_CONFIG,
-        ...JSON.parse(savedConfig),
-      };
-    } catch {
-      return DEFAULT_CONFIG;
-    }
+    const savedMusicVolume = localStorage.getItem(MUSIC_VOLUME_KEY);
+    const musicVolume = savedMusicVolume === null ? NaN : Number(savedMusicVolume);
+
+    return {
+      ...config,
+      musicVolume: Number.isFinite(musicVolume) ? this.clampVolume(musicVolume) : DEFAULT_MUSIC_VOLUME,
+    };
   }
 
   private applyGlobalClasses(config: GameConfig): void {

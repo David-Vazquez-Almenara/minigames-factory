@@ -1,0 +1,145 @@
+﻿<section class="pinturillo" aria-label="Minijuego Pinturillo">
+  @if (state(); as game) {
+  <header class="word-bar">
+    <div class="timer-badge" [class.hurry]="game.stage === 'drawing' && drawTimer.seconds() <= 10" aria-label="Segundos restantes">
+      {{ started() ? drawTimer.seconds() : 90 }}
+    </div>
+
+    <div class="hint" aria-live="polite">
+      @if (isDrawer() && game.stage === 'drawing') {
+      <span class="drawer-word">Dibuja: <b>{{ secretWord() }}</b></span>
+      } @else {
+      <span class="slots" [attr.aria-label]="'Palabra de ' + letterCount() + ' letras'">
+        @for (character of game.hint; track $index) {
+        <span class="slot" [class]="'slot ' + hintSlotClass(character)">{{ character }}</span>
+        }
+      </span>
+      }
+      <small>{{ letterCount() }} letras</small>
+    </div>
+
+    <div class="drawer-chip">
+      <span>Dibuja</span>
+      <strong>{{ isDrawer() ? 'Tú' : drawerName() }}</strong>
+    </div>
+  </header>
+
+  @if (game.stage === 'results' && game.outcome; as outcome) {
+  <section class="results-card">
+    <h2>«{{ outcome.word }}»</h2>
+    <p>{{ outcome.correctCount }} de {{ outcome.guesserCount }} la han adivinado</p>
+    <ol class="result-list">
+      @for (row of resultRows(); track row.id) {
+      <li [class.missed]="!row.order">
+        <span class="place">{{ row.order ? row.order + 'º' : '—' }}</span>
+        <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.name" [color]="row.color" [size]="30" />
+        <strong>{{ row.name }}</strong>
+        <em>+{{ row.points }}</em>
+      </li>
+      }
+    </ol>
+    <p class="drawer-points" [class.negative]="outcome.drawerPoints < 0">
+      Dibujante {{ outcome.drawerName }}:
+      <b>{{ outcome.drawerPoints > 0 ? '+' : '' }}{{ outcome.drawerPoints }} pts</b>
+      @if (outcome.drawerLeft) {
+      (abandonó la partida)
+      } @else if (!outcome.correctCount) {
+      (nadie lo adivinó)
+      }
+    </p>
+  </section>
+  }
+
+  <div class="board-and-chat">
+    <main class="board-area">
+      @if (isDrawer() && game.stage === 'drawing') {
+      <app-drawing-board [disabled]="!started()" (changed)="onBoardChanged()" />
+      } @else {
+      <div class="remote-canvas">
+        @if (game.stage === 'results' && game.outcome?.finalFrame) {
+        <img [src]="game.outcome!.finalFrame" alt="Dibujo final" />
+        } @else if (frame()) {
+        <img [src]="frame()" [alt]="'Dibujo de ' + drawerName()" />
+        } @else {
+        <p class="waiting-drawing">{{ drawerName() }} está cogiendo el lápiz<span class="dots">...</span></p>
+        }
+      </div>
+      }
+
+      @if (!started()) {
+      <div class="get-ready">
+        <strong>{{ startTimer.seconds() }}</strong>
+        <span>{{ isDrawer() ? '¡Prepárate para dibujar!' : '¡Atentos al lienzo!' }}</span>
+      </div>
+      }
+
+      <ul class="player-strip" aria-label="Jugadores">
+        @for (player of players(); track player.id) {
+        <li [class.drawer]="player.drawer" [class.guessed]="player.guessed">
+          <app-player-avatar [avatarUrl]="player.avatarUrl" [name]="player.name" [color]="player.color" [size]="30" />
+          <span>{{ player.name }}</span>
+          @if (player.drawer) {<em>✏️</em>} @else if (player.guessed) {<em>★</em>}
+        </li>
+        }
+      </ul>
+    </main>
+
+    <aside class="chat">
+      <h3>Chat</h3>
+      <ol class="chat-list" #chatList aria-live="polite">
+        @for (message of messages(); track message.id) {
+        @switch (message.kind) {
+          @case ('correct') {
+          <li class="msg correct">
+            <span class="star" aria-hidden="true">★</span>
+            <span><b>{{ message.name }}</b> ha acertado la palabra</span>
+            <em>+{{ message.points }}</em>
+          </li>
+          }
+          @case ('system') {
+          <li class="msg system">{{ message.text }}</li>
+          }
+          @default {
+          <li class="msg" [class.guessed-chat]="message.kind === 'guessed-chat'" [class.mine]="message.mine">
+            <b>{{ message.name }}:</b> {{ message.text }}
+          </li>
+          }
+        }
+        } @empty {
+        <li class="msg system">Escribid aquí lo que creéis que es el dibujo.</li>
+        }
+      </ol>
+
+      <form class="chat-form" (submit)="$event.preventDefault(); sendGuess()">
+        @if (isDrawer()) {
+        <p class="chat-note">Estás dibujando: no puedes escribir.</p>
+        } @else if (!isParticipant()) {
+        <p class="chat-note">Estás viendo como espectador.</p>
+        } @else {
+        <input
+          type="text"
+          name="guess"
+          maxlength="80"
+          autocomplete="off"
+          [disabled]="game.stage !== 'drawing' || !started()"
+          [placeholder]="hasGuessed() ? 'Chat con los que ya acertaron...' : 'Escribe tu respuesta...'"
+          [ngModel]="guessText()"
+          (ngModelChange)="guessText.set($event)"
+        />
+        <button type="submit" [disabled]="!guessText().trim() || sending() || game.stage !== 'drawing'">Enviar</button>
+        }
+      </form>
+      @if (feedback()) {
+      <p class="feedback">{{ feedback() }}</p>
+      }
+    </aside>
+  </div>
+
+  @if (showWordReveal() && game.outcome) {
+  <div class="word-reveal" aria-live="assertive">
+    <span>La palabra era</span>
+    <strong>{{ game.outcome.word }}</strong>
+  </div>
+  }
+  }
+</section>

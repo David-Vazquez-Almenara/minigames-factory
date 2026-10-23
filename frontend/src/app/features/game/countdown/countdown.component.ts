@@ -1,42 +1,26 @@
-import { Component, OnDestroy, OnInit, output, signal } from '@angular/core';
+import { Component, computed, effect, inject } from '@angular/core';
+import { AudioService } from '../../../core/services/audio.service';
+import { GameTimerService } from '../../../core/services/game-timer.service';
+import { MatchService } from '../../../core/services/match.service';
 
 @Component({
   selector: 'app-countdown',
   templateUrl: './countdown.component.html',
   styleUrl: './countdown.component.scss',
 })
-export class CountdownComponent implements OnInit, OnDestroy {
-  private timer?: ReturnType<typeof setInterval>;
-  private readonly numbers = [3, 2, 1];
-  private index = 0;
+export class CountdownComponent {
+  private readonly matchService = inject(MatchService);
+  private readonly audioService = inject(AudioService);
+  private readonly countdown = inject(GameTimerService).countdown(() => this.matchService.match()?.countdownEndsAt, {
+    paused: () => this.matchService.hostPaused(),
+  });
 
-  readonly currentNumber = signal(this.numbers[0]);
-  readonly finished = output<void>();
+  readonly currentNumber = computed(() => Math.min(3, Math.max(1, this.countdown.seconds())));
 
-  ngOnInit(): void {
-    this.timer = setInterval(() => {
-      this.index += 1;
-
-      if (this.index >= this.numbers.length) {
-        this.clearTimer();
-        this.finished.emit();
-        return;
-      }
-
-      this.currentNumber.set(this.numbers[this.index]);
-    }, 950);
-  }
-
-  ngOnDestroy(): void {
-    this.clearTimer();
-  }
-
-  private clearTimer(): void {
-    if (!this.timer) {
-      return;
-    }
-
-    clearInterval(this.timer);
-    this.timer = undefined;
+  constructor() {
+    effect(() => {
+      this.currentNumber();
+      this.audioService.playEffect('pop');
+    });
   }
 }

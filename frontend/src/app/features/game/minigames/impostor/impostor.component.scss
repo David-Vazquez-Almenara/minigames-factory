@@ -1,0 +1,407 @@
+:host {
+  display: grid;
+  width: 100%;
+  justify-items: center;
+}
+
+.impostor-game {
+  display: grid;
+  width: min(980px, 100%);
+  gap: 18px;
+  justify-items: center;
+}
+
+.info-card,
+.turn-panel,
+.results-card {
+  display: grid;
+  width: min(720px, 100%);
+  gap: 14px;
+  justify-items: center;
+  padding: 24px;
+  text-align: center;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+
+  h2,
+  p {
+    margin: 0;
+  }
+}
+
+.compact-info {
+  padding: 12px 18px;
+  font-weight: 950;
+}
+
+.spectator {
+  background-color: #d9f4ff;
+}
+
+// Tarjeta privada del rol. Solo existe en la pantalla de cada jugador con su propia informacion.
+.role-card {
+  position: relative;
+  display: grid;
+  width: min(560px, 100%);
+  gap: 6px;
+  justify-items: center;
+  padding: 20px 24px 28px;
+  color: #000;
+  font: inherit;
+  text-align: center;
+  border: 4px solid #000;
+  border-radius: 22px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #000;
+  animation: role-flip 760ms cubic-bezier(0.18, 0.88, 0.3, 1.15) both;
+
+  small {
+    font-weight: 900;
+  }
+
+  &.compact {
+    padding: 10px 18px 22px;
+    gap: 2px;
+    box-shadow: 0 4px 0 #000;
+    animation: none;
+
+    .role-title {
+      font-size: clamp(1.4rem, 5vw, 2.2rem);
+    }
+  }
+
+  &.hidden-role > :not(.peek-hint) {
+    filter: blur(12px);
+  }
+}
+
+.role-card.innocent {
+  background-color: #d7ffd7;
+}
+
+.role-card.impostor {
+  color: #fff;
+  background: radial-gradient(circle at 50% 0, #ff5c5c, #a00000 70%);
+
+  .role-title {
+    color: #fff;
+    -webkit-text-stroke: 2px #000;
+    paint-order: stroke fill;
+    animation: impostor-throb 1400ms ease-in-out infinite;
+  }
+}
+
+.role-kicker {
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.innocent-label {
+  color: #088a2a;
+}
+
+.role-title {
+  font-size: clamp(2.4rem, 9vw, 4.6rem);
+  font-weight: 1000;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.role-secret {
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.peek-hint {
+  position: absolute;
+  bottom: 6px;
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 900;
+  opacity: 0.75;
+}
+
+.turn-panel {
+  transition: filter 400ms ease;
+
+  header {
+    display: grid;
+    gap: 4px;
+
+    p {
+      font-weight: 950;
+    }
+
+    h2 {
+      font-size: clamp(1.8rem, 6vw, 3rem);
+      line-height: 1;
+    }
+  }
+
+  // El jugador que ya ha hablado ve su pantalla ligeramente apagada.
+  &.my-turn-done {
+    filter: brightness(0.9) saturate(0.85);
+  }
+}
+
+.turn-list {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.turn-row {
+  display: grid;
+  grid-template-columns: 34px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  text-align: left;
+  background-color: #fff;
+  border: 3px solid #000;
+  border-radius: 14px;
+  transition: transform 260ms ease, opacity 260ms ease, background-color 260ms ease, box-shadow 260ms ease;
+
+  strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &.done {
+    opacity: 0.55;
+  }
+
+  &.current {
+    background-color: #fff4b8;
+    box-shadow: 0 0 0 4px #ffe891, 0 0 22px rgba(255, 200, 0, 0.8);
+    transform: scale(1.03);
+    animation: current-glow 1500ms ease-in-out infinite;
+  }
+
+  &.offline {
+    border-style: dashed;
+  }
+}
+
+.turn-order {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  font-weight: 950;
+  background-color: #ffe891;
+  border: 2px solid #000;
+  border-radius: 50%;
+}
+
+.turn-status {
+  font-size: 0.85rem;
+  font-weight: 950;
+}
+
+.your-turn {
+  display: grid;
+  width: 100%;
+  gap: 10px;
+  justify-items: center;
+  padding: 14px;
+  font-weight: 950;
+  background-color: #b9f7a7;
+  border: 3px solid #000;
+  border-radius: 16px;
+  animation: pop-in 420ms cubic-bezier(0.18, 0.88, 0.3, 1.3) both;
+}
+
+.host-skip {
+  background-color: #ffd4d4;
+}
+
+.waiting-turn {
+  font-weight: 900;
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 54px;
+  padding: 12px 20px;
+  color: #000;
+  font: inherit;
+  font-weight: 950;
+  background-color: #ffe891;
+  border: 3px solid #000;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 0 #000;
+  }
+
+  &:disabled {
+    cursor: no-drop;
+    opacity: 0.65;
+  }
+}
+
+.secondary-button {
+  background-color: #fff;
+}
+
+.results-card {
+  background-color: #d7ffd7;
+  animation: pop-in 620ms cubic-bezier(0.18, 0.88, 0.3, 1.25) both;
+
+  &.impostor-won {
+    background-color: #ffd4d4;
+  }
+}
+
+.winner-banner {
+  font-size: clamp(2rem, 7vw, 3.6rem);
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.personal-result {
+  padding: 4px 14px;
+  font-weight: 950;
+  background-color: #fff;
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  &.won {
+    background-color: #ffe891;
+  }
+}
+
+.impostor-reveal {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+
+  div {
+    display: grid;
+  }
+
+  span {
+    font-weight: 900;
+  }
+
+  strong {
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+  }
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: 10px;
+  margin: 0;
+
+  div {
+    padding: 10px;
+    background-color: #fff;
+    border: 3px solid #000;
+    border-radius: 14px;
+  }
+
+  dt {
+    font-size: 0.8rem;
+    font-weight: 900;
+  }
+
+  dd {
+    margin: 4px 0 0;
+    font-size: 1.2rem;
+    font-weight: 1000;
+    overflow-wrap: anywhere;
+  }
+}
+
+.points-line {
+  font-weight: 900;
+
+  .total {
+    padding: 2px 8px;
+    background-color: #ffe891;
+    border: 2px solid #000;
+    border-radius: 8px;
+  }
+}
+
+.next-hint {
+  font-weight: 900;
+}
+
+.loader {
+  width: 40px;
+  aspect-ratio: 1;
+  border: 5px solid #000;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+.error-message {
+  margin: 0;
+  padding: 10px 14px;
+  color: #9a0000;
+  font-weight: 950;
+  background-color: #ffd4d4;
+  border: 3px solid #000;
+  border-radius: 14px;
+}
+
+@keyframes role-flip {
+  from {
+    opacity: 0;
+    transform: perspective(700px) rotateY(90deg) scale(0.8);
+  }
+}
+
+@keyframes impostor-throb {
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes current-glow {
+  50% {
+    box-shadow: 0 0 0 4px #ffe891, 0 0 34px rgba(255, 200, 0, 1);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 560px) {
+  .facts {
+    grid-template-columns: 1fr;
+  }
+
+  .turn-row {
+    grid-template-columns: 30px auto minmax(0, 1fr);
+  }
+
+  .turn-status {
+    grid-column: 2 / -1;
+  }
+}

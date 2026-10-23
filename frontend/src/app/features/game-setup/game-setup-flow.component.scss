@@ -1,4 +1,4 @@
-.setup-backdrop {
+﻿.setup-backdrop {
   position: fixed;
   inset: 0;
   z-index: 18;
@@ -55,13 +55,6 @@ header {
   gap: 16px;
 }
 
-.test-toggle {
-  padding: 10px 12px;
-  background-color: #d9f4ff;
-  border: 3px solid #000;
-  border-radius: 14px;
-}
-
 input,
 select {
   width: 100%;
@@ -91,35 +84,71 @@ input[type='checkbox'] {
   display: grid;
 }
 
-.add-row {
+.avatar-field {
   display: grid;
-  grid-template-columns: 1fr 52px;
-  gap: 10px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+
+  .field {
+    margin-bottom: 0;
+  }
 }
 
-.icon-button {
-  width: 52px;
-  min-height: 48px;
-  padding: 0;
-  color: #000;
-  font-size: 1.6rem;
-  font-weight: 950;
-  line-height: 1;
-  background-color: #b9f7a7;
+.lobby-miis {
+  margin-top: 16px;
+}
+
+.minigame-picker {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 12px;
+  text-align: left;
   border: 3px solid #000;
   border-radius: 14px;
-  cursor: pointer;
-  transition: transform 160ms ease, box-shadow 160ms ease;
 
-  &:hover:not(:disabled) {
-    transform: translateY(-2px) scale(1.03);
-    box-shadow: 0 3px 0 #000;
+  legend {
+    padding: 0 6px;
+    font-weight: 950;
+  }
+}
+
+.minigame-option {
+  margin: 0;
+  padding: 8px 10px;
+  background-color: var(--option-accent, #fff);
+  border: 3px solid #000;
+  border-radius: 12px;
+
+  span {
+    display: grid;
   }
 
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.58;
+  small {
+    font-size: 0.75rem;
   }
+}
+
+.lobby-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 0;
+  font-size: 0.85rem;
+  font-weight: 900;
+
+  span {
+    padding: 2px 8px;
+    background-color: #ffd4d4;
+    border: 2px solid #000;
+    border-radius: 999px;
+  }
+}
+
+.readonly-minigames {
+  justify-content: center;
+  margin-top: 8px;
 }
 
 .validation-message {

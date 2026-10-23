@@ -1,28 +1,44 @@
-<section class="special-round-screen" aria-label="Ronda especial">
+﻿<section class="special-round-screen" aria-label="Ronda de minijuego">
   <header class="special-title" [class.compact]="stage() !== 'intro'">
     <h1>Minijuego</h1>
-    <p>Ronda {{ specialRound()?.roundNumber }}</p>
+    <p>Ronda {{ specialRound()?.roundNumber }} de {{ match()?.totalRounds }}</p>
   </header>
 
   @if (stage() === 'explanation') {
   <section class="special-explanation" aria-live="polite">
     <h2>{{ specialRound()?.title || 'Minijuego' }}</h2>
     <p>{{ specialRound()?.description }}</p>
-    <div class="pacman-timer" [style.--timer-progress]="timerProgress()"></div>
+    <div class="pacman-timer" [style.--timer-progress]="explanationTimer.progress()"></div>
   </section>
   }
 
   @if (stage() === 'game') {
   <main class="minigame-container">
-    @if (specialRound()?.minigameId === 'math-operations') {
-    <app-math-operations />
-    } @else if (specialRound()?.minigameId === 'paint') {
-    <app-paint />
-    } @else {
-    <section class="minigame-placeholder">
-      <h2>Minijuego</h2>
-      <p>Placeholder de la ronda especial. Aqui ira el minijuego real mas adelante.</p>
-    </section>
+    @switch (specialRound()?.minigameId) {
+      @case ('math-operations') {
+      <app-math-operations />
+      }
+      @case ('paint') {
+      <app-paint />
+      }
+      @case ('impostor') {
+      <app-impostor />
+      }
+      @case ('ten-but') {
+      <app-ten-but />
+      }
+      @case ('pinturillo') {
+      <app-pinturillo />
+      }
+      @case ('pogo') {
+      <app-pogo />
+      }
+      @default {
+      <section class="minigame-placeholder">
+        <h2>Minijuego</h2>
+        <p>Este minijuego todavia no esta disponible en esta version.</p>
+      </section>
+      }
     }
   </main>
   }
@@ -32,8 +48,8 @@
   }
 
   @if (isHost()) {
-  <button class="skip-button" type="button" [disabled]="loading()" (click)="skipMinigame()">
-    {{ loading() ? 'Continuando...' : 'Continuar' }}
+  <button class="skip-button" type="button" [class.results-ready]="specialRound()?.hasResults" [disabled]="loading()" (click)="continueMinigame()">
+    {{ loading() ? 'Continuando...' : continueLabel() }}
   </button>
   }
 </section>

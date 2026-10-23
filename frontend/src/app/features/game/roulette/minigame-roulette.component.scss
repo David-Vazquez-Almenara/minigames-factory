@@ -1,0 +1,123 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  color: #000;
+  background-color: #ffd6e8;
+}
+
+.roulette-screen {
+  display: grid;
+  min-height: 100vh;
+  align-content: center;
+  justify-items: center;
+  gap: 26px;
+  padding: 28px 20px;
+}
+
+.roulette-header {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+  animation: header-drop 520ms cubic-bezier(0.18, 0.88, 0.3, 1.2) both;
+
+  p,
+  h1 {
+    margin: 0;
+  }
+
+  p {
+    font-weight: 950;
+  }
+
+  h1 {
+    font-size: clamp(2.4rem, 8vw, 4.8rem);
+    line-height: 0.95;
+  }
+}
+
+.minigame-strip {
+  width: min(1080px, 100%);
+  animation: strip-rise 520ms cubic-bezier(0.18, 0.88, 0.3, 1.1) 120ms both;
+}
+
+.reveal-slot {
+  display: grid;
+  min-height: 132px;
+  place-items: center;
+}
+
+.spinning-hint {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 950;
+
+  .dots i {
+    display: inline-block;
+    font-style: normal;
+    animation: dot-bounce 900ms ease-in-out infinite;
+  }
+
+  .dots i:nth-child(2) {
+    animation-delay: 150ms;
+  }
+
+  .dots i:nth-child(3) {
+    animation-delay: 300ms;
+  }
+}
+
+.reveal-card {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 18px 30px;
+  text-align: center;
+  background-color: var(--reveal-accent, #ffe891);
+  border: 4px solid #000;
+  border-radius: 22px;
+  box-shadow: 0 6px 0 #000;
+  animation: reveal-pop 620ms cubic-bezier(0.18, 0.88, 0.3, 1.35) both;
+
+  span {
+    font-weight: 950;
+    text-transform: uppercase;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: clamp(2rem, 7vw, 3.8rem);
+    line-height: 1;
+  }
+}
+
+@keyframes header-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.9);
+  }
+}
+
+@keyframes strip-rise {
+  from {
+    opacity: 0;
+    transform: translateY(60px);
+  }
+}
+
+@keyframes reveal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.2) rotate(-8deg);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.08) rotate(2deg);
+  }
+}
+
+@keyframes dot-bounce {
+  50% {
+    transform: translateY(-6px);
+  }
+}
