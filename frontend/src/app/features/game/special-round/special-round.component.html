@@ -47,9 +47,9 @@
   <p class="error-message" role="alert">{{ errorMessage() }}</p>
   }
 
-  @if (isHost()) {
-  <button class="skip-button" type="button" [class.results-ready]="specialRound()?.hasResults" [disabled]="loading()" (click)="continueMinigame()">
-    {{ loading() ? 'Continuando...' : continueLabel() }}
+  @if (isHost() && specialRound()?.hasResults) {
+  <button class="skip-button results-ready" type="button" [disabled]="loading()" (click)="continueMinigame()">
+    {{ loading() ? 'Continuando...' : 'Ver marcador' }}
   </button>
   }
 </section>

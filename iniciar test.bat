@@ -10,6 +10,17 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem Variables de entorno locales: si no existen los .env, se crean a partir de las plantillas.
+if not exist "backend\.env" (
+  echo Creando backend\.env a partir de backend\.env.example...
+  copy /y "backend\.env.example" "backend\.env" >nul
+)
+
+if not exist "frontend\.env" (
+  echo Creando frontend\.env a partir de frontend\.env.example...
+  copy /y "frontend\.env.example" "frontend\.env" >nul
+)
+
 if not exist "backend\node_modules" (
   echo Instalando dependencias del servidor...
   call npm --prefix backend install

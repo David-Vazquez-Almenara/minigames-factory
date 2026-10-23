@@ -4,18 +4,38 @@ const http = require('http');
 const dns = require('dns').promises;
 const net = require('net');
 const { Server } = require('socket.io');
-require('dotenv').config();
+
+/* ------------------------------------------------------------------ */
+/* Configuracion por variables de entorno                              */
+/* ------------------------------------------------------------------ */
+// En local se leen de backend/.env. En Render solo cuentan las variables de su panel: un .env subido por
+// error nunca llega a produccion (Render define RENDER=true en sus servicios).
+const isRender = process.env.RENDER === 'true';
+const isProduction = isRender || process.env.NODE_ENV === 'production';
+
+if (!isRender) {
+  require('dotenv').config();
+}
+
+const LOCAL_CLIENT_ORIGINS = 'http://localhost:4200,http://127.0.0.1:4200';
+const PORT = Number(process.env.PORT) || 3000;
+// URL(s) del frontend que pueden conectarse (CORS de HTTP y de Socket.IO), separadas por comas.
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || (isProduction ? '' : LOCAL_CLIENT_ORIGINS);
+
+if (!CLIENT_ORIGIN) {
+  console.error('[config] Falta CLIENT_ORIGIN (URL del frontend, p. ej. https://tu-sitio.netlify.app). Definela en Render > Environment.');
+  process.exit(1);
+}
+
+// Se normalizan para que una barra final ("https://sitio.netlify.app/") no rompa la comparacion del CORS.
+const allowedOrigins = CLIENT_ORIGIN.split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 
 const IMPOSTOR_WORDS = require('./data/impostor-words.json').entries;
 
 const app = express();
 const server = http.createServer(app);
-
-const LOCAL_DEV_PORT = 3000;
-const isLocalDev = process.env.npm_lifecycle_event === 'dev';
-const PORT = isLocalDev ? LOCAL_DEV_PORT : process.env.PORT || LOCAL_DEV_PORT;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:4200,http://127.0.0.1:4200';
-const allowedOrigins = CLIENT_ORIGIN.split(',').map((origin) => origin.trim());
 
 const corsOptions = {
   origin: allowedOrigins,
@@ -2196,17 +2216,17 @@ io.on('connection', (socket) => {
     }
 
     if (!isHostRequest(room, payload)) {
-      callback?.({ ok: false, reason: 'Solo el host puede saltar el minijuego.' });
+      callback?.({ ok: false, reason: 'Solo el host puede abrir el marcador.' });
       return;
     }
 
-    if (room.match.specialRound?.hasResults) {
-      enterMinigameScoreboard(room);
-    } else {
-      clearAllRoomTimers(room);
-      advanceToNextRound(room);
+    // Solo se avanza al marcador cuando el minijuego ya tiene resultados (ya no se pueden saltar minijuegos).
+    if (!room.match.specialRound?.hasResults) {
+      callback?.({ ok: false, reason: 'El minijuego todavia no ha terminado.' });
+      return;
     }
 
+    enterMinigameScoreboard(room);
     callback?.({ ok: true, lobby: toLobby(room), match: toMatchState(room) });
   });
 
@@ -2838,5 +2858,6 @@ setInterval(() => {
 }, PRESENCE_CHECK_MS);
 
 server.listen(PORT, () => {
-  console.log(`Backend escuchando en http://localhost:${PORT}`);
+  console.log(`Backend escuchando en el puerto ${PORT} (${isProduction ? 'produccion' : 'desarrollo'})`);
+  console.log(`Frontend(s) permitido(s): ${allowedOrigins.join(', ')}`);
 });

@@ -36,7 +36,6 @@ export class SpecialRoundComponent implements OnDestroy {
     totalMs: EXPLANATION_MS,
     onExpire: () => this.stage.set('game'),
   });
-  readonly continueLabel = computed(() => (this.specialRound()?.hasResults ? 'Ver marcador' : 'Saltar minijuego'));
 
   constructor() {
     effect(() => {

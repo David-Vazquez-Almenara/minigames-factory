@@ -1,0 +1,2 @@
+# SPA: cualquier ruta (incluido recargar con ?room=...&lobby=true) sirve index.html y Angular decide.
+/*    /index.html   200

@@ -1,8 +1,34 @@
+# Configuracion de Netlify para el frontend (en Netlify, "Base directory" = frontend).
+# La URL del backend NO va aqui: definela como variable BACKEND_URL en
+# Site configuration > Environment variables (la usa scripts/generate-env.mjs durante el build).
+
 [build]
   command = "npm run build"
   publish = "dist/frontend/browser"
 
+[build.environment]
+  # Angular 20 necesita Node 20.19+ / 22.12+.
+  NODE_VERSION = "22"
+
+# SPA: recargar cualquier ruta sirve index.html (tambien esta en public/_redirects).
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Los JS/CSS llevan hash en el nombre: se pueden cachear para siempre.
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# index.html siempre fresco para que cada despliegue llegue al momento.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
