@@ -1,25 +1,25 @@
-<main class="main-menu" [class.high-contrast]="config().highContrastMode" [class.intro-paused]="introState() !== 'ready' && !match()">
+<main class="main-menu" [class.high-contrast]="config().highContrastMode"
+  [class.intro-paused]="introState() !== 'ready' && !match()">
   <nav class="social-links" aria-label="Enlaces sociales">
-    <button class="social-button" type="button" (click)="openSocial(youtubeUrl)" aria-label="Abrir YouTube" title="YouTube">
+    <button class="social-button" type="button" (click)="openSocial(youtubeUrl)" aria-label="Abrir YouTube"
+      title="YouTube">
       <svg viewBox="0 0 28 20" width="28" height="20" aria-hidden="true">
         <rect width="28" height="20" rx="5" fill="#ff0000" />
         <path d="M11 5.5v9l8-4.5z" fill="#ffffff" />
       </svg>
     </button>
-    <button class="social-button" type="button" (click)="openSocial(githubUrl)" aria-label="Abrir GitHub" title="GitHub">
+    <button class="social-button" type="button" (click)="openSocial(githubUrl)" aria-label="Abrir GitHub"
+      title="GitHub">
       <svg viewBox="0 0 16 16" width="24" height="24" aria-hidden="true">
-        <path
-          fill="#181717"
-          d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
-        />
+        <path fill="#181717"
+          d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
       </svg>
     </button>
   </nav>
 
   <section class="menu-panel" aria-labelledby="game-title">
-    <p class="eyebrow">Multijugador online</p>
-    <h1 id="game-title">Minijuegos Online</h1>
-    <p class="status-line">
+    <h1 id="game-title">Minigames Factory</h1>
+    <!-- <p class="status-line">
       Backend:
       <span [class.online]="backendStatus() === 'online'" [class.offline]="backendStatus() === 'sleeping'">
         {{ backendStatus() }}
@@ -28,7 +28,7 @@
       <span [class.online]="socketConnected()" [class.offline]="!socketConnected()">
         {{ socketConnected() ? 'conectado' : 'pendiente' }}
       </span>
-    </p>
+    </p> -->
 
     <div class="menu-actions" aria-label="Acciones principales">
       <button class="menu-button button-one" type="button" (click)="createRoom()">Crear Partida</button>
@@ -38,41 +38,37 @@
   </section>
 
   @if (setupMode(); as mode) {
-    <app-game-setup-flow
-      [mode]="mode"
-      [initialRoomCode]="setupRoomCode()"
-      [autoJoinAfterName]="setupAutoJoin()"
-      [resumeLobby]="setupResumeLobby()"
-      (closed)="closeSetup()"
-    />
+  <app-game-setup-flow [mode]="mode" [initialRoomCode]="setupRoomCode()" [autoJoinAfterName]="setupAutoJoin()"
+    [resumeLobby]="setupResumeLobby()" (closed)="closeSetup()" />
   }
 
   @if (showSettings()) {
-    <app-settings-modal (closed)="closeSettings()" />
+  <app-settings-modal (closed)="closeSettings()" />
   }
 
   @if (backendSleeping()) {
-    <app-backend-wake-overlay />
+  <app-backend-wake-overlay />
   }
 
   @if (match()) {
-    <app-game-screen />
+  <app-game-screen />
   }
 
   @if (introState() === 'disclaimer' && !match()) {
-    <div class="disclaimer-backdrop" role="dialog" aria-modal="true" aria-labelledby="disclaimer-title">
-      <section class="disclaimer-card">
-        <h2 id="disclaimer-title">Antes de empezar</h2>
-        <p>
-          <strong>Minijuegos Online</strong> es un proyecto personal hecho por diversión, sin ánimo de lucro y sin ningún
-          tipo de retribución económica.
-        </p>
-        <p>
-          Toda la música, imágenes y demás contenido que aparecen pertenecen a sus respectivos autores y se usan únicamente
-          para jugar entre amigos, sin fines comerciales.
-        </p>
-        <button class="disclaimer-button" type="button" (click)="continueFromDisclaimer()">Continuar</button>
-      </section>
-    </div>
+  <div class="disclaimer-backdrop" role="dialog" aria-modal="true" aria-labelledby="disclaimer-title">
+    <section class="disclaimer-card">
+      <h2 id="disclaimer-title">Antes de empezar</h2>
+      <p>
+        <strong>Minigames Factory</strong> es un proyecto personal hecho por diversión, sin ánimo de lucro y sin ningún
+        tipo de retribución económica.
+      </p>
+      <p>
+        Toda la música, imágenes y demás contenido que aparecen pertenecen a sus respectivos autores y se usan
+        únicamente
+        para jugar entre amigos, sin fines comerciales.
+      </p>
+      <button class="disclaimer-button" type="button" (click)="continueFromDisclaimer()">Continuar</button>
+    </section>
+  </div>
   }
 </main>

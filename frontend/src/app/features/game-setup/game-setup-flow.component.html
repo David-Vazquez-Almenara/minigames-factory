@@ -2,29 +2,31 @@
   <section class="setup-modal" role="dialog" aria-modal="true" aria-labelledby="setup-title"
     (click)="$event.stopPropagation()">
     <header>
-      <p>Minijuegos Online</p>
-      <h2 id="setup-title">{{ title() }}</h2>
+      <p>Minigames Factory</p>
+      <!-- <h2 id="setup-title">{{ title() }}</h2> -->
     </header>
 
     @if (step() === 'name') {
     <label class="field">
       <span>Nombre de usuario</span>
       <input type="text" autocomplete="nickname" maxlength="24" [ngModel]="playerName()"
-        (ngModelChange)="updatePlayerName($event)" (keyup.enter)="continueFromName()" placeholder="Tu nombre" autofocus />
+        (ngModelChange)="updatePlayerName($event)" (keyup.enter)="continueFromName()" placeholder="Tu nombre"
+        autofocus />
     </label>
 
     <div class="avatar-field">
       <app-player-avatar [avatarUrl]="avatarUrl().trim()" [name]="playerName()" [size]="72" />
       <label class="field">
         <span>Foto de perfil (URL de una imagen)</span>
-        <input type="url" inputmode="url" maxlength="800" [ngModel]="avatarUrl()" (ngModelChange)="updateAvatarUrl($event)"
-          (keyup.enter)="continueFromName()" placeholder="https://..." />
+        <input type="url" inputmode="url" maxlength="800" [ngModel]="avatarUrl()"
+          (ngModelChange)="updateAvatarUrl($event)" (keyup.enter)="continueFromName()" placeholder="https://..." />
       </label>
     </div>
 
     <div class="action-row">
       <button class="danger-button" type="button" (click)="cancel()">Cancelar</button>
-      <button class="success-button" type="button" [disabled]="loading()" (click)="continueFromName()">{{ loading() ? 'Comprobando foto...' : nextLabel() }}</button>
+      <button class="success-button" type="button" [disabled]="loading()" (click)="continueFromName()">{{ loading() ?
+        'Comprobando foto...' : nextLabel() }}</button>
     </div>
     }
 
@@ -165,7 +167,7 @@
 
 <ng-template #settingsFields>
   <label class="field compact">
-    <span>Rondas (una ruleta por ronda)</span>
+    <span>Número de rondas</span>
     <select [ngModel]="settings().rounds" (ngModelChange)="updateRounds($event)">
       @for (round of roundOptions; track round) {
       <option [ngValue]="round">{{ round }}</option>
@@ -174,12 +176,13 @@
   </label>
 
   <fieldset class="minigame-picker">
-    <legend>Minijuegos de la ruleta</legend>
+    <legend>Minijuegos disponibles</legend>
     @for (minigame of minigameCatalog(); track minigame.id) {
     <label class="toggle-row compact minigame-option" [style.--option-accent]="minigame.accent">
       <span>
         {{ minigame.title }}
-        <small>{{ minigame.minPlayers > 1 ? minigame.minPlayers + '+ jugadores' : 'Cualquier numero de jugadores' }}</small>
+        <small>{{ minigame.minPlayers > 1 ? minigame.minPlayers + '+ jugadores' : 'Cualquier numero de jugadores'
+          }}</small>
       </span>
       <input type="checkbox" [checked]="isMinigameEnabled(minigame.id)"
         (change)="toggleMinigame(minigame.id, $any($event.target).checked)" />

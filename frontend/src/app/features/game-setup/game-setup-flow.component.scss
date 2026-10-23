@@ -359,10 +359,12 @@ input[type='checkbox'] {
 .confirm-modal {
   width: min(360px, 100%);
   padding: 20px;
+  max-height: 80vh;
   text-align: center;
   background-color: #fff7ec;
   border: 3px solid #000;
   border-radius: 18px;
+  overflow: scroll;
 
   h3 {
     margin: 0 0 8px;
