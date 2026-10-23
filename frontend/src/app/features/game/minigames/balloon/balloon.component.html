@@ -1,0 +1,78 @@
+<section class="balloon" #root aria-label="Minijuego Cuidado que explota">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <!-- Nombre bajo los pies de cada Mii. -->
+  <div class="labels" #labels aria-hidden="true">
+    @for (entry of queue(); track entry.playerId) {
+    <div class="tag" [attr.data-bl-label]="entry.playerId" [class.mine]="entry.mine" [class.current]="entry.current">
+      {{ entry.mine ? 'Tú' : entry.name }}
+    </div>
+    }
+  </div>
+
+  <header class="top-bar" #topBar>
+    <span class="pill title">¡Cuidado que explota!</span>
+    @if (state(); as game) {
+    <span class="pill">Ronda <b>{{ game.round }}</b></span>
+    <span class="pill air">Aire: <b>{{ game.air }}</b></span>
+    @if (game.stage === 'pumping' && !game.outcome) {
+    <span class="pill timer" [class.hurry]="turnTimer.seconds() <= 5">{{ turnTimer.seconds() }}s</span>
+    }
+    }
+  </header>
+
+  <!-- Fila: quien esta en la palanca y quien va despues (el orden no cambia entre rondas). -->
+  @if (!state()?.outcome) {
+  <ol class="queue-strip" aria-label="Orden de la fila">
+    @for (entry of queue(); track entry.playerId) {
+    <li [class.current]="entry.current" [class.mine]="entry.mine" [title]="entry.name">
+      <app-player-avatar [avatarUrl]="entry.avatarUrl" [name]="entry.name" [color]="entry.colorId" [size]="entry.current ? 34 : 26" />
+    </li>
+    }
+  </ol>
+  }
+
+  <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
+    @if (isMyTurn() && state()?.stage === 'pumping') {
+    <div class="pump-panel">
+      <button class="pump-button" type="button" [disabled]="!canPump()" (pointerdown)="pump()" (click)="pumpFromKeyboard($event)">
+        <span>¡HINCHAR!</span>
+        <small>o pulsa Espacio</small>
+      </button>
+      <div class="pump-side">
+        <p class="pumps">Palancazos: <b>{{ pumpsDone() }}</b></p>
+        <button class="pass-button" type="button" [disabled]="!canPass()" (click)="passTurn()">Pasar turno</button>
+      </div>
+    </div>
+    }
+    <p class="status" [class.mine]="isMyTurn()">{{ statusText() }}</p>
+    @if (errorMessage()) {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+    }
+  </footer>
+
+  @if (state()?.outcome; as outcome) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado del globo">
+      <h2>¡BOOM!</h2>
+      <p class="hint">
+        Explotó con <b>{{ outcome.air }}</b> de aire (aguantaba {{ outcome.capacity }}) en la ronda {{ outcome.round }}.
+      </p>
+      <ol>
+        @for (row of results(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.exploded]="row.exploded">
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="30" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.exploded ? '¡Le explotó!' : 'Sobrevive' }}</span>
+          <span class="points">{{ row.points > 0 ? '+' + row.points : '−' + (0 - row.points) }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la escena en 3D, pero puedes jugar con los botones.</p>
+  }
+</section>

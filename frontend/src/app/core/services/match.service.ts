@@ -165,6 +165,38 @@ export class MatchService {
     return this.socketService.pogoJump(lobbyId, gain);
   }
 
+  betBlackjack(lobbyId: string, handNumber: number, amount: number) {
+    return this.socketService.betBlackjack(lobbyId, handNumber, amount);
+  }
+
+  blackjackAction(lobbyId: string, action: 'hit' | 'stand', turnToken: string) {
+    return this.socketService.blackjackAction(lobbyId, action, turnToken);
+  }
+
+  stopBarrel(lobbyId: string, roundId: string, elapsedMs: number) {
+    return this.socketService.stopBarrel(lobbyId, roundId, elapsedMs);
+  }
+
+  pumpBalloon(lobbyId: string, turnToken: string) {
+    return this.socketService.pumpBalloon(lobbyId, turnToken);
+  }
+
+  passBalloon(lobbyId: string, turnNumber: number) {
+    return this.socketService.passBalloon(lobbyId, turnNumber);
+  }
+
+  voteCup(lobbyId: string, round: number, slot: number) {
+    return this.socketService.voteCup(lobbyId, round, slot);
+  }
+
+  chooseLane(lobbyId: string, round: number, lane: number) {
+    return this.socketService.chooseLane(lobbyId, round, lane);
+  }
+
+  serverNow(): number {
+    return this.socketService.serverNow();
+  }
+
   clearMatchState(): void {
     this.socketService.clearMatch();
     this.calculatedScoreboardKey.set('');

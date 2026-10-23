@@ -3,6 +3,28 @@
   width: 100%;
 }
 
+// A pantalla completa la escena ocupa todo su contenedor y no lleva marco ni fondo.
+:host(.fill) {
+  height: 100%;
+
+  .stage {
+    height: 100%;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  // Etiquetas mas grandes cuando la escena ocupa toda la pantalla.
+  .label-text.tone-name {
+    max-width: 180px;
+    font-size: 1rem;
+  }
+
+  .badge {
+    font-size: 0.85rem;
+  }
+}
+
 .stage {
   position: relative;
   width: 100%;
@@ -31,11 +53,13 @@
   }
 }
 
+// Nombre arriba y puntuacion debajo.
 .mii-label {
   position: absolute;
   top: 0;
   left: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 4px;
   pointer-events: none;

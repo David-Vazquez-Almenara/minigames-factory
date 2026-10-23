@@ -1,0 +1,92 @@
+<section class="barrels" #root aria-label="Minijuego Barriles">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <!-- Nombre y marca bajo los pies de cada jugador visible. -->
+  <div class="labels" #labels aria-hidden="true">
+    @for (racer of racers(); track racer.playerId) {
+    <div class="tag" [attr.data-br-label]="racer.playerId" [class.mine]="racer.mine" [class.crushed]="racer.crushed" [class.stopped]="racer.height !== null">
+      <strong>{{ racer.mine ? 'Tú' : racer.name }}</strong>
+      @if (racer.label) {<span>{{ racer.label }}</span>}
+    </div>
+    }
+  </div>
+
+  <header class="top-bar" #topBar>
+    <span class="pill title">Barriles</span>
+    <span class="pill stage">
+      @if (state()?.stage === 'results') {
+      Resultados
+      } @else if (!started()) {
+      Prepárate
+      } @else if (finished()) {
+      Esperando al resto
+      } @else {
+      ¡Está cayendo!
+      }
+    </span>
+  </header>
+
+  @if (racers().length && state()?.stage !== 'results') {
+  <aside class="racer-list" aria-label="Estado de los jugadores">
+    @for (racer of racers(); track racer.playerId) {
+    <div class="racer-row" [class.mine]="racer.mine" [class.crushed]="racer.crushed" [class.stopped]="racer.height !== null">
+      <app-player-avatar [avatarUrl]="racer.avatarUrl" [name]="racer.name" [color]="racer.colorId" [size]="24" />
+      <b>{{ racer.mine ? 'Tú' : racer.name }}</b>
+      @if (racer.label) {<span>{{ racer.label }}</span>}
+    </div>
+    }
+  </aside>
+  }
+
+  @if (state()?.stage === 'falling' && !started()) {
+  <div class="countdown" aria-live="assertive">
+    @for (second of [countdown.seconds()]; track second) {
+    <span>{{ second }}</span>
+    }
+  </div>
+  } @else if (showGo() && !finished()) {
+  <div class="countdown go" aria-live="assertive"><span>¡YA!</span></div>
+  }
+
+  <footer class="dock" #dock [class.hidden]="state()?.stage === 'results'">
+    @if (isRacer()) {
+    <button
+      class="stop-button"
+      type="button"
+      [disabled]="!canStop()"
+      [class.armed]="canStop()"
+      (pointerdown)="stop()"
+      (click)="stop()"
+    >
+      <span>¡PARA!</span>
+      <small>o pulsa Espacio</small>
+    </button>
+    }
+
+    <p class="status" [class.crushed]="localCrushed()" [class.stopped]="localStop() !== null">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Clasificación de los barriles">
+      <h2>Clasificación</h2>
+      <p class="hint">Gana quien para el barril más abajo sin que le aplaste.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.crushed]="row.status === 'crushed'">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="30" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="height">{{ row.heightText }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la escena en 3D, pero puedes jugar con el botón y el medidor.</p>
+  }
+</section>

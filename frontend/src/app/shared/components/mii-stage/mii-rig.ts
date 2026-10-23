@@ -2,7 +2,36 @@
 
 type Three = typeof ThreeModule;
 
-export type MiiMood = 'idle' | 'happy' | 'sad' | 'neutral' | 'dance-big' | 'dance-small' | 'clap';
+export type MiiMood =
+  | 'idle'
+  | 'happy'
+  | 'sad'
+  | 'neutral'
+  | 'dance-big'
+  | 'dance-small'
+  | 'clap'
+  // Minijuegos: sentado a la mesa, crupier, mirando al barril y mareado en el suelo.
+  | 'seated'
+  | 'seated-active'
+  | 'seated-happy'
+  | 'seated-sad'
+  | 'dealer'
+  | 'look-up'
+  | 'relief'
+  | 'dizzy'
+  // Cuidado que explota: caminar por el escenario y empujar la palanca.
+  | 'walk'
+  | 'lever'
+  // Cubiletes: el crupier mueve los brazos arriba y abajo mientras mezcla.
+  | 'shuffle';
+export type MiiPose = 'stand' | 'sit' | 'ground-sit';
+export type MiiUpdateMode = 'lobby' | 'scoreboard' | 'podium' | 'game';
+
+export interface MiiRigOptions {
+  pantsColor?: string;
+  /** Pajarita roja (crupier). */
+  bowTie?: boolean;
+}
 type MiiAction = 'wave' | 'jump' | 'spin' | 'look' | 'stretch' | 'dance' | 'clap';
 
 const LOBBY_ACTIONS: Array<{ type: MiiAction; duration: number }> = [
@@ -48,7 +77,12 @@ export class MiiRig {
   private sadVariant: 'sigh' | 'slump' = 'sigh';
   private lastMood: MiiMood = 'idle';
 
+  private dizzyStars: ThreeModule.Group | null = null;
+
   mood: MiiMood = 'idle';
+  pose: MiiPose = 'stand';
+  /** 0..1: cuanto esta empujando la palanca hacia abajo (mood 'lever'). */
+  leverPull = 0;
   /** Altura sobre el suelo (p. ej. subido a un escalon del podio). */
   baseY = 0;
   targetX = 0;
@@ -57,11 +91,12 @@ export class MiiRig {
   constructor(
     private readonly THREE: Three,
     shirtColor: string,
+    options: MiiRigOptions = {},
   ) {
     const T = THREE;
     const material = (color: number | string, roughness = 0.42) => this.track(new T.MeshStandardMaterial({ color, roughness, metalness: 0 }));
     const skin = material(SKIN, 0.55);
-    const pants = material(PANTS, 0.5);
+    const pants = material(options.pantsColor || PANTS, 0.5);
     const shoes = material(SHOES, 0.5);
     this.shirtMaterial = material(shirtColor, 0.38);
     // Hasta que llega la foto, la cara es del color de la piel.
@@ -119,6 +154,22 @@ export class MiiRig {
     const neck = new T.Mesh(this.track(new T.CylinderGeometry(0.075, 0.085, 0.12, 14)), skin);
     neck.position.y = 0.64;
     this.body.add(torso, hips, neck);
+
+    if (options.bowTie) {
+      const bowMaterial = material(0xc0182a, 0.4);
+      const knot = new T.Mesh(this.track(new T.SphereGeometry(0.035, 10, 8)), bowMaterial);
+      const wing = this.track(new T.ConeGeometry(0.06, 0.1, 10));
+      const left = new T.Mesh(wing, bowMaterial);
+      left.rotation.z = Math.PI / 2;
+      left.position.x = -0.06;
+      const right = new T.Mesh(wing, bowMaterial);
+      right.rotation.z = -Math.PI / 2;
+      right.position.x = 0.06;
+      const bow = new T.Group();
+      bow.add(knot, left, right);
+      bow.position.set(0, 0.59, 0.17);
+      this.body.add(bow);
+    }
 
     // Brazos (pivote en el hombro); las manos van del color de la camiseta, como los Mii.
     const armGeometry = this.track(new T.CapsuleGeometry(0.07, 0.36, 6, 12));
@@ -189,7 +240,7 @@ export class MiiRig {
     return this.leavingAt >= 0 && time - this.leavingAt > 0.45;
   }
 
-  update(time: number, delta: number, mode: 'lobby' | 'scoreboard' | 'podium'): void {
+  update(time: number, delta: number, mode: MiiUpdateMode): void {
     const root = this.root;
     root.position.x += (this.targetX - root.position.x) * Math.min(1, delta * 6);
     root.position.y = this.baseY;
@@ -205,13 +256,62 @@ export class MiiRig {
 
     this.applyIdle(time);
 
-    if (mode === 'lobby' || this.mood === 'idle') {
+    if (mode === 'lobby' || (mode !== 'game' && this.mood === 'idle')) {
       this.applyLobbyActions(time);
-    } else {
+    } else if (this.mood !== 'idle') {
       this.applyMood(time);
     }
 
+    this.applyPose();
+    this.updateDizzyStars(time);
     this.applyEnterAndLeave(time);
+  }
+
+  /** Posturas que cambian la base del cuerpo: sentado en un taburete o sentado en el suelo. */
+  private applyPose(): void {
+    const hip = this.pose === 'ground-sit' ? 0.2 : HIP_HEIGHT;
+    this.body.position.y += hip - HIP_HEIGHT;
+    this.legLeft.position.y = hip - 0.04;
+    this.legRight.position.y = hip - 0.04;
+
+    if (this.pose === 'sit' || this.pose === 'ground-sit') {
+      // Piernas hacia delante; en el suelo, un poco abiertas.
+      const spread = this.pose === 'ground-sit' ? 0.22 : 0.04;
+      this.legLeft.rotation.set(-1.45, 0, -spread);
+      this.legRight.rotation.set(-1.45, 0, spread);
+    }
+  }
+
+  /** Estrellitas girando sobre la cabeza cuando esta mareado. */
+  private updateDizzyStars(time: number): void {
+    const dizzy = this.mood === 'dizzy';
+
+    if (!dizzy) {
+      if (this.dizzyStars) {
+        this.dizzyStars.visible = false;
+      }
+      return;
+    }
+
+    if (!this.dizzyStars) {
+      const T = this.THREE;
+      const starMaterial = this.track(new T.MeshStandardMaterial({ color: 0xffd23f, emissive: 0x6b5200, roughness: 0.4 }));
+      const starGeometry = this.track(new T.OctahedronGeometry(0.07, 0));
+      this.dizzyStars = new T.Group();
+
+      for (let index = 0; index < 4; index += 1) {
+        const star = new T.Mesh(starGeometry, starMaterial);
+        const angle = (index / 4) * Math.PI * 2;
+        star.position.set(Math.cos(angle) * 0.42, 0, Math.sin(angle) * 0.42);
+        this.dizzyStars.add(star);
+      }
+
+      this.dizzyStars.position.y = 1.02;
+      this.head.add(this.dizzyStars);
+    }
+
+    this.dizzyStars.visible = true;
+    this.dizzyStars.rotation.y = time * 2.2;
   }
 
   dispose(): void {
@@ -330,6 +430,10 @@ export class MiiRig {
       this.lastMood = this.mood;
     }
 
+    if (this.applyGameMood(local)) {
+      return;
+    }
+
     if (this.mood === 'dance-big') {
       this.applyBigDance(local);
       return;
@@ -394,6 +498,114 @@ export class MiiRig {
     this.armRight.rotation.x = -shrug * 0.6;
     this.body.position.y += shrug * 0.03;
     this.head.rotation.z += shrug * 0.22;
+  }
+
+  /** Estados de los minijuegos 3D (mesa de blackjack y barriles). Devuelve true si ha aplicado alguno. */
+  private applyGameMood(local: number): boolean {
+    switch (this.mood) {
+      case 'seated':
+        // Brazos apoyados sobre la mesa.
+        this.armLeft.rotation.set(-1.15, 0, -0.08);
+        this.armRight.rotation.set(-1.15, 0, 0.08);
+        this.head.rotation.x = 0.12;
+        return true;
+      case 'seated-active': {
+        // Su turno: mira sus cartas y tamborilea con los dedos.
+        this.armLeft.rotation.set(-1.2, 0, -0.06);
+        this.armRight.rotation.set(-1.3 + Math.sin(local * 9) * 0.08, 0, 0.1);
+        this.head.rotation.x = 0.28;
+        this.head.rotation.y = Math.sin(local * 0.9) * 0.15;
+        return true;
+      }
+      case 'seated-happy': {
+        const wave = Math.sin(local * 10);
+        this.armLeft.rotation.set(0, 0, -(2.3 + wave * 0.18));
+        this.armRight.rotation.set(0, 0, 2.3 - wave * 0.18);
+        this.body.position.y += Math.abs(Math.sin(local * 5)) * 0.04;
+        this.head.rotation.x = -0.15;
+        return true;
+      }
+      case 'seated-sad':
+        this.armLeft.rotation.set(-1.0, 0, -0.04);
+        this.armRight.rotation.set(-1.0, 0, 0.04);
+        this.body.rotation.x = 0.2;
+        this.head.rotation.x = 0.55;
+        this.head.rotation.z = 0.15 + Math.sin(local * 0.8) * 0.04;
+        return true;
+      case 'dealer': {
+        // Crupier: manos sobre la mesa, atento al juego.
+        this.armLeft.rotation.set(-0.95, 0, -0.1);
+        this.armRight.rotation.set(-0.95 + Math.max(0, Math.sin(local * 1.7)) * 0.15, 0, 0.1);
+        this.head.rotation.x = 0.18;
+        return true;
+      }
+      case 'look-up': {
+        // Mirando el barril con nervios: cabeza arriba y un leve temblor.
+        const tremble = Math.sin(local * 38) * 0.012;
+        this.head.rotation.x = -0.55 + tremble;
+        this.head.rotation.y *= 0.3;
+        this.armLeft.rotation.set(-0.35, 0, -0.45 + tremble * 4);
+        this.armRight.rotation.set(-0.35, 0, 0.45 - tremble * 4);
+        this.body.position.y -= 0.02;
+        return true;
+      }
+      case 'relief': {
+        // Se ha salvado: se seca la frente y respira.
+        const breath = Math.sin(local * 2.4);
+        this.armRight.rotation.set(-2.4, 0, 0.55 + breath * 0.08);
+        this.armLeft.rotation.set(0.1, 0, -0.25);
+        this.head.rotation.x = -0.2 + breath * 0.05;
+        this.head.rotation.z = 0.1;
+        return true;
+      }
+      case 'walk': {
+        // Paso alegre: piernas y brazos alternos, con un pequeno rebote en cada paso.
+        const stride = Math.sin(local * 9);
+        this.legLeft.rotation.x = stride * 0.55;
+        this.legRight.rotation.x = -stride * 0.55;
+        this.armLeft.rotation.x = -stride * 0.5;
+        this.armRight.rotation.x = stride * 0.5;
+        this.body.position.y += Math.abs(Math.cos(local * 9)) * 0.05;
+        this.body.rotation.z = stride * 0.04;
+        this.head.rotation.x = 0.04;
+        return true;
+      }
+      case 'shuffle': {
+        // Brazos alternos arriba y abajo sobre la mesa, rapido, como moviendo los cubiletes.
+        const beat = Math.sin(local * 13);
+        this.armLeft.rotation.set(-1.15 + beat * 0.35, 0, -0.28 - Math.abs(beat) * 0.12);
+        this.armRight.rotation.set(-1.15 - beat * 0.35, 0, 0.28 + Math.abs(beat) * 0.12);
+        this.body.rotation.y = beat * 0.08;
+        this.head.rotation.x = 0.22;
+        this.head.rotation.y = -beat * 0.12;
+        return true;
+      }
+      case 'lever': {
+        // Con las dos manos en el mango de la palanca, a la altura del pecho; al empujar se agacha un poco.
+        const pull = Math.min(1, Math.max(0, this.leverPull));
+        this.armLeft.rotation.set(-1.45 + pull * 0.65, 0, -0.32);
+        this.armRight.rotation.set(-1.45 + pull * 0.65, 0, 0.32);
+        this.body.rotation.x = 0.08 + pull * 0.22;
+        this.body.position.y -= pull * 0.07;
+        this.head.rotation.x = -0.35 + pull * 0.2;
+        this.legLeft.rotation.x = pull * 0.12;
+        this.legRight.rotation.x = -pull * 0.12;
+        return true;
+      }
+      case 'dizzy': {
+        // Sentado en el suelo, apoyado en las manos, con la cabeza girando en circulos sobre el cuello.
+        const swirl = local * 1.7;
+        this.head.rotation.x = Math.sin(swirl) * 0.28;
+        this.head.rotation.z = Math.cos(swirl) * 0.28;
+        this.head.rotation.y = Math.sin(swirl * 0.5) * 0.15;
+        this.body.rotation.x = -0.12;
+        this.armLeft.rotation.set(0.75, 0, -0.55);
+        this.armRight.rotation.set(0.75, 0, 0.55);
+        return true;
+      }
+      default:
+        return false;
+    }
   }
 
   /** Baile de campeon: saltitos, brazos arriba alternos, cadera y una vuelta cada pocos compases. */

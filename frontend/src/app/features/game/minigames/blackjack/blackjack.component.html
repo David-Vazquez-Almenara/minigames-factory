@@ -1,0 +1,200 @@
+<section class="blackjack" #root aria-label="Minijuego Blackjack">
+  <canvas #canvas class="table-canvas" aria-hidden="true"></canvas>
+
+  <!-- Etiquetas que siguen a cada jugador en 3D: nombre y saldo sobre la cabeza, suma bajo las cartas y apuesta. -->
+  <div class="labels" #labels aria-hidden="true">
+    @for (seat of tableSeats(); track seat.playerId) {
+    <div
+      class="tag name-tag"
+      [attr.data-bj-label]="'name:' + seat.playerId"
+      [class.mine]="seat.isLocal"
+      [class.active]="seat.isActive"
+      [class.away]="!seat.connected"
+    >
+      <strong>{{ seat.isLocal ? 'Tú' : seat.name }}</strong>
+      <span class="tag-chips"><i class="chip-dot" [style.background-color]="seat.tierColor"></i>{{ seat.chips }}</span>
+      <span class="tag-status" [attr.data-tone]="seat.result || seat.status">{{ seat.statusLabel }}</span>
+    </div>
+    @if (seat.cards.length) {
+    <div
+      class="tag sum-tag"
+      [attr.data-bj-label]="'sum:' + seat.playerId"
+      [class.bust]="seat.value.total > 21"
+      [class.blackjack]="seat.status === 'blackjack'"
+      [class.active]="seat.isActive"
+    >
+      {{ seat.sumLabel }}
+    </div>
+    }
+    @if (seat.bet > 0) {
+    <div class="tag bet-tag" [attr.data-bj-label]="'bet:' + seat.playerId">{{ seat.bet }}</div>
+    }
+    }
+    <div class="tag name-tag dealer" data-bj-label="name:dealer"><strong>Crupier</strong></div>
+    @if (dealerSum()) {
+    <div class="tag sum-tag dealer" data-bj-label="sum:dealer" [class.bust]="(state()?.dealer?.value?.total || 0) > 21">{{ dealerSum() }}</div>
+    }
+  </div>
+
+  <header class="top-bar" #topBar>
+    @if (state(); as table) {
+    <span class="pill hand">Mano <b>{{ table.handNumber || 1 }}</b> de {{ table.totalHands }}</span>
+    @if (groupCount() > 1) {
+    <span class="pill group">Grupo <b>{{ displayedGroup() + 1 }}</b> de {{ groupCount() }}</span>
+    }
+    <span class="pill stage" [class.mine]="isMyTurn()">{{ stageLabel() }}</span>
+    @if (timerSeconds() !== null) {
+    <span class="pill timer" [class.hurry]="(timerSeconds() ?? 99) <= 5">{{ timerSeconds() }}s</span>
+    }
+    }
+    <button class="pill panel-toggle" type="button" [attr.aria-expanded]="panelOpen()" (click)="togglePanel()">
+      {{ panelOpen() ? 'Ocultar jugadores' : 'Jugadores' }}
+    </button>
+  </header>
+
+  @if (state()?.stage === 'group-change') {
+  <div class="group-banner" aria-live="polite">
+    <span>Se sienta el</span>
+    <strong>Grupo {{ (state()?.groupIndex || 0) + 1 }}</strong>
+    <div class="group-faces">
+      @for (seat of incomingGroup(); track seat.playerId) {
+      <app-player-avatar [avatarUrl]="seat.avatarUrl" [name]="seat.name" [color]="seat.colorId" [size]="34" />
+      }
+    </div>
+  </div>
+  }
+
+  <aside class="players-panel" #panel [class.open]="panelOpen()" aria-label="Jugadores de la mesa">
+    @if (panelOpen()) {
+    <h2>Jugadores</h2>
+    <ul>
+      @for (seat of seats(); track seat.playerId) {
+      <li [class.active]="seat.isActive" [class.mine]="seat.isLocal" [class.away]="!seat.connected" [class.off-table]="seat.status === 'queued'">
+        <app-player-avatar [avatarUrl]="seat.avatarUrl" [name]="seat.name" [color]="seat.colorId" [size]="28" />
+        <span class="who">
+          <b>{{ seat.name }}{{ seat.isLocal ? ' (tú)' : '' }}</b>
+          <small [attr.data-tone]="seat.result || seat.status">{{ seat.statusLabel }}</small>
+        </span>
+        <span class="money">
+          <span class="chips" [title]="seat.tierLabel"><i class="chip-dot" [style.background-color]="seat.tierColor"></i>{{ seat.chips }}</span>
+          <small>{{ seat.bet > 0 ? 'Apuesta ' + seat.bet : '—' }}</small>
+        </span>
+      </li>
+      }
+    </ul>
+    }
+  </aside>
+
+  <footer class="dock" #dock [attr.data-mode]="dockMode()">
+    @switch (dockMode()) {
+      @case ('bet') {
+      <div class="bet-panel">
+        <div class="bet-amount">
+          <span>Tu apuesta</span>
+          <strong>{{ betAmount() }}</strong>
+          <small>Si pierdes te quedan <b>{{ chipsIfLose() }}</b> fichas</small>
+        </div>
+        <div class="bet-controls">
+          <input
+            class="bet-slider"
+            type="range"
+            [min]="minBet()"
+            [max]="maxBet()"
+            step="5"
+            [value]="betAmount()"
+            [style.--fill]="betFill()"
+            aria-label="Cantidad a apostar"
+            (input)="setBetFromSlider($event)"
+          />
+          <div class="chip-buttons">
+            @for (amount of quickAmounts; track amount) {
+            <button type="button" class="chip-button" [attr.data-amount]="amount" [disabled]="pending() || betAmount() >= maxBet()" (click)="addBet(amount)">
+              +{{ amount }}
+            </button>
+            }
+            <button type="button" class="ghost" [disabled]="pending()" (click)="resetBet()">Mínimo</button>
+            <button type="button" class="ghost all-in" [disabled]="pending()" (click)="allIn()">All-in</button>
+          </div>
+        </div>
+        <div class="bet-actions">
+          <button type="button" class="secondary" [disabled]="pending()" (click)="sitOut()">No apostar</button>
+          <button type="button" class="primary" [disabled]="pending()" (click)="confirmBet()">Apostar {{ betAmount() }}</button>
+        </div>
+        <p class="rules">Mínimo {{ minBet() }}. Ganar paga 1 a 1, blackjack 3 a 2 y el empate devuelve la apuesta. El crupier se planta con 17 o en cuanto ya os gana a todos.</p>
+      </div>
+      }
+      @case ('turn') {
+      <div class="turn-panel">
+        <p>Tienes <b>{{ mySeat()?.sumLabel }}</b> · el crupier enseña <b>{{ dealerSum() }}</b></p>
+        <div class="turn-actions">
+          <button type="button" class="primary hit" [disabled]="pending()" (click)="act('hit')">Pedir carta</button>
+          <button type="button" class="secondary stand" [disabled]="pending()" (click)="act('stand')">Plantarse</button>
+        </div>
+      </div>
+      }
+      @case ('summary') {
+      <div class="summary-panel" [attr.data-tone]="summaryText().tone">
+        <strong>{{ summaryText().title }}</strong>
+        <span>{{ summaryText().detail }}</span>
+        <small>
+          {{ (state()?.handNumber || 0) < (state()?.totalHands || 0) ? 'Siguiente mano en ' + summaryTimer.seconds() + 's' : 'Preparando la clasificación…' }}
+        </small>
+      </div>
+      }
+      @case ('final') {}
+      @case ('loading') {
+      <p class="watch">Preparando la mesa…</p>
+      }
+      @default {
+      <p class="watch">{{ watchText() }}</p>
+      }
+    }
+    @if (errorMessage()) {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+    }
+  </footer>
+
+  @if (state()?.stage === 'final' && ranking().length) {
+  <div class="final-overlay">
+    <section class="final-card" aria-label="Clasificación del blackjack">
+      <h2>Clasificación</h2>
+      <div class="final-table" role="table">
+        <div class="final-row head" role="row">
+          <span role="columnheader">#</span>
+          <span role="columnheader">Jugador</span>
+          <span role="columnheader">Inicial</span>
+          <span role="columnheader">Final</span>
+          <span role="columnheader">Neto</span>
+          <span role="columnheader" class="hands">Manos</span>
+          <span role="columnheader">Pts</span>
+        </div>
+        @for (row of ranking(); track row.playerId) {
+        <div class="final-row" role="row" [class.mine]="row.mine">
+          <span class="pos" role="cell">{{ row.position }}º</span>
+          <span class="who" role="cell">
+            <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="26" />
+            <b>{{ row.playerName }}</b>
+            @if (row.broke) {
+            <em class="broke">Sin fichas</em>
+            }
+          </span>
+          <span role="cell">{{ row.startChips }}</span>
+          <span role="cell"><b>{{ row.finalChips }}</b></span>
+          <span class="net" role="cell" [class.win]="row.net > 0" [class.lose]="row.net < 0">{{ row.netText }}</span>
+          <span class="hands" role="cell">
+            @for (cell of row.cells; track $index) {
+            <i [attr.data-tone]="cell.tone">{{ cell.text }}</i>
+            }
+          </span>
+          <span class="points" role="cell" [class.lose]="row.points < 0" [title]="row.broke ? 'Sin fichas: -10' : ''">{{ row.pointsText }}</span>
+        </div>
+        }
+      </div>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la mesa en 3D, pero puedes jugar con los controles y el panel de jugadores.</p>
+  }
+</section>

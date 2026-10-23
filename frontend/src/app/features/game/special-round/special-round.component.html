@@ -1,4 +1,4 @@
-﻿<section class="special-round-screen" aria-label="Ronda de minijuego">
+<section class="special-round-screen" aria-label="Ronda de minijuego">
   <header class="special-title" [class.compact]="stage() !== 'intro'">
     <h1>Minijuego</h1>
     <p>Ronda {{ specialRound()?.roundNumber }} de {{ match()?.totalRounds }}</p>
@@ -12,7 +12,28 @@
   </section>
   }
 
-  @if (stage() === 'game') {
+  @if (stage() === 'game' && isFullscreen()) {
+  <!-- Minijuegos a pantalla completa: ocupan toda la ventana, sin el ancho maximo ni el titulo del contenedor. -->
+  <main class="minigame-fullscreen">
+    @switch (specialRound()?.minigameId) {
+      @case ('blackjack') {
+      <app-blackjack />
+      }
+      @case ('barrels') {
+      <app-barrels />
+      }
+      @case ('balloon') {
+      <app-balloon />
+      }
+      @case ('cups') {
+      <app-cups />
+      }
+      @case ('cars') {
+      <app-cars />
+      }
+    }
+  </main>
+  } @else if (stage() === 'game') {
   <main class="minigame-container">
     @switch (specialRound()?.minigameId) {
       @case ('math-operations') {
@@ -48,8 +69,10 @@
   }
 
   @if (isHost() && specialRound()?.hasResults) {
-  <button class="skip-button results-ready" type="button" [disabled]="loading()" (click)="continueMinigame()">
-    {{ loading() ? 'Continuando...' : 'Ver marcador' }}
+  <button class="skip-button results-ready" [class.over-fullscreen]="stage() === 'game' && isFullscreen()" type="button" [disabled]="loading()" (click)="continueMinigame()">
+    {{ loading() ? 'Continuando...' : specialRound()?.autoScoreboardAt ? 'Ver marcador · ' + autoScoreboard.seconds() + 's' : 'Ver marcador' }}
   </button>
+  } @else if (specialRound()?.hasResults && specialRound()?.autoScoreboardAt) {
+  <p class="auto-scoreboard" [class.over-fullscreen]="stage() === 'game' && isFullscreen()">El marcador se abre en {{ autoScoreboard.seconds() }}s</p>
   }
 </section>

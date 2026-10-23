@@ -1,0 +1,73 @@
+<section class="cups" #root aria-label="Minijuego Cubiletes">
+  <canvas #canvas class="scene-canvas" [class.pickable]="canVote()" aria-hidden="true"></canvas>
+
+  <!-- Caras de quien ha elegido cada cubilete, en rejilla encima de el. -->
+  <div class="labels" #labels aria-hidden="true">
+    @for (cup of slots(); track cup.slot) {
+    <div class="cup-votes" [attr.data-cup-slot]="cup.slot" [class.mine]="cup.mine" [class.ball]="cup.ball">
+      <span class="cup-number">{{ cup.slot + 1 }}</span>
+      @if (cup.voters.length) {
+      <div class="faces">
+        @for (voter of cup.voters; track voter.playerId) {
+        <app-player-avatar [avatarUrl]="voter.avatarUrl" [name]="voter.name" [color]="voter.colorId" [size]="30" />
+        }
+      </div>
+      }
+    </div>
+    }
+  </div>
+
+  <header class="top-bar" #topBar>
+    <span class="pill title">Cubiletes</span>
+    @if (state(); as game) {
+    <span class="pill" [class.bonus]="game.round === game.totalRounds">Ronda <b>{{ game.round }}</b> de {{ game.totalRounds }}{{ game.round === game.totalRounds ? ' · ¡BONUS!' : '' }}</span>
+    <!-- El contador solo esta mientras se vota; al cerrar la votacion se desvanece. -->
+    <span class="pill timer" [class.gone]="game.stage !== 'voting'" [class.hurry]="game.stage === 'voting' && voteTimer.seconds() <= 5">
+      {{ game.stage === 'voting' ? voteTimer.seconds() : 0 }}s
+    </span>
+    }
+  </header>
+
+  <aside class="score-panel" aria-label="Puntos de los cubiletes">
+    @for (entry of scores(); track entry.playerId) {
+    <div class="score-row" [class.mine]="entry.mine">
+      <app-player-avatar [avatarUrl]="entry.avatarUrl" [name]="entry.name" [color]="entry.colorId" [size]="24" />
+      <b>{{ entry.mine ? 'Tú' : entry.name }}</b>
+      <span>{{ entry.score }}</span>
+    </div>
+    }
+  </aside>
+
+  <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
+    @if (canVote()) {
+    <div class="cup-buttons" aria-label="Elegir cubilete">
+      @for (cup of slots(); track cup.slot) {
+      <button type="button" class="cup-button" [class.selected]="cup.mine" (click)="pick(cup.slot)">{{ cup.slot + 1 }}</button>
+      }
+    </div>
+    }
+    <p class="status">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de los cubiletes">
+      <h2>Resultados</h2>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine">
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="hits">{{ row.hits }}/{{ state()?.totalRounds }} aciertos</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la escena en 3D, pero puedes elegir con los botones.</p>
+  }
+</section>

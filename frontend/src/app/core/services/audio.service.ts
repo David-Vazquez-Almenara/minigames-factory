@@ -1,4 +1,4 @@
-﻿import { Injectable, computed, effect, inject } from '@angular/core';
+﻿import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { ConfigService } from './config.service';
 
 export type SoundEffect =
@@ -16,27 +16,37 @@ export type SoundEffect =
   | 'points'
   | 'victory'
   | 'defeat'
-  | 'pop';
+  | 'pop'
+  | 'pump'
+  | 'burst'
+  | 'horn';
 
-export type MusicTrack = 'lobby' | 'minigame' | 'scoreboard';
+export type MusicTrack = 'lobby' | 'roulette' | 'minigame' | 'scoreboard';
 export type FileEffect = 'win' | 'lose';
+/** Estado real de la musica: 'blocked' = el navegador no deja reproducir hasta que el usuario toque la pagina. */
+export type MusicState = 'idle' | 'starting' | 'playing' | 'blocked';
 
 // Archivos de audio: basta con dejarlos en frontend/public/assets/audio con estos nombres.
 // Si falta alguno la app sigue funcionando (la musica no suena y los efectos usan su version sintetizada).
 const MUSIC_FILES: Record<MusicTrack, string> = {
   lobby: 'assets/audio/musica-lobby.mp3',
+  roulette: 'assets/audio/musica-ruleta.mp3',
   minigame: 'assets/audio/musica-minijuego.mp3',
   scoreboard: 'assets/audio/musica-marcador.mp3',
 };
-const EFFECT_FILES: Record<FileEffect, { src: string; fallback: SoundEffect }> = {
-  win: { src: 'assets/audio/efecto-ganar.mp3', fallback: 'victory' },
-  lose: { src: 'assets/audio/efecto-perder.mp3', fallback: 'defeat' },
+// Si una pista no existe se usa otra en su lugar (la de la ruleta es opcional: sin ella suena la de minijuego).
+const TRACK_FALLBACK: Partial<Record<MusicTrack, MusicTrack>> = { roulette: 'minigame' };
+const EFFECT_FILES: Record<FileEffect, { src: string; fallback: SoundEffect; gain: number }> = {
+  win: { src: 'assets/audio/efecto-ganar.mp3', fallback: 'victory', gain: 0.85 },
+  // El de perder viene mas fuerte que el de ganar: se baja un poco.
+  lose: { src: 'assets/audio/efecto-perder.mp3', fallback: 'defeat', gain: 0.55 },
 };
 // La musica va por debajo de los efectos y de la voz en Discord.
 const MUSIC_HEADROOM = 0.55;
 // Ajuste por pista: la de minijuegos viene mas alta que las demas, asi que se atenua un poco.
 const TRACK_GAIN: Record<MusicTrack, number> = {
   lobby: 1,
+  roulette: 0.8,
   minigame: 0.65,
   scoreboard: 1,
 };
@@ -60,9 +70,12 @@ export class AudioService {
   private musicBlocked = false;
   /** Todos los reproductores de musica vivos (incluidos los que se estan apagando), para poder pararlos en seco. */
   private readonly musicPlayers = new Set<HTMLAudioElement>();
+  /** Pistas opcionales que no estan en la carpeta de audio (se usa su pista de reserva directamente). */
+  private readonly missingTracks = new Set<MusicTrack>();
 
   readonly musicVolume = computed(() => this.configService.config().musicVolume / 100);
   readonly effectsVolume = computed(() => this.configService.config().effectsVolume / 100);
+  readonly musicState = signal<MusicState>('idle');
 
   constructor() {
     // Los navegadores solo permiten audio tras un gesto del usuario: se desbloquea con el primero que haya.
@@ -74,11 +87,7 @@ export class AudioService {
       if (this.musicBlocked && this.music) {
         const audio = this.music;
         this.musicBlocked = false;
-        void audio.play().catch(() => {
-          if (audio === this.music) {
-            this.musicBlocked = true;
-          }
-        });
+        this.startPlayback(audio);
       }
     };
 
@@ -97,7 +106,9 @@ export class AudioService {
   }
 
   /** Cambia la musica de fondo (en bucle). La anterior se apaga con un fundido; null deja silencio. */
-  playMusic(track: MusicTrack | null): void {
+  playMusic(requested: MusicTrack | null): void {
+    const track = requested && this.missingTracks.has(requested) ? (TRACK_FALLBACK[requested] ?? requested) : requested;
+
     if (track === this.currentTrack) {
       return;
     }
@@ -108,6 +119,7 @@ export class AudioService {
     this.musicBlocked = false;
 
     if (!track) {
+      this.musicState.set('idle');
       return;
     }
 
@@ -119,11 +131,40 @@ export class AudioService {
     this.music = audio;
     this.musicPlayers.add(audio);
     this.fadeIn(audio, track);
-    void audio.play().catch(() => {
-      if (audio === this.music) {
-        this.musicBlocked = true;
-      }
-    });
+
+    const fallback = TRACK_FALLBACK[track];
+
+    if (fallback) {
+      // Pista opcional que no esta en la carpeta de audio: suena la de reserva (sin cortes al pedirla despues).
+      audio.onerror = () => {
+        this.missingTracks.add(track);
+
+        if (audio === this.music) {
+          this.releasePlayer(audio);
+          this.currentTrack = null;
+          this.playMusic(fallback);
+        }
+      };
+    }
+
+    this.startPlayback(audio);
+  }
+
+  private startPlayback(audio: HTMLAudioElement): void {
+    this.musicState.set('starting');
+    void audio
+      .play()
+      .then(() => {
+        if (audio === this.music) {
+          this.musicState.set('playing');
+        }
+      })
+      .catch(() => {
+        if (audio === this.music) {
+          this.musicBlocked = true;
+          this.musicState.set('blocked');
+        }
+      });
   }
 
   stopMusic(): void {
@@ -154,14 +195,14 @@ export class AudioService {
   /** Efecto de sonido desde archivo (ganar / perder); si el archivo no existe, usa el sintetizado. */
   playFileEffect(effect: FileEffect): void {
     const volume = this.effectsVolume();
-    const { src, fallback } = EFFECT_FILES[effect];
+    const { src, fallback, gain } = EFFECT_FILES[effect];
 
     if (volume <= 0) {
       return;
     }
 
     const audio = new Audio(src);
-    audio.volume = Math.min(1, volume * 0.85);
+    audio.volume = Math.min(1, volume * gain);
     audio.onerror = () => this.playEffect(fallback);
     void audio.play().catch(() => undefined);
   }
@@ -251,6 +292,45 @@ export class AudioService {
     }
   }
 
+  /** Motor de coche que se acerca y se aleja: sube de volumen y de tono y despues se apaga poco a poco. */
+  playEngine(durationMs: number): void {
+    const volume = this.effectsVolume();
+
+    if (volume <= 0) {
+      return;
+    }
+
+    try {
+      const context = this.ensureContext();
+
+      if (!context || !this.master || context.state !== 'running') {
+        return;
+      }
+
+      const at = context.currentTime + 0.01;
+      const duration = Math.max(0.6, durationMs / 1000);
+      this.master.gain.setValueAtTime(volume * EFFECTS_HEADROOM, at);
+      const oscillator = context.createOscillator();
+      const filter = context.createBiquadFilter();
+      const gain = context.createGain();
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(55, at);
+      oscillator.frequency.linearRampToValueAtTime(95, at + duration * 0.5);
+      oscillator.frequency.linearRampToValueAtTime(60, at + duration);
+      filter.type = 'lowpass';
+      filter.frequency.value = 520;
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.55, at + duration * 0.5);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+      oscillator.connect(filter).connect(gain).connect(this.master);
+      oscillator.start(at);
+      oscillator.stop(at + duration + 0.05);
+      this.noise(context, at, { duration, from: 300, to: 900, gain: 0.25 });
+    } catch {
+      // El audio es decorativo: un fallo nunca debe afectar a la partida.
+    }
+  }
+
   private ensureContext(): AudioContext | undefined {
     if (this.context) {
       return this.context;
@@ -329,6 +409,23 @@ export class AudioService {
         [392, 349, 311, 262].forEach((frequency, index) =>
           this.tone(context, at + index * 0.17, { frequency, duration: index === 3 ? 0.6 : 0.2, type: 'triangle', gain: 0.38 }),
         );
+        break;
+      case 'pump':
+        // Bombazo de aire: soplido que sube y un golpecito seco de la palanca.
+        this.noise(context, at, { duration: 0.32, from: 500, to: 2200, gain: 0.42 });
+        this.tone(context, at, { frequency: 140, endFrequency: 90, duration: 0.08, type: 'square', gain: 0.22 });
+        break;
+      case 'burst':
+        // Explosion del globo: golpe grave y estallido de ruido.
+        this.noise(context, at, { duration: 0.6, from: 4200, to: 220, gain: 0.95 });
+        this.tone(context, at, { frequency: 120, endFrequency: 38, duration: 0.45, type: 'sine', gain: 0.9 });
+        break;
+      case 'horn':
+        // Claxon de coche: dos pitidos de dos notas a la vez.
+        for (const start of [0, 0.32]) {
+          this.tone(context, at + start, { frequency: 392, duration: 0.24, type: 'square', gain: 0.22 });
+          this.tone(context, at + start, { frequency: 494, duration: 0.24, type: 'square', gain: 0.18 });
+        }
         break;
     }
   }

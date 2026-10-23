@@ -1,4 +1,4 @@
-﻿import { Injectable, signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { environment } from '../../../environments/environment';
 
@@ -74,8 +74,15 @@ export interface SpecialRoundPayload {
   minigameId: string;
   title: string;
   description: string;
+  /** Tiempos de la intro en el reloj del servidor: titulo "Minijuego" y despues la explicacion. */
+  startedAt?: number;
+  introMs?: number;
+  titleEndsAt?: number;
+  introEndsAt?: number;
   participantIds: string[];
   hasResults: boolean;
+  /** Si el host no pulsa "Ver marcador", el servidor lo abre solo en este momento. */
+  autoScoreboardAt?: number | null;
   preparedByHost?: boolean;
   operations?: MathOperationPayload[];
   submittedPlayerIds?: string[];
@@ -91,6 +98,165 @@ export interface SpecialRoundPayload {
   tenBut: TenButPublicState | null;
   pinturillo: PinturilloPublicState | null;
   pogo: PogoPublicState | null;
+  blackjack?: BlackjackPublicState | null;
+  barrels?: BarrelsPublicState | null;
+  balloon?: BalloonPublicState | null;
+  cups?: CupsPublicState | null;
+  cars?: CarsPublicState | null;
+}
+
+export interface CupsPublicState {
+  stage: 'shuffling' | 'voting' | 'closing' | 'reveal' | 'finished';
+  round: number;
+  totalRounds: number;
+  cupCount: number;
+  initialSlot: number;
+  moves: Array<{ type: 'swap' | 'fake'; a: number; b: number }>;
+  moveMs: number;
+  placeMs: number;
+  placeStartsAt: number;
+  shuffleStartsAt: number;
+  shuffleEndsAt: number;
+  voteEndsAt: number;
+  revealAt: number | null;
+  nextRoundAt: number | null;
+  revealedSlot: number | null;
+  votes: Array<{ playerId: string; slot: number }>;
+  scores: Array<{ playerId: string; score: number }>;
+  history: Array<{ round: number; ballSlot: number; votes: Array<{ playerId: string; slot: number }>; winners: string[] }>;
+  outcome: { ranking: Array<{ playerId: string; playerName: string; hits: number; points: number }> } | null;
+}
+
+export interface CarsPublicState {
+  stage: 'choosing' | 'waiting' | 'passing' | 'aftermath' | 'returning' | 'finished';
+  round: number;
+  maxRounds: number;
+  lanes: number;
+  sides: Array<{ playerId: string; side: 'left' | 'right'; index: number }>;
+  alive: string[];
+  choices: Array<{ playerId: string; lane: number }>;
+  chooseEndsAt: number | null;
+  hornAt: number | null;
+  passStartsAt: number | null;
+  impactAt: number | null;
+  driveMs: number;
+  nextRoundAt: number | null;
+  carLanes: number[];
+  hits: string[];
+  eliminated: Array<{ playerId: string; round: number }>;
+  outcome: {
+    rounds: number;
+    ranking: Array<{ playerId: string; playerName: string; survived: boolean; eliminatedRound: number | null; position: number; points: number }>;
+  } | null;
+}
+
+export interface BalloonPublicState {
+  stage: 'walking' | 'pumping' | 'exploded';
+  order: string[];
+  round: number;
+  turnIndex: number;
+  turnNumber: number;
+  currentPlayerId: string | null;
+  air: number;
+  pumpsThisTurn: number;
+  minCapacity: number;
+  maxCapacity: number;
+  walkMs: number;
+  turnStartsAt: number | null;
+  turnEndsAt: number | null;
+  turnToken: string | null;
+  lastPump: { playerId: string; air: number; turnNumber: number; pump: number; at: number } | null;
+  outcome: {
+    explodedBy: string | null;
+    explodedName: string;
+    air: number;
+    capacity: number;
+    round: number;
+    at: number;
+    results: Array<{ playerId: string; playerName: string; points: number }>;
+  } | null;
+}
+
+export interface BlackjackCard {
+  id: string;
+  rank?: string;
+  suit?: 'S' | 'H' | 'D' | 'C';
+  hidden?: boolean;
+}
+
+export type BlackjackOutcome = 'win' | 'blackjack' | 'push' | 'lose' | 'sat-out';
+
+export interface BlackjackSeat {
+  playerId: string;
+  chips: number;
+  bet: number;
+  confirmed: boolean;
+  status: 'queued' | 'betting' | 'ready' | 'sitting-out' | 'broke' | 'waiting' | 'playing' | 'blackjack' | 'stood' | 'bust';
+  cards: BlackjackCard[];
+  value: { total: number; soft: boolean };
+  history: Array<{ hand: number; bet: number; outcome: BlackjackOutcome; delta: number; total: number; chipsAfter: number }>;
+}
+
+export interface BlackjackPublicState {
+  stage: 'betting' | 'dealing' | 'player-turns' | 'group-change' | 'dealer-turn' | 'hand-summary' | 'final';
+  handNumber: number;
+  totalHands: number;
+  minBet: number;
+  startChips: number;
+  tableSize: number;
+  seats: string[];
+  /** Mesas de hasta 4 jugadores; con mas jugadores se juega grupo a grupo. */
+  groups: string[][];
+  groupIndex: number;
+  previousGroupIndex: number | null;
+  groupChangeEndsAt: number | null;
+  groupChangeMs: number;
+  turnLocked: boolean;
+  players: BlackjackSeat[];
+  dealer: { cards: BlackjackCard[]; value: { total: number; soft: boolean }; revealed: boolean };
+  dealOrder: Array<{ to: string; index: number; hidden?: boolean }>;
+  dealStartedAt: number | null;
+  dealInterval: number;
+  betEndsAt: number | null;
+  currentPlayerId: string | null;
+  turnEndsAt: number | null;
+  turnToken: string | null;
+  summaryEndsAt: number | null;
+  lastSummary: {
+    hand: number;
+    dealerTotal: number;
+    dealerBust: boolean;
+    results: Array<{ playerId: string; outcome: BlackjackOutcome; delta: number; bet: number; total: number }>;
+  } | null;
+  finalRanking: Array<{
+    playerId: string;
+    playerName: string;
+    position: number;
+    startChips: number;
+    finalChips: number;
+    net: number;
+    broke: boolean;
+    hands: Array<{ hand: number; outcome: BlackjackOutcome; delta: number }>;
+    points: number;
+  }> | null;
+}
+
+export interface BarrelRacer {
+  playerId: string;
+  status: 'falling' | 'stopped' | 'crushed';
+  height: number | null;
+  elapsedMs: number | null;
+}
+
+export interface BarrelsPublicState {
+  stage: 'falling' | 'results';
+  roundId: string;
+  startsAt: number;
+  fallMs: number;
+  startHeight: number;
+  exponent: number;
+  racers: BarrelRacer[];
+  ranking: Array<BarrelRacer & { position: number; points: number; playerName: string }> | null;
 }
 
 export interface ImpostorRoundResult {
@@ -354,6 +520,8 @@ export class SocketService {
   readonly pinturilloFrame = signal<string | null>(null);
   /** Ultimo salto recibido en la carrera de pogo, para animar al jugador correspondiente. */
   readonly lastPogoJump = signal<{ playerId: string; gain: number; at: number } | null>(null);
+  /** Cuando el host ya esta en el lobby: momento (reloj local) en que el resto vuelve tambien. */
+  readonly lobbyReturnAt = signal<number | null>(null);
   readonly playerId = this.getOrCreateStoredId(PLAYER_ID_KEY);
   private readonly playerSecret = this.getOrCreateStoredId(PLAYER_SECRET_KEY);
 
@@ -531,6 +699,21 @@ export class SocketService {
       });
     });
 
+    // Parada de un barril: solo actualiza a ese jugador y solo si es de la ronda en curso (los mensajes
+    // tardios de otra ronda se descartan). Nunca toca la prediccion local del propio jugador.
+    this.socket.on('match:barrels-update', (payload: { lobbyId: string; roundId: string; racer: BarrelRacer }) => {
+      this.match.update((currentMatch) => {
+        const barrels = currentMatch?.specialRound?.barrels;
+
+        if (!currentMatch || currentMatch.lobbyId !== payload.lobbyId || !barrels || barrels.roundId !== payload.roundId) {
+          return currentMatch;
+        }
+
+        const racers = barrels.racers.map((racer) => (racer.playerId === payload.racer.playerId && racer.status === 'falling' ? payload.racer : racer));
+        return { ...currentMatch, specialRound: { ...currentMatch.specialRound!, barrels: { ...barrels, racers } } };
+      });
+    });
+
     this.socket.on('match:host-paused', (payload: { lobbyId: string; deadline: number }) => {
       this.hostPauseDeadline.set(payload.deadline);
       this.match.update((currentMatch) =>
@@ -553,6 +736,13 @@ export class SocketService {
       this.clearMatch();
       this.lobby.set(payload.lobby);
       this.returnedToLobby.set(payload.lobby);
+    });
+
+    // El host ya esta en el lobby: el resto vuelve automaticamente al terminar la cuenta atras.
+    this.socket.on('match:lobby-return-countdown', (payload: { lobbyId: string; at: number }) => {
+      if (payload.lobbyId === this.match()?.lobbyId) {
+        this.lobbyReturnAt.set(payload.at - this.clockOffset());
+      }
     });
 
     this.socket.on('match:closed', (payload: { lobbyId: string; reason: string }) => {
@@ -742,7 +932,45 @@ export class SocketService {
     return this.emitWithResponse('match:pogo-jump', { code, gain, playerId: this.playerId });
   }
 
-  leaveRoom(code: string): Promise<RoomResponse> {    this.stopHeartbeat();
+  betBlackjack(code: string, handNumber: number, amount: number): Promise<RoomResponse & { bet?: number }> {
+    return this.emitWithResponse('match:blackjack-bet', { code, handNumber, amount, playerId: this.playerId });
+  }
+
+  blackjackAction(code: string, action: 'hit' | 'stand', turnToken: string): Promise<RoomResponse & { ignored?: boolean }> {
+    return this.emitWithResponse('match:blackjack-action', { code, action, turnToken, playerId: this.playerId });
+  }
+
+  pumpBalloon(code: string, turnToken: string): Promise<RoomResponse & { air?: number; exploded?: boolean; ignored?: boolean }> {
+    return this.emitWithResponse('match:balloon-pump', { code, turnToken, playerId: this.playerId });
+  }
+
+  passBalloon(code: string, turnNumber: number): Promise<RoomResponse & { ignored?: boolean }> {
+    return this.emitWithResponse('match:balloon-pass', { code, turnNumber, playerId: this.playerId });
+  }
+
+  voteCup(code: string, round: number, slot: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:cups-vote', { code, round, slot, playerId: this.playerId });
+  }
+
+  chooseLane(code: string, round: number, lane: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:cars-choose', { code, round, lane, playerId: this.playerId });
+  }
+
+  /** El host confirma que ha vuelto bien a su lobby (mismo codigo): entonces el servidor trae al resto. */
+  confirmLobbyReturn(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:lobby-return-confirm', { code, lobbyId: code, hostId: this.playerId, playerId: this.playerId });
+  }
+
+  stopBarrel(
+    code: string,
+    roundId: string,
+    elapsedMs: number,
+  ): Promise<RoomResponse & { status?: BarrelRacer['status']; height?: number | null; elapsedMs?: number | null }> {
+    return this.emitWithResponse('match:barrel-stop', { code, roundId, elapsedMs, playerId: this.playerId });
+  }
+
+  leaveRoom(code: string): Promise<RoomResponse> {
+    this.stopHeartbeat();
     this.clearLobbyNavigation();
     return this.emitWithResponse('room:leave', {
       code,
@@ -796,6 +1024,7 @@ export class SocketService {
     this.privateState.set(null);
     this.pinturilloFrame.set(null);
     this.lastPogoJump.set(null);
+    this.lobbyReturnAt.set(null);
     this.hostPauseDeadline.set(null);
     this.scoreboard.set(null);
     this.scoreboardCalculateRequest.set(null);

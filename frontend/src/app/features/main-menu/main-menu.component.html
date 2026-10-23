@@ -1,4 +1,4 @@
-﻿<main class="main-menu" [class.high-contrast]="config().highContrastMode">
+<main class="main-menu" [class.high-contrast]="config().highContrastMode" [class.intro-paused]="introState() !== 'ready' && !match()">
   <nav class="social-links" aria-label="Enlaces sociales">
     <button class="social-button" type="button" (click)="openSocial(youtubeUrl)" aria-label="Abrir YouTube" title="YouTube">
       <svg viewBox="0 0 28 20" width="28" height="20" aria-hidden="true">
@@ -57,5 +57,22 @@
 
   @if (match()) {
     <app-game-screen />
+  }
+
+  @if (introState() === 'disclaimer' && !match()) {
+    <div class="disclaimer-backdrop" role="dialog" aria-modal="true" aria-labelledby="disclaimer-title">
+      <section class="disclaimer-card">
+        <h2 id="disclaimer-title">Antes de empezar</h2>
+        <p>
+          <strong>Minijuegos Online</strong> es un proyecto personal hecho por diversión, sin ánimo de lucro y sin ningún
+          tipo de retribución económica.
+        </p>
+        <p>
+          Toda la música, imágenes y demás contenido que aparecen pertenecen a sus respectivos autores y se usan únicamente
+          para jugar entre amigos, sin fines comerciales.
+        </p>
+        <button class="disclaimer-button" type="button" (click)="continueFromDisclaimer()">Continuar</button>
+      </section>
+    </div>
   }
 </main>

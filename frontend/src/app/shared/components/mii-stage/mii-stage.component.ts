@@ -39,6 +39,7 @@ const FOV = 30;
   selector: 'app-mii-stage',
   templateUrl: './mii-stage.component.html',
   styleUrl: './mii-stage.component.scss',
+  host: { '[class.fill]': 'fill()' },
 })
 export class MiiStageComponent implements AfterViewInit, OnDestroy {
   private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -57,6 +58,8 @@ export class MiiStageComponent implements AfterViewInit, OnDestroy {
 
   readonly players = input.required<MiiStagePlayer[]>();
   readonly mode = input<'lobby' | 'scoreboard' | 'podium'>('lobby');
+  /** Ocupa todo el alto de su contenedor, sin marco ni fondo propio (pantallas completas). */
+  readonly fill = input(false);
   readonly unsupported = signal(false);
   readonly ready = signal(false);
 
@@ -273,26 +276,29 @@ export class MiiStageComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    // El lienzo tiene la misma proporcion que la cara frontal del escalon: asi el numero no sale aplastado.
+    const width = 1.08;
     const canvas = document.createElement('canvas');
     canvas.width = 256;
-    canvas.height = 256;
+    canvas.height = Math.max(48, Math.round((256 * height) / width));
     const context = canvas.getContext('2d')!;
+    const border = Math.max(6, Math.round(canvas.height * 0.06));
     context.fillStyle = player.pedestal.color;
-    context.fillRect(0, 0, 256, 256);
+    context.fillRect(0, 0, canvas.width, canvas.height);
     context.strokeStyle = '#000';
-    context.lineWidth = 14;
-    context.strokeRect(7, 7, 242, 242);
+    context.lineWidth = border;
+    context.strokeRect(border / 2, border / 2, canvas.width - border, canvas.height - border);
     context.fillStyle = '#000';
-    context.font = '900 120px "Trebuchet MS", Arial, sans-serif';
+    context.font = `900 ${Math.round(Math.min(120, canvas.height * 0.62))}px "Trebuchet MS", Arial, sans-serif`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.fillText(player.pedestal.label, 128, 136);
+    context.fillText(player.pedestal.label, canvas.width / 2, canvas.height / 2 + canvas.height * 0.04);
     const texture = new T.CanvasTexture(canvas);
     texture.colorSpace = T.SRGBColorSpace;
 
     const side = new T.MeshStandardMaterial({ color: player.pedestal.color, roughness: 0.5 });
     const front = new T.MeshStandardMaterial({ map: texture, roughness: 0.5 });
-    const mesh = new T.Mesh(new T.BoxGeometry(1.08, height, 0.95), [side, side, side, side, front, side]);
+    const mesh = new T.Mesh(new T.BoxGeometry(width, height, 0.95), [side, side, side, side, front, side]);
     mesh.position.set(entry.rig.root.position.x, height / 2, 0);
     this.scene!.add(mesh);
     entry.pedestal = mesh;

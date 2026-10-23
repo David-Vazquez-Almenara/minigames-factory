@@ -5,44 +5,64 @@
     }
   </div>
 
-  <main class="finished-panel">
-    <header>
-      <p>Fin de la partida</p>
-      <h1>Podio final</h1>
-    </header>
+  <!-- Dos pantallas completas una al lado de la otra: el podio y, con una transicion lateral, los maricones del dia. -->
+  <div class="slides" [class.show-losers]="phase() !== 'podium'">
+    <section class="slide podium-slide" aria-label="Podio final" [attr.aria-hidden]="phase() !== 'podium'">
+      <header class="slide-title">
+        <p>Fin de la partida</p>
+        <h1>Podio final</h1>
+      </header>
 
-    <app-mii-stage class="podium-miis" [players]="podiumMiis()" mode="podium" />
-
-    @if (standings().length > 3) {
-    <ol class="rest-list" start="4">
-      @for (entry of standings().slice(3); track entry.playerId) {
-      <li>
-        <span>{{ entry.position }}º</span>
-        <app-player-avatar [avatarUrl]="playerAvatar(entry.playerId)" [name]="entry.playerName" [color]="playerColor(entry.playerId)" [size]="28" />
-        <strong>{{ entry.playerName }}</strong>
-        <em>{{ entry.score }} pts</em>
-      </li>
+      @if (showPodium()) {
+      <app-mii-stage class="slide-stage" [players]="podiumMiis()" mode="podium" [fill]="true" />
       }
-    </ol>
-    }
 
-    @if (!standings().length) {
-    <p class="empty-message">No hay puntuaciones registradas en esta partida.</p>
-    }
-
-    <div class="finished-actions">
-      @if (isHost()) {
-      <button class="primary-button" type="button" [disabled]="loading()" (click)="returnToLobby()">
-        {{ loading() ? 'Volviendo...' : 'Volver al lobby' }}
-      </button>
-      } @else {
-      <p class="waiting-host">Esperando a que el host vuelva al lobby...</p>
-      <button class="secondary-button" type="button" (click)="leave()">Salir</button>
+      @if (standings().length > 3) {
+      <ol class="rest-list" start="4">
+        @for (entry of standings().slice(3); track entry.playerId) {
+        <li>
+          <span>{{ entry.position }}º</span>
+          <app-player-avatar [avatarUrl]="playerAvatar(entry.playerId)" [name]="entry.playerName" [color]="playerColor(entry.playerId)" [size]="24" />
+          <strong>{{ entry.playerName }}</strong>
+          <em>{{ entry.score }} pts</em>
+        </li>
+        }
+      </ol>
       }
-    </div>
 
-    @if (errorMessage()) {
-    <p class="error-message" role="alert">{{ errorMessage() }}</p>
-    }
-  </main>
+      @if (!standings().length) {
+      <p class="empty-message">No hay puntuaciones registradas en esta partida.</p>
+      }
+    </section>
+
+    <section class="slide losers-slide" aria-label="Maricones del día" [attr.aria-hidden]="phase() === 'podium'">
+      <header class="slide-title losers-title">
+        <p>La puntuación más baja de la partida: {{ lowestScore() }} pts</p>
+        <h1>{{ losersTitle() }}</h1>
+      </header>
+
+      <div class="losers-box">
+        @if (phase() !== 'podium') {
+        <app-mii-stage class="slide-stage" [players]="loserMiis()" mode="scoreboard" [fill]="true" />
+        }
+      </div>
+
+      <div class="finished-actions" [class.visible]="phase() === 'actions'">
+        @if (isHost()) {
+        <button class="primary-button" type="button" [disabled]="loading() || phase() !== 'actions'" (click)="returnToLobby()">
+          {{ loading() ? 'Volviendo...' : 'Volver al lobby' }}
+        </button>
+        <small>El resto de jugadores vendrá contigo al mismo lobby unos segundos después.</small>
+        } @else if (hostInLobby()) {
+        <p class="waiting-host">El host ya está en el lobby. Volvéis en {{ lobbyCountdown.seconds() }}…</p>
+        } @else {
+        <p class="waiting-host">Esperando a que el host vuelva al lobby…</p>
+        }
+
+        @if (errorMessage()) {
+        <p class="error-message" role="alert">{{ errorMessage() }}</p>
+        }
+      </div>
+    </section>
+  </div>
 </section>

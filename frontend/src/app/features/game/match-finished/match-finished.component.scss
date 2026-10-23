@@ -1,76 +1,92 @@
-﻿:host {
+﻿// Toda la pantalla es el escenario: sin panel contenedor y sin scroll.
+:host {
   display: block;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   color: #000;
   background-color: #ffd6e8;
 }
 
 .finished-screen {
   position: relative;
-  display: grid;
-  min-height: 100vh;
-  place-items: center;
-  padding: 28px 20px;
+  height: 100%;
   overflow: hidden;
 }
 
-.finished-panel {
+.slides {
   position: relative;
   z-index: 1;
-  display: grid;
-  width: min(720px, 100%);
-  gap: 22px;
-  justify-items: center;
-  padding: 28px;
-  text-align: center;
-  background-color: #fff7ec;
-  border: 4px solid #000;
-  border-radius: 22px;
+  display: flex;
+  width: 200%;
+  height: 100%;
+  transition: transform 850ms cubic-bezier(0.65, 0, 0.35, 1);
 
-  header {
-    display: grid;
-    gap: 6px;
+  &.show-losers {
+    transform: translateX(-50%);
   }
+}
+
+// Arriba a la izquierda esta el control de volumen: los titulos empiezan por debajo.
+.slide {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  width: 50%;
+  height: 100%;
+  gap: 10px;
+  padding: 96px 16px 18px;
+}
+
+.slide-title {
+  display: grid;
+  gap: 4px;
+  text-align: center;
 
   p,
   h1 {
     margin: 0;
   }
 
-  header p {
+  p {
     font-weight: 950;
     text-transform: uppercase;
   }
 
   h1 {
-    font-size: clamp(2.8rem, 10vw, 5.2rem);
-    line-height: 0.9;
+    font-size: clamp(2.6rem, 8vw, 5rem);
+    line-height: 0.95;
   }
 }
 
-.podium-miis {
+.slide-stage {
   width: 100%;
+  min-height: 0;
+}
+
+.podium-slide .slide-stage {
+  width: min(1200px, 100%);
 }
 
 .rest-list {
-  display: grid;
-  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
+  max-width: min(1100px, 100%);
   margin: 0;
   padding: 0;
   list-style: none;
 
   li {
-    display: grid;
-    grid-template-columns: 48px auto 1fr auto;
+    display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
+    gap: 6px;
+    padding: 4px 10px;
     font-weight: 950;
-    text-align: left;
-    background-color: #fff;
+    background-color: #fff7ec;
     border: 3px solid #000;
-    border-radius: 14px;
+    border-radius: 999px;
   }
 
   em {
@@ -78,23 +94,83 @@
   }
 }
 
-.finished-actions {
-  display: grid;
-  width: min(360px, 100%);
-  gap: 10px;
+.empty-message,
+.waiting-host {
+  margin: 0;
+  font-weight: 950;
 }
 
-.primary-button,
-.secondary-button {
+/* ------------------------------ Maricones del dia ----------------------------- */
+
+.losers-title {
+  h1 {
+    display: inline-block;
+    padding: 0.04em 0.08em 0.14em;
+    color: transparent;
+    font-size: clamp(2.6rem, 9vw, 6.2rem);
+    font-weight: 1000;
+    letter-spacing: 0.02em;
+    background-image: linear-gradient(90deg, #ff6f9f, #c48bff, #7fd1ff, #ffd36f, #ff6f9f);
+    background-size: 200% 100%;
+    background-clip: text;
+    animation: losers-shine 4s linear infinite;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 3px #000;
+  }
+}
+
+.losers-box {
+  width: min(1100px, 100%);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 90%, rgba(255, 255, 255, 0.9) 0 28%, transparent 62%),
+    linear-gradient(#fff7ec, #ffe2ee);
+  border: 4px solid #000;
+  border-radius: 26px;
+  box-shadow: 0 6px 0 #000;
+}
+
+.finished-actions {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(420px, 100%);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 320ms ease,
+    transform 320ms ease;
+  pointer-events: none;
+
+  &.visible {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  small {
+    font-weight: 800;
+  }
+}
+
+.primary-button {
+  width: 100%;
   min-height: 56px;
   padding: 12px 18px;
   color: #000;
   font: inherit;
   font-weight: 950;
+  background-color: #b9f7a7;
   border: 3px solid #000;
   border-radius: 16px;
   cursor: pointer;
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
 
   &:hover:not(:disabled) {
     transform: translateY(-3px);
@@ -107,21 +183,9 @@
   }
 }
 
-.primary-button {
-  background-color: #b9f7a7;
-}
-
-.secondary-button {
-  background-color: #ff9b9b;
-}
-
-.waiting-host,
-.empty-message {
-  font-weight: 950;
-}
-
 .error-message {
-  padding: 10px 14px;
+  margin: 0;
+  padding: 8px 12px;
   color: #9a0000;
   font-weight: 950;
   background-color: #ffd4d4;
@@ -152,11 +216,23 @@
   }
 }
 
-@media (max-width: 520px) {
-  .finished-panel {
-    padding: 20px 14px;
+@keyframes losers-shine {
+  to {
+    background-position: -200% 0;
   }
+}
 
+@media (max-width: 520px) {
+  .slide {
+    padding: 96px 10px 14px;
+  }
+}
+
+@media (min-width: 1100px) {
+  // En pantallas anchas el titulo cabe al lado del control de volumen.
+  .podium-slide {
+    padding-top: 22px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

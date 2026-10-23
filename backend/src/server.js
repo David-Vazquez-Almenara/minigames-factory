@@ -1,6 +1,7 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const crypto = require('crypto');
 const dns = require('dns').promises;
 const net = require('net');
 const { Server } = require('socket.io');
@@ -66,11 +67,22 @@ const IMPOSTOR_NO_EJECTION_MS = 10500;
 const TEN_BUT_SPIN_MS = 5200;
 const TEN_BUT_REVEAL_MS = 2600;
 const TEN_BUT_ANSWER_MS = 75000;
-// Margen para la intro y la explicacion del minijuego en los clientes antes de que empiece a correr el tiempo.
+// Intro del minijuego en los clientes ("Minijuego" + explicacion) antes de que empiece a correr el tiempo.
+// La explicacion dura como minimo lo de siempre y se alarga con textos largos para que de tiempo a leerlos.
+const MINIGAME_TITLE_MS = 1750;
 const MINIGAME_INTRO_MS = 7000;
+const MINIGAME_READING_MS_PER_CHAR = 60;
+const MINIGAME_INTRO_MAX_MS = 20000;
 // El portavoz no tiene que pulsar nada: su cliente gira la ruleta 1 s despues de mostrarla y, si no lo hace
 // (desconexion), el servidor la gira solo poco despues como respaldo.
-const TEN_BUT_AUTO_SPIN_MS = MINIGAME_INTRO_MS + 2500;
+const TEN_BUT_AUTO_SPIN_EXTRA_MS = 2500;
+// Vuelta al lobby al terminar: el host primero y el resto 1 s despues de que el host confirme su lobby.
+const LOBBY_RETURN_DELAY_MS = 1000;
+// Si el host no pulsa "Ver marcador" cuando el minijuego ya tiene resultados, se pulsa solo pasado este tiempo.
+const AUTO_SCOREBOARD_MS = 7000;
+// Un minijuego jugado no puede volver a tocar hasta que se hayan jugado este numero de minijuegos distintos.
+const MINIGAME_COOLDOWN = 2;
+const LOBBY_RETURN_FALLBACK_MS = 12000;
 const PINTURILLO_DRAW_MS = 90000;
 const PINTURILLO_FRAME_MIN_GAP_MS = 150;
 const PINTURILLO_MAX_FRAME_LENGTH = 450000;
@@ -157,7 +169,58 @@ const MINIGAMES = [
     accent: '#d9f4ff',
     minPlayers: 2,
   },
+  {
+    id: 'blackjack',
+    title: 'Blackjack',
+    description:
+      'Mesa de casino con 300 fichas para 3 manos, en mesas de 4 jugadores. Apuesta, pide carta o plantate y gana al crupier sin pasarte de 21. Gana quien acabe con mas fichas; quien se quede sin fichas pierde 10 puntos.',
+    image: 'assets/minigames/blackjack.png',
+    accent: '#b9f7a7',
+    minPlayers: 2,
+  },
+  {
+    id: 'barrels',
+    title: 'Barriles',
+    description:
+      'Un barril cae sobre tu cabeza desde 50 metros, y cae rapido. Pulsa ESPACIO para pararlo lo mas cerca posible de tu cabeza... sin que te aplaste: si te aplasta pierdes 10 puntos.',
+    image: 'assets/minigames/barrels.png',
+    accent: '#ffe891',
+    minPlayers: 2,
+  },
+  {
+    id: 'cups',
+    title: 'Cubiletes',
+    description:
+      'El crupier esconde una bola bajo uno de los 4 cubiletes y los mezcla, cada ronda mas rapido. Cuando paren, tienes 15 segundos para elegir donde esta la bola. Son 4 rondas y una ronda bonus final muy rapida; cada acierto suma 5 puntos.',
+    image: 'assets/minigames/cups.png',
+    accent: '#fff0a8',
+    minPlayers: 2,
+  },
+  {
+    id: 'cars',
+    title: 'Esquiva los coches',
+    description:
+      'Elige uno de los 4 carriles en 15 segundos y cruza los dedos: pasaran coches (uno en las 2 primeras rondas y dos despues) y si pasa por tu carril, te atropella. Gana quien aguante mas rondas, hasta un maximo de 6.',
+    image: 'assets/minigames/cars.png',
+    accent: '#d9f4ff',
+    minPlayers: 2,
+  },
+  {
+    id: 'balloon',
+    title: 'Cuidado que explota',
+    description:
+      'Por turnos, sube al escenario y dale a la palanca para hinchar el globo: cada palancazo suma 1 de aire y puedes darle las veces que quieras antes de pasar el turno. Nadie sabe cuanto aguanta. A quien le explote pierde 15 puntos; el resto gana 5.',
+    image: 'assets/minigames/balloon.png',
+    accent: '#ffc4dc',
+    minPlayers: 2,
+  },
 ];
+
+/** Duracion de la intro de un minijuego: minimo la de siempre y mas tiempo de lectura si la explicacion es larga. */
+function minigameIntroMs(description) {
+  const reading = String(description || '').length * MINIGAME_READING_MS_PER_CHAR;
+  return Math.min(MINIGAME_INTRO_MAX_MS, Math.max(MINIGAME_INTRO_MS, MINIGAME_TITLE_MS + reading));
+}
 const MINIGAME_IDS = MINIGAMES.map((minigame) => minigame.id);
 
 function randomItem(values) {
@@ -336,8 +399,17 @@ function shiftMatchDeadlines(room, shiftMs) {
     return;
   }
 
-  for (const key of ['paintEndsAt', 'paintVoteEndsAt']) {
+  for (const key of ['paintEndsAt', 'paintVoteEndsAt', 'autoScoreboardAt']) {
     if (specialRound[key]) {
+      specialRound[key] += shiftMs;
+    }
+  }
+
+  // La intro solo se desplaza si la pausa empezo antes de que terminara (si ya habia acabado, no importa).
+  const pausedAt = Date.now() - shiftMs;
+
+  for (const key of ['titleEndsAt', 'introEndsAt']) {
+    if (specialRound[key] > pausedAt) {
       specialRound[key] += shiftMs;
     }
   }
@@ -362,6 +434,42 @@ function shiftMatchDeadlines(room, shiftMs) {
   if (specialRound.pogo) {
     specialRound.pogo.raceStartsAt += shiftMs;
     specialRound.pogo.raceEndsAt += shiftMs;
+  }
+
+  if (specialRound.blackjack) {
+    for (const key of ['betEndsAt', 'turnEndsAt', 'summaryEndsAt', 'dealStartedAt', 'groupChangeEndsAt']) {
+      if (specialRound.blackjack[key]) {
+        specialRound.blackjack[key] += shiftMs;
+      }
+    }
+  }
+
+  if (specialRound.barrels && specialRound.barrels.stage === 'falling') {
+    specialRound.barrels.startsAt += shiftMs;
+  }
+
+  if (specialRound.balloon) {
+    for (const key of ['turnStartsAt', 'turnEndsAt']) {
+      if (specialRound.balloon[key]) {
+        specialRound.balloon[key] += shiftMs;
+      }
+    }
+  }
+
+  if (specialRound.cups) {
+    for (const key of ['placeStartsAt', 'shuffleStartsAt', 'shuffleEndsAt', 'voteEndsAt', 'revealAt', 'nextRoundAt']) {
+      if (specialRound.cups[key]) {
+        specialRound.cups[key] += shiftMs;
+      }
+    }
+  }
+
+  if (specialRound.cars) {
+    for (const key of ['chooseEndsAt', 'hornAt', 'passStartsAt', 'impactAt', 'nextRoundAt']) {
+      if (specialRound.cars[key]) {
+        specialRound.cars[key] += shiftMs;
+      }
+    }
   }
 }
 
@@ -423,8 +531,13 @@ function toPublicSpecialRound(specialRound) {
     minigameId: specialRound.minigameId,
     title: specialRound.title,
     description: specialRound.description,
+    startedAt: specialRound.startedAt,
+    introMs: specialRound.introMs,
+    titleEndsAt: specialRound.titleEndsAt,
+    introEndsAt: specialRound.introEndsAt,
     participantIds: specialRound.participantIds,
     hasResults: Boolean(specialRound.hasResults),
+    autoScoreboardAt: specialRound.autoScoreboardAt || null,
     preparedByHost: specialRound.preparedByHost,
     operations: Array.isArray(specialRound.operations)
       ? specialRound.operations.map((operation) => ({
@@ -455,6 +568,11 @@ function toPublicSpecialRound(specialRound) {
     tenBut: toPublicTenBut(specialRound.tenBut),
     pinturillo: toPublicPinturillo(specialRound.pinturillo),
     pogo: toPublicPogo(specialRound.pogo),
+    blackjack: toPublicBlackjack(specialRound.blackjack),
+    barrels: toPublicBarrels(specialRound.barrels),
+    balloon: toPublicBalloon(specialRound.balloon),
+    cups: toPublicCups(specialRound.cups),
+    cars: toPublicCars(specialRound.cars),
   };
 }
 
@@ -594,7 +712,20 @@ function broadcastLobby(room) {
 }
 
 function emitMatchState(room) {
+  scheduleAutoScoreboard(room);
   io.to(room.code).emit('match:state', toMatchState(room));
+}
+
+/** En cuanto un minijuego tiene resultados empieza la cuenta: a los 7 s se abre el marcador aunque el host no pulse. */
+function scheduleAutoScoreboard(room) {
+  const specialRound = room.match?.specialRound;
+
+  if (room.match?.phase !== 'special-round' || !specialRound?.hasResults || specialRound.autoScoreboardAt) {
+    return;
+  }
+
+  specialRound.autoScoreboardAt = Date.now() + AUTO_SCOREBOARD_MS;
+  setRoomTimer(room, 'auto-scoreboard', specialRound.autoScoreboardAt, () => enterMinigameScoreboard(room));
 }
 
 /* ------------------------------------------------------------------ */
@@ -609,10 +740,24 @@ function getAvailableMinigames(room) {
   return enabled.length ? enabled : MINIGAMES.filter((minigame) => minigame.minPlayers <= playerCount);
 }
 
+/**
+ * Un minijuego no puede volver a tocar hasta que se hayan jugado otros dos distintos. Sigue apareciendo en la
+ * ruleta (para que se vea variedad), pero no puede ser el ganador. Si hay pocos minijuegos activos y no queda
+ * ninguno libre, la espera se acorta (con 2 minijuegos se alternan; con 1, se repite).
+ */
 function chooseMinigame(room, candidates) {
-  const previousMinigameId = room.match?.lastMinigameId || '';
-  const pool = candidates.length > 1 ? candidates.filter((minigame) => minigame.id !== previousMinigameId) : candidates;
-  return randomItem(pool) || candidates[0];
+  const recent = room.match?.recentMinigameIds || [];
+
+  for (let cooldown = MINIGAME_COOLDOWN; cooldown >= 0; cooldown -= 1) {
+    const blocked = new Set(cooldown ? recent.slice(-cooldown) : []);
+    const pool = candidates.filter((minigame) => !blocked.has(minigame.id));
+
+    if (pool.length) {
+      return randomItem(pool);
+    }
+  }
+
+  return candidates[0];
 }
 
 function startRoulette(room) {
@@ -636,7 +781,7 @@ function startRoulette(room) {
   room.match.specialRound = null;
   room.match.scoreboard = null;
   room.match.scoreboardRequest = null;
-  room.match.lastMinigameId = winner.id;
+  room.match.recentMinigameIds = [...(room.match.recentMinigameIds || []), winner.id].slice(-MINIGAME_COOLDOWN);
   room.match.roulette = {
     roundNumber: room.match.roundNumber,
     options: options.map(toPublicMinigame),
@@ -658,6 +803,8 @@ function startSpecialRound(room, minigameId) {
 
   const minigame = MINIGAMES.find((entry) => entry.id === minigameId) || MINIGAMES[0];
   const participantIds = getActivePlayers(room).map((player) => player.id);
+  const startedAt = Date.now();
+  const introMs = minigameIntroMs(minigame.description);
 
   room.match.phase = 'special-round';
   room.match.roulette = null;
@@ -666,6 +813,11 @@ function startSpecialRound(room, minigameId) {
     minigameId: minigame.id,
     title: minigame.title,
     description: minigame.description,
+    // Todos los clientes muestran el titulo y la explicacion con los mismos tiempos (reloj del servidor).
+    startedAt,
+    introMs,
+    titleEndsAt: startedAt + MINIGAME_TITLE_MS,
+    introEndsAt: startedAt + introMs,
     participantIds,
     hasResults: false,
     preparedByHost: false,
@@ -683,9 +835,24 @@ function startSpecialRound(room, minigameId) {
     tenBut: null,
     pinturillo: null,
     pogo: null,
+    blackjack: null,
+    barrels: null,
+    balloon: null,
+    cups: null,
+    cars: null,
   };
 
-  if (minigame.id === 'impostor') {
+  if (minigame.id === 'blackjack') {
+    setupBlackjack(room);
+  } else if (minigame.id === 'barrels') {
+    setupBarrels(room);
+  } else if (minigame.id === 'balloon') {
+    setupBalloon(room);
+  } else if (minigame.id === 'cups') {
+    setupCups(room);
+  } else if (minigame.id === 'cars') {
+    setupCars(room);
+  } else if (minigame.id === 'impostor') {
     setupImpostor(room);
   } else if (minigame.id === 'ten-but') {
     setupTenBut(room);
@@ -735,6 +902,25 @@ function advanceToNextRound(room) {
   } else {
     startRoulette(room);
   }
+}
+
+/** El resto de la sala sin el host (ya esta en el lobby y no debe recibir el aviso dos veces). */
+function roomExceptHost(room) {
+  const host = getHostPlayer(room);
+  return host?.socketId ? io.to(room.code).except(host.socketId) : io.to(room.code);
+}
+
+/** Lleva al lobby a los jugadores que seguian en el podio, una sola vez. */
+function bringPlayersToLobby(room) {
+  clearRoomTimer(room, 'lobby-return');
+
+  if (!room.lobbyReturn) {
+    return;
+  }
+
+  room.lobbyReturn = null;
+  roomExceptHost(room).emit('match:returned-to-lobby', { lobbyId: room.code, lobby: toLobby(room) });
+  broadcastLobby(room);
 }
 
 function finishMatch(room) {
@@ -1034,7 +1220,7 @@ function finishImpostor(room, roundResult, abandoned = false) {
 
 function setupTenBut(room) {
   const specialRound = room.match.specialRound;
-  const spinDeadline = Date.now() + TEN_BUT_AUTO_SPIN_MS;
+  const spinDeadline = specialRound.introEndsAt + TEN_BUT_AUTO_SPIN_EXTRA_MS;
 
   specialRound.tenBut = {
     stage: 'waiting-spin',
@@ -1267,7 +1453,7 @@ function isCloseGuess(guess, target) {
 function setupPinturillo(room) {
   const specialRound = room.match.specialRound;
   const entry = randomItem(PINTURILLO_WORDS);
-  const startsAt = Date.now() + MINIGAME_INTRO_MS;
+  const startsAt = specialRound.introEndsAt;
   const letterIndexes = [...entry.word].map((character, index) => (isLetter(character) ? index : -1)).filter((index) => index >= 0);
   // Como maximo se descubre la mitad de las letras: 4 -> 2, 6 -> 3, 10 -> 5.
   const maxReveals = Math.floor(letterIndexes.length / 2);
@@ -1437,7 +1623,7 @@ function toPublicPinturillo(pinturillo) {
 
 function setupPogo(room) {
   const specialRound = room.match.specialRound;
-  const raceStartsAt = Date.now() + MINIGAME_INTRO_MS + POGO_COUNTDOWN_MS;
+  const raceStartsAt = specialRound.introEndsAt + POGO_COUNTDOWN_MS;
 
   specialRound.pogo = {
     stage: 'racing',
@@ -1543,6 +1729,1384 @@ function resolvePogo(room) {
   emitMatchState(room);
 }
 
+/* ------------------------------------------------------------------ */
+/* Blackjack                                                           */
+/* ------------------------------------------------------------------ */
+// Reglas de esta version:
+// - 300 fichas por jugador para toda la partida, 3 manos. Apuesta minima 10; apostar 0 = no jugar esa mano.
+// - Mesas de 4: con mas jugadores se juega por grupos de 4 (en orden de asiento). Cada grupo apuesta, recibe sus
+//   cartas y juega sus turnos; despues se sienta el grupo siguiente. El crupier tiene una sola mano para toda la
+//   ronda (se reparte con el primer grupo que apuesta) y la juega al final contra todos los grupos a la vez.
+// - Pago 1:1 en victoria normal; blackjack natural del jugador paga 3:2 (redondeando hacia abajo); empate devuelve.
+// - El crupier NUNCA tiene blackjack natural: si sus dos primeras cartas suman 21, la carta oculta vuelve al
+//   mazo en una posicion aleatoria y roba otra (todo antes de mostrar nada a nadie).
+// - El crupier pide carta con 16 o menos y se planta con 17 o mas (S17), y ademas deja de pedir en cuanto ya
+//   supera a todas las manos que siguen vivas: si ya va ganando, no se arriesga a pasarse.
+// - Acciones del jugador: pedir carta o plantarse. Con 21 se planta automaticamente.
+// - Puntos: escalera por posicion segun las fichas finales; quien acaba sin fichas para apostar pierde 10.
+
+const BLACKJACK_START_CHIPS = 300;
+const BLACKJACK_HANDS = 3;
+const BLACKJACK_MIN_BET = 10;
+const BLACKJACK_TABLE_SIZE = 4;
+const BLACKJACK_BET_MS = 30000;
+const BLACKJACK_DEAL_INTERVAL_MS = 420;
+const BLACKJACK_TURN_MS = 30000;
+// Tras plantarse o pasarse, la mesa se queda un momento en ese jugador para que todos vean que ha pasado.
+const BLACKJACK_RESULT_PAUSE_MS = 1800;
+const BLACKJACK_GROUP_CHANGE_MS = 2600;
+const BLACKJACK_DEALER_STEP_MS = 1000;
+// Con varios grupos, al empezar el turno del crupier cada cliente vuelve a su mesa: se espera a que se vea.
+const BLACKJACK_DEALER_INTRO_MS = 1700;
+const BLACKJACK_SUMMARY_MS = 7000;
+const BLACKJACK_BROKE_PENALTY = -10;
+const BLACKJACK_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const BLACKJACK_SUITS = ['S', 'H', 'D', 'C'];
+
+function secureShuffle(values) {
+  const copy = [...values];
+
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const randomIndex = crypto.randomInt(index + 1);
+    [copy[index], copy[randomIndex]] = [copy[randomIndex], copy[index]];
+  }
+
+  return copy;
+}
+
+function buildShoe(deckCount, firstDeck = 0) {
+  const cards = [];
+
+  for (let deck = firstDeck; deck < firstDeck + deckCount; deck += 1) {
+    for (const suit of BLACKJACK_SUITS) {
+      for (const rank of BLACKJACK_RANKS) {
+        cards.push({ id: `${deck}-${rank}${suit}`, rank, suit });
+      }
+    }
+  }
+
+  return secureShuffle(cards);
+}
+
+/** Roba del zapato; si se agotara, se anade una baraja nueva barajada (con ids nuevos, sin repetir cartas). */
+function drawFromShoe(bj) {
+  if (!bj.shoe.length) {
+    bj.shoe = buildShoe(1, bj.decksUsed);
+    bj.decksUsed += 1;
+  }
+
+  return bj.shoe.pop();
+}
+
+function cardPoints(card) {
+  if (card.rank === 'A') return 1;
+  if (['J', 'Q', 'K'].includes(card.rank)) return 10;
+  return Number(card.rank);
+}
+
+/** Valor de una mano: los ases cuentan 11 si no se pasa de 21 (mano "blanda"). */
+function blackjackValue(cards) {
+  let total = 0;
+  let aces = 0;
+
+  for (const card of cards) {
+    total += cardPoints(card);
+    aces += card.rank === 'A' ? 1 : 0;
+  }
+
+  const soft = aces > 0 && total + 10 <= 21;
+  return { total: soft ? total + 10 : total, soft };
+}
+
+function isNatural(cards) {
+  return cards.length === 2 && blackjackValue(cards).total === 21;
+}
+
+function blackjackGroup(bj) {
+  return bj.groups[bj.groupIndex] || [];
+}
+
+function setupBlackjack(room) {
+  const specialRound = room.match.specialRound;
+  const seats = [...specialRound.participantIds];
+  const groups = [];
+
+  for (let index = 0; index < seats.length; index += BLACKJACK_TABLE_SIZE) {
+    groups.push(seats.slice(index, index + BLACKJACK_TABLE_SIZE));
+  }
+
+  specialRound.blackjack = {
+    stage: 'betting',
+    handNumber: 0,
+    seats,
+    groups,
+    groupIndex: 0,
+    previousGroupIndex: null,
+    players: new Map(
+      seats.map((playerId) => [
+        playerId,
+        { playerId, chips: BLACKJACK_START_CHIPS, bet: 0, confirmed: false, cards: [], status: 'queued', history: [] },
+      ]),
+    ),
+    dealer: { cards: [], revealed: false },
+    dealerDealt: false,
+    shoe: [],
+    decksUsed: 0,
+    dealOrder: [],
+    dealStartedAt: null,
+    betEndsAt: null,
+    turnOrder: [],
+    turnIndex: -1,
+    currentPlayerId: null,
+    turnEndsAt: null,
+    turnLocked: false,
+    groupChangeEndsAt: null,
+    summaryEndsAt: null,
+    lastSummary: null,
+    finalRanking: null,
+    resolvedHand: 0,
+  };
+
+  startBlackjackHand(room, 1, specialRound.introEndsAt - Date.now());
+}
+
+function startBlackjackHand(room, handNumber, extraDelayMs = 0) {
+  const bj = room.match?.specialRound?.blackjack;
+
+  if (!bj) {
+    return;
+  }
+
+  bj.handNumber = handNumber;
+  bj.dealer = { cards: [], revealed: false };
+  bj.dealerDealt = false;
+  bj.summaryEndsAt = null;
+  // Mazo nuevo y barajado para cada mano, compartido por todos los grupos: 1 baraja hasta 3 jugadores y 2 desde 4.
+  bj.decksUsed = bj.seats.length <= 3 ? 1 : 2;
+  bj.shoe = buildShoe(bj.decksUsed);
+
+  for (const player of bj.players.values()) {
+    player.cards = [];
+    player.bet = 0;
+    player.confirmed = false;
+    player.status = 'queued';
+  }
+
+  startBlackjackGroupBetting(room, 0, extraDelayMs);
+}
+
+function startBlackjackGroupBetting(room, groupIndex, extraDelayMs = 0) {
+  const bj = room.match?.specialRound?.blackjack;
+
+  if (!bj) {
+    return;
+  }
+
+  bj.stage = 'betting';
+  bj.groupIndex = groupIndex;
+  bj.dealOrder = [];
+  bj.dealStartedAt = null;
+  bj.turnOrder = [];
+  bj.turnIndex = -1;
+  bj.currentPlayerId = null;
+  bj.turnEndsAt = null;
+  bj.turnLocked = false;
+  bj.groupChangeEndsAt = null;
+  bj.betEndsAt = Date.now() + Math.max(0, extraDelayMs) + BLACKJACK_BET_MS;
+
+  for (const playerId of blackjackGroup(bj)) {
+    const player = bj.players.get(playerId);
+    // Sin fichas suficientes no se puede apostar: mira la mano desde su asiento.
+    player.confirmed = player.chips < BLACKJACK_MIN_BET;
+    player.status = player.confirmed ? 'broke' : 'betting';
+  }
+
+  setRoomTimer(room, 'blackjack', bj.betEndsAt, () => startBlackjackDeal(room));
+  emitMatchState(room);
+  maybeStartBlackjackDeal(room);
+}
+
+function maybeStartBlackjackDeal(room) {
+  const specialRound = room.match?.specialRound;
+  const bj = specialRound?.blackjack;
+
+  if (!bj || bj.stage !== 'betting') {
+    return;
+  }
+
+  const activeIds = getActiveParticipantIds(room, specialRound);
+
+  if (blackjackGroup(bj).filter((playerId) => activeIds.includes(playerId)).every((playerId) => bj.players.get(playerId)?.confirmed)) {
+    startBlackjackDeal(room);
+  }
+}
+
+function startBlackjackDeal(room) {
+  const bj = room.match?.specialRound?.blackjack;
+
+  if (!bj || bj.stage !== 'betting') {
+    return;
+  }
+
+  clearRoomTimer(room, 'blackjack');
+  const group = blackjackGroup(bj);
+
+  // Quien no confirmo a tiempo (o se desconecto) no juega esta mano.
+  for (const playerId of group) {
+    const player = bj.players.get(playerId);
+
+    if (!player.confirmed) {
+      player.confirmed = true;
+      player.bet = 0;
+    }
+
+    if (player.status === 'betting' || player.status === 'ready') {
+      player.status = player.bet > 0 ? 'waiting' : 'sitting-out';
+    }
+  }
+
+  const bettors = group.filter((playerId) => bj.players.get(playerId).bet > 0);
+
+  if (!bettors.length) {
+    finishBlackjackGroup(room);
+    return;
+  }
+
+  const draw = () => drawFromShoe(bj);
+  bj.dealOrder = [];
+
+  // Orden real: primera carta a cada jugador, segunda a cada jugador y despues las dos del crupier.
+  for (let round = 0; round < 2; round += 1) {
+    for (const playerId of bettors) {
+      bj.players.get(playerId).cards.push(draw());
+      bj.dealOrder.push({ to: playerId, index: round });
+    }
+  }
+
+  // El crupier recibe su mano una sola vez por ronda; los grupos siguientes juegan contra esa misma mano.
+  if (!bj.dealerDealt) {
+    const upCard = draw();
+    let holeCard = draw();
+
+    // Regla especial: el crupier no puede empezar con blackjack. La carta vuelve al mazo (posicion aleatoria)
+    // y se roba otra. Ocurre antes de enviar nada, asi que nadie ve una carta distinta de la definitiva.
+    while (isNatural([upCard, holeCard])) {
+      bj.shoe.splice(crypto.randomInt(bj.shoe.length + 1), 0, holeCard);
+      holeCard = draw();
+    }
+
+    bj.dealer.cards = [upCard, holeCard];
+    bj.dealOrder.push({ to: 'dealer', index: 0 }, { to: 'dealer', index: 1, hidden: true });
+    bj.dealerDealt = true;
+  }
+
+  for (const playerId of bettors) {
+    const player = bj.players.get(playerId);
+    player.status = isNatural(player.cards) ? 'blackjack' : 'playing';
+  }
+
+  bj.stage = 'dealing';
+  bj.dealStartedAt = Date.now() + 300;
+  setRoomTimer(room, 'blackjack', bj.dealStartedAt + bj.dealOrder.length * BLACKJACK_DEAL_INTERVAL_MS + 600, () =>
+    startBlackjackTurns(room),
+  );
+  emitMatchState(room);
+}
+
+function startBlackjackTurns(room) {
+  const bj = room.match?.specialRound?.blackjack;
+
+  if (!bj || bj.stage !== 'dealing') {
+    return;
+  }
+
+  bj.stage = 'player-turns';
+  bj.turnOrder = blackjackGroup(bj).filter((playerId) => bj.players.get(playerId)?.status === 'playing');
+  bj.turnIndex = -1;
+  advanceBlackjackTurn(room);
+}
+
+function advanceBlackjackTurn(room) {
+  const bj = room.match?.specialRound?.blackjack;
+
+  if (!bj || bj.stage !== 'player-turns') {
+    return;
+  }
+
+  clearRoomTimer(room, 'blackjack');
+  bj.turnLocked = false;
+  bj.turnIndex += 1;
+
+  while (bj.turnIndex < bj.turnOrder.length && bj.players.get(bj.turnOrder[bj.turnIndex])?.status !== 'playing') {
+    bj.turnIndex += 1;
+  }
+
+  if (bj.turnIndex >= bj.turnOrder.length) {
+    bj.currentPlayerId = null;
+    bj.turnEndsAt = null;
+    finishBlackjackGroup(room);
+    return;
+  }
+
+  bj.currentPlayerId = bj.turnOrder[bj.turnIndex];
+  bj.turnEndsAt = Date.now() + BLACKJACK_TURN_MS;
+  // Si se le acaba el tiempo (o se ha desconectado), se planta solo para no bloquear la mesa.
+  setRoomTimer(room, 'blackjack', bj.turnEndsAt, () => applyBlackjackAction(room, bj.currentPlayerId, 'stand'));
+  emitMatchState(room);
+
+  const current = room.players.get(bj.currentPlayerId);
+
+  if (!current || !current.active) {
+    setRoomTimer(room, 'blackjack', Date.now() + 2500, () => applyBlackjackAction(room, bj.currentPlayerId, 'stand'));
+  }
+}
+
+function blackjackTurnToken(bj) {
+  const player = bj.players.get(bj.currentPlayerId);
+  return `${bj.handNumber}:${bj.currentPlayerId}:${player?.cards.length || 0}`;
+}
+
+function applyBlackjackAction(room, playerId, action) {
+  const bj = room.match?.specialRound?.blackjack;
+  const player = bj?.players.get(playerId);
+
+  if (!bj || bj.stage !== 'player-turns' || bj.turnLocked || bj.currentPlayerId !== playerId || player?.status !== 'playing') {
+    return false;
+  }
+
+  if (action === 'hit') {
+    player.cards.push(drawFromShoe(bj));
+    const { total } = blackjackValue(player.cards);
+
+    if (total > 21) {
+      player.status = 'bust';
+    } else if (total === 21) {
+      player.status = 'stood';
+    }
+  } else {
+    player.status = 'stood';
+  }
+
+  if (player.status !== 'playing') {
+    // La camara se queda en este jugador un momento (se ve que se planta o se pasa) y despues sigue la mesa.
+    bj.turnLocked = true;
+    bj.turnEndsAt = null;
+    setRoomTimer(room, 'blackjack', Date.now() + BLACKJACK_RESULT_PAUSE_MS, () => advanceBlackjackTurn(room));
+  }
+
+  emitMatchState(room);
+  return true;
+}
+
+/** Al terminar un grupo se sienta el siguiente (con una transicion) o, si era el ultimo, juega el crupier. */
+function finishBlackjackGroup(room) {
+  const bj = room.match?.specialRound?.blackjack;
+
+  if (!bj || bj.stage === 'group-change' || bj.stage === 'dealer-turn' || bj.stage === 'hand-summary') {
+    return;
+  }
+
+  clearRoomTimer(room, 'blackjack');
+  bj.currentPlayerId = null;
+  bj.turnEndsAt = null;
+  bj.turnLocked = false;
+
+  if (bj.groupIndex + 1 >= bj.groups.length) {
+    startBlackjackDealer(room);
+    return;
+  }
+
+  const nextGroup = bj.groupIndex + 1;
+  bj.stage = 'group-change';
+  bj.previousGroupIndex = bj.groupIndex;
+  bj.groupIndex = nextGroup;
+  bj.groupChangeEndsAt = Date.now() + BLACKJACK_GROUP_CHANGE_MS;
+  setRoomTimer(room, 'blackjack', bj.groupChangeEndsAt, () => startBlackjackGroupBetting(room, nextGroup));
+  emitMatchState(room);
+}
+
+/** Pide con 16 o menos (S17), salvo que ya supere a todas las manos vivas: entonces se planta. */
+function dealerShouldHit(dealerCards, liveTotals) {
+  const total = blackjackValue(dealerCards).total;
+
+  if (!liveTotals.length || total >= 17) {
+    return false;
+  }
+
+  return total <= Math.max(...liveTotals);
+}
+
+function startBlackjackDealer(room) {
+  const bj = room.match?.specialRound?.blackjack;
+
+  if (!bj) {
+    return;
+  }
+
+  // Nadie aposto en toda la mano: no hay nada que jugar.
+  if (!bj.dealerDealt) {
+    resolveBlackjackHand(room);
+    return;
+  }
+
+  bj.stage = 'dealer-turn';
+  emitMatchState(room);
+  // Primero la camara va hacia el crupier (y cada cliente vuelve a su mesa), despues gira la carta oculta.
+  const delay = bj.groups.length > 1 ? BLACKJACK_DEALER_INTRO_MS : BLACKJACK_DEALER_STEP_MS;
+  setRoomTimer(room, 'blackjack', Date.now() + delay, () => blackjackDealerStep(room));
+}
+
+function blackjackDealerStep(room) {
+  const bj = room.match?.specialRound?.blackjack;
+
+  if (!bj || bj.stage !== 'dealer-turn') {
+    return;
+  }
+
+  if (!bj.dealer.revealed) {
+    bj.dealer.revealed = true;
+  } else {
+    // Manos que siguen vivas en todos los grupos (las pasadas ya perdieron y los blackjack ya cobran).
+    const liveTotals = [...bj.players.values()].filter((player) => player.status === 'stood').map((player) => blackjackValue(player.cards).total);
+
+    if (dealerShouldHit(bj.dealer.cards, liveTotals)) {
+      bj.dealer.cards.push(drawFromShoe(bj));
+    } else {
+      resolveBlackjackHand(room);
+      return;
+    }
+  }
+
+  emitMatchState(room);
+  setRoomTimer(room, 'blackjack', Date.now() + BLACKJACK_DEALER_STEP_MS, () => blackjackDealerStep(room));
+}
+
+function resolveBlackjackHand(room) {
+  const bj = room.match?.specialRound?.blackjack;
+
+  // Cada mano se liquida exactamente una vez, pase lo que pase con los eventos.
+  if (!bj || bj.resolvedHand >= bj.handNumber) {
+    return;
+  }
+
+  bj.resolvedHand = bj.handNumber;
+  clearRoomTimer(room, 'blackjack');
+  bj.dealer.revealed = true;
+  bj.currentPlayerId = null;
+  bj.turnLocked = false;
+  const dealerTotal = blackjackValue(bj.dealer.cards).total;
+  const dealerBust = dealerTotal > 21;
+  const results = [];
+
+  for (const playerId of bj.seats) {
+    const player = bj.players.get(playerId);
+    const total = blackjackValue(player.cards).total;
+    let outcome = 'sat-out';
+    let delta = 0;
+
+    if (player.bet > 0) {
+      if (player.status === 'bust') {
+        outcome = 'lose';
+        delta = -player.bet;
+      } else if (player.status === 'blackjack') {
+        outcome = 'blackjack';
+        delta = Math.floor(player.bet * 1.5);
+      } else if (dealerBust || total > dealerTotal) {
+        outcome = 'win';
+        delta = player.bet;
+      } else if (total === dealerTotal) {
+        outcome = 'push';
+      } else {
+        outcome = 'lose';
+        delta = -player.bet;
+      }
+    }
+
+    player.chips += delta;
+    player.history.push({ hand: bj.handNumber, bet: player.bet, outcome, delta, total, chipsAfter: player.chips });
+    results.push({ playerId, outcome, delta, bet: player.bet, total });
+  }
+
+  bj.stage = 'hand-summary';
+  bj.lastSummary = { hand: bj.handNumber, dealerTotal, dealerBust, results };
+  bj.summaryEndsAt = Date.now() + BLACKJACK_SUMMARY_MS;
+  setRoomTimer(room, 'blackjack', bj.summaryEndsAt, () => {
+    if (bj.handNumber < BLACKJACK_HANDS) {
+      startBlackjackHand(room, bj.handNumber + 1);
+    } else {
+      finishBlackjack(room);
+    }
+  });
+  emitMatchState(room);
+}
+
+function finishBlackjack(room) {
+  const specialRound = room.match?.specialRound;
+  const bj = specialRound?.blackjack;
+
+  if (!bj || bj.finalRanking) {
+    return;
+  }
+
+  const sorted = [...bj.players.values()].sort((first, second) => second.chips - first.chips);
+  const scoringSlots = Math.max(1, sorted.length - 1);
+  bj.finalRanking = sorted.map((player) => {
+    // Mismo saldo = misma posicion y mismos puntos. Sin fichas para apostar = ha perdido: resta 10.
+    const position = 1 + sorted.filter((other) => other.chips > player.chips).length;
+    const broke = player.chips < BLACKJACK_MIN_BET;
+
+    return {
+      playerId: player.playerId,
+      playerName: room.players.get(player.playerId)?.name || '',
+      position,
+      startChips: BLACKJACK_START_CHIPS,
+      finalChips: player.chips,
+      net: player.chips - BLACKJACK_START_CHIPS,
+      broke,
+      hands: player.history.map((entry) => ({ hand: entry.hand, outcome: entry.outcome, delta: entry.delta })),
+      points: broke ? BLACKJACK_BROKE_PENALTY : rankLadderPoints(position - 1, scoringSlots),
+    };
+  });
+  bj.stage = 'final';
+  specialRound.results = bj.finalRanking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: 0,
+    answeredCount: 0,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicBlackjack(bj) {
+  if (!bj) {
+    return null;
+  }
+
+  const dealerVisible = bj.dealer.revealed ? bj.dealer.cards : bj.dealer.cards.slice(0, 1);
+
+  return {
+    stage: bj.stage,
+    handNumber: bj.handNumber,
+    totalHands: BLACKJACK_HANDS,
+    minBet: BLACKJACK_MIN_BET,
+    startChips: BLACKJACK_START_CHIPS,
+    tableSize: BLACKJACK_TABLE_SIZE,
+    seats: bj.seats,
+    groups: bj.groups,
+    groupIndex: bj.groupIndex,
+    previousGroupIndex: bj.stage === 'group-change' ? bj.previousGroupIndex : null,
+    groupChangeEndsAt: bj.stage === 'group-change' ? bj.groupChangeEndsAt : null,
+    groupChangeMs: BLACKJACK_GROUP_CHANGE_MS,
+    players: bj.seats.map((playerId) => {
+      const player = bj.players.get(playerId);
+      return {
+        playerId,
+        chips: player.chips,
+        bet: player.bet,
+        confirmed: player.confirmed,
+        status: player.status,
+        cards: player.cards,
+        value: blackjackValue(player.cards),
+        history: player.history,
+      };
+    }),
+    // La carta oculta nunca sale del servidor hasta que se revela: solo se envia un marcador sin identidad.
+    dealer: {
+      cards: bj.dealer.revealed ? bj.dealer.cards : bj.dealer.cards.map((card, index) => (index === 1 ? { id: 'hole', hidden: true } : card)),
+      value: blackjackValue(dealerVisible),
+      revealed: bj.dealer.revealed,
+    },
+    dealOrder: bj.dealOrder,
+    dealStartedAt: bj.dealStartedAt,
+    dealInterval: BLACKJACK_DEAL_INTERVAL_MS,
+    betEndsAt: bj.betEndsAt,
+    currentPlayerId: bj.currentPlayerId,
+    turnEndsAt: bj.turnEndsAt,
+    turnLocked: bj.turnLocked,
+    turnToken: bj.stage === 'player-turns' && !bj.turnLocked ? blackjackTurnToken(bj) : null,
+    summaryEndsAt: bj.summaryEndsAt,
+    lastSummary: bj.lastSummary,
+    finalRanking: bj.finalRanking,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Barriles                                                            */
+/* ------------------------------------------------------------------ */
+// Cada barril cae de 50 m a 0 m con una curva acelerada identica para todos: h(t) = 50 * (1 - (t/T)^p).
+// El cliente detiene su barril al instante y envia el tiempo de caida; el servidor lo valida contra su reloj.
+
+const BARRELS_START_HEIGHT = 50;
+// Caida rapida (en torno a segundo y medio): hay que fiarse del instinto, no hay medidor en pantalla.
+const BARRELS_FALL_MS = 1400;
+const BARRELS_EXPONENT = 1.9;
+const BARRELS_COUNTDOWN_MS = 3500;
+const BARRELS_CLOCK_TOLERANCE_MS = 150;
+const BARRELS_GRACE_MS = 1200;
+const BARRELS_CRUSHED_PENALTY = -10;
+
+function barrelHeightAt(elapsedMs) {
+  const progress = Math.min(1, Math.max(0, elapsedMs / BARRELS_FALL_MS));
+  return Math.max(0, BARRELS_START_HEIGHT * (1 - Math.pow(progress, BARRELS_EXPONENT)));
+}
+
+function setupBarrels(room) {
+  const specialRound = room.match.specialRound;
+  const startsAt = specialRound.introEndsAt + BARRELS_COUNTDOWN_MS;
+
+  specialRound.barrels = {
+    stage: 'falling',
+    roundId: `${room.match.roundNumber}-${crypto.randomUUID().slice(0, 8)}`,
+    startsAt,
+    racers: new Map(specialRound.participantIds.map((playerId) => [playerId, { playerId, status: 'falling', height: null, elapsedMs: null }])),
+    ranking: null,
+  };
+
+  setRoomTimer(room, 'barrels', startsAt + BARRELS_FALL_MS + BARRELS_GRACE_MS, () => resolveBarrels(room));
+}
+
+function maybeResolveBarrels(room) {
+  const specialRound = room.match?.specialRound;
+  const barrels = specialRound?.barrels;
+
+  if (!barrels || barrels.stage !== 'falling') {
+    return;
+  }
+
+  const pending = [...barrels.racers.values()].filter((racer) => racer.status === 'falling' && room.players.get(racer.playerId)?.active);
+
+  if (!pending.length && Date.now() >= barrels.startsAt) {
+    resolveBarrels(room);
+  }
+}
+
+function resolveBarrels(room) {
+  const specialRound = room.match?.specialRound;
+  const barrels = specialRound?.barrels;
+
+  if (!barrels || barrels.stage !== 'falling') {
+    return;
+  }
+
+  clearRoomTimer(room, 'barrels');
+
+  for (const racer of barrels.racers.values()) {
+    if (racer.status === 'falling') {
+      racer.status = 'crushed';
+      racer.height = 0;
+    }
+  }
+
+  // Supervivientes primero (menos metros = mejor; desempate por el tiempo exacto y despues por id, nunca por
+  // el orden de llegada de los mensajes). Los aplastados comparten la ultima posicion.
+  const survivors = [...barrels.racers.values()]
+    .filter((racer) => racer.status === 'stopped')
+    .sort((first, second) => first.height - second.height || second.elapsedMs - first.elapsedMs || first.playerId.localeCompare(second.playerId));
+  const crushed = [...barrels.racers.values()].filter((racer) => racer.status === 'crushed').sort((first, second) => first.playerId.localeCompare(second.playerId));
+  const scoringSlots = Math.max(1, barrels.racers.size - 1);
+
+  barrels.ranking = [
+    ...survivors.map((racer, index) => ({ ...racer, position: index + 1, points: rankLadderPoints(index, scoringSlots) })),
+    ...crushed.map((racer) => ({ ...racer, position: survivors.length + 1, points: BARRELS_CRUSHED_PENALTY })),
+  ].map((entry) => ({ ...entry, playerName: room.players.get(entry.playerId)?.name || '' }));
+  barrels.stage = 'results';
+  specialRound.results = barrels.ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: 0,
+    answeredCount: 0,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicBarrels(barrels) {
+  if (!barrels) {
+    return null;
+  }
+
+  return {
+    stage: barrels.stage,
+    roundId: barrels.roundId,
+    startsAt: barrels.startsAt,
+    fallMs: BARRELS_FALL_MS,
+    startHeight: BARRELS_START_HEIGHT,
+    exponent: BARRELS_EXPONENT,
+    racers: [...barrels.racers.values()],
+    ranking: barrels.ranking,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Cuidado que explota (globo)                                         */
+/* ------------------------------------------------------------------ */
+// - Orden de la fila aleatorio en la ronda 1 y el mismo en todas las siguientes.
+// - En su turno, el jugador camina hasta la palanca y le da las veces que quiera (cada palancazo +1 de aire, como minimo
+//   uno) y despues pasa el turno. Si se le acaba el tiempo sin tocarla, se le da un palancazo y pasa.
+// - El globo aguanta una cantidad secreta de aire entre 5 y 50 (incluidos): con 5 o menos nunca explota y
+//   explota en el palancazo que supera su capacidad. La capacidad no sale del servidor hasta que explota.
+// - A quien le explota pierde 15 puntos; el resto gana 5. Aqui nadie gana mas.
+
+const BALLOON_MIN_CAPACITY = 5;
+const BALLOON_MAX_CAPACITY = 50;
+const BALLOON_WALK_MS = 1800;
+const BALLOON_TURN_MS = 15000;
+const BALLOON_EXPLODE_PENALTY = -15;
+const BALLOON_SURVIVOR_POINTS = 5;
+
+function setupBalloon(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.balloon = {
+    stage: 'walking',
+    order: secureShuffle(specialRound.participantIds),
+    capacity: BALLOON_MIN_CAPACITY + crypto.randomInt(BALLOON_MAX_CAPACITY - BALLOON_MIN_CAPACITY + 1),
+    air: 0,
+    round: 1,
+    turnIndex: 0,
+    turnNumber: 0,
+    currentPlayerId: null,
+    pumpsThisTurn: 0,
+    turnStartsAt: null,
+    turnEndsAt: null,
+    lastPump: null,
+    outcome: null,
+  };
+
+  beginBalloonTurn(room, 0, 1, specialRound.introEndsAt - Date.now());
+}
+
+function beginBalloonTurn(room, startIndex, startRound, extraDelayMs = 0) {
+  const balloon = room.match?.specialRound?.balloon;
+
+  if (!balloon || balloon.outcome) {
+    return;
+  }
+
+  // Siguiente jugador presente en la fila (quien se haya ido pierde su turno, el orden no cambia).
+  let index = startIndex;
+  let round = startRound;
+  let found = false;
+
+  for (let step = 0; step < balloon.order.length; step += 1) {
+    if (room.players.get(balloon.order[index])?.active) {
+      found = true;
+      break;
+    }
+
+    index += 1;
+
+    if (index >= balloon.order.length) {
+      index = 0;
+      round += 1;
+    }
+  }
+
+  if (!found) {
+    finishBalloon(room, null);
+    return;
+  }
+
+  balloon.turnIndex = index;
+  balloon.round = round;
+  balloon.turnNumber += 1;
+  balloon.currentPlayerId = balloon.order[index];
+  balloon.pumpsThisTurn = 0;
+  balloon.stage = 'walking';
+  balloon.turnStartsAt = Date.now() + Math.max(0, extraDelayMs) + BALLOON_WALK_MS;
+  balloon.turnEndsAt = balloon.turnStartsAt + BALLOON_TURN_MS;
+  const turnNumber = balloon.turnNumber;
+
+  // Primero camina hasta la palanca; al llegar empieza a contar su tiempo de turno.
+  setRoomTimer(room, 'balloon', balloon.turnStartsAt, () => {
+    if (balloon.turnNumber !== turnNumber || balloon.outcome) {
+      return;
+    }
+
+    balloon.stage = 'pumping';
+    setRoomTimer(room, 'balloon', balloon.turnEndsAt, () => balloonTurnTimeout(room, turnNumber));
+    emitMatchState(room);
+  });
+  emitMatchState(room);
+}
+
+function balloonTurnToken(balloon) {
+  return `${balloon.turnNumber}:${balloon.pumpsThisTurn}`;
+}
+
+function balloonTurnTimeout(room, turnNumber) {
+  const balloon = room.match?.specialRound?.balloon;
+
+  if (!balloon || balloon.outcome || balloon.turnNumber !== turnNumber || balloon.stage !== 'pumping') {
+    return;
+  }
+
+  if (!balloon.pumpsThisTurn) {
+    pumpBalloon(room, balloon.currentPlayerId);
+
+    if (balloon.outcome) {
+      return;
+    }
+  }
+
+  passBalloonTurn(room);
+}
+
+function pumpBalloon(room, playerId) {
+  const balloon = room.match?.specialRound?.balloon;
+
+  if (
+    !balloon ||
+    balloon.outcome ||
+    balloon.stage !== 'pumping' ||
+    balloon.currentPlayerId !== playerId
+  ) {
+    return false;
+  }
+
+  balloon.air += 1;
+  balloon.pumpsThisTurn += 1;
+  balloon.lastPump = { playerId, air: balloon.air, turnNumber: balloon.turnNumber, pump: balloon.pumpsThisTurn, at: Date.now() };
+
+  if (balloon.air > balloon.capacity) {
+    finishBalloon(room, playerId);
+    return true;
+  }
+
+  emitMatchState(room);
+  return true;
+}
+
+/** Pasa al siguiente de la fila; al terminar la fila empieza otra ronda con el mismo orden. */
+function passBalloonTurn(room, force = false) {
+  const balloon = room.match?.specialRound?.balloon;
+
+  if (!balloon || balloon.outcome || (!force && (balloon.stage !== 'pumping' || !balloon.pumpsThisTurn))) {
+    return false;
+  }
+
+  clearRoomTimer(room, 'balloon');
+  let index = balloon.turnIndex + 1;
+  let round = balloon.round;
+
+  if (index >= balloon.order.length) {
+    index = 0;
+    round += 1;
+  }
+
+  beginBalloonTurn(room, index, round);
+  return true;
+}
+
+function finishBalloon(room, explodedBy) {
+  const specialRound = room.match?.specialRound;
+  const balloon = specialRound?.balloon;
+
+  if (!balloon || balloon.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'balloon');
+  balloon.stage = 'exploded';
+  balloon.outcome = {
+    explodedBy,
+    explodedName: explodedBy ? room.players.get(explodedBy)?.name || '' : '',
+    air: balloon.air,
+    capacity: balloon.capacity,
+    round: balloon.round,
+    at: Date.now(),
+    results: specialRound.participantIds.map((playerId) => ({
+      playerId,
+      playerName: room.players.get(playerId)?.name || '',
+      points: playerId === explodedBy ? BALLOON_EXPLODE_PENALTY : BALLOON_SURVIVOR_POINTS,
+    })),
+  };
+  specialRound.results = balloon.outcome.results.map((entry) => ({
+    ...entry,
+    correctCount: 0,
+    answeredCount: 0,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function skipInactiveBalloonPlayer(room) {
+  const balloon = room.match?.specialRound?.balloon;
+
+  if (balloon && !balloon.outcome && balloon.currentPlayerId && !room.players.get(balloon.currentPlayerId)?.active) {
+    passBalloonTurn(room, true);
+  }
+}
+
+function toPublicBalloon(balloon) {
+  if (!balloon) {
+    return null;
+  }
+
+  // La capacidad del globo solo se publica dentro del resultado, cuando ya ha explotado.
+  return {
+    stage: balloon.stage,
+    order: balloon.order,
+    round: balloon.round,
+    turnIndex: balloon.turnIndex,
+    turnNumber: balloon.turnNumber,
+    currentPlayerId: balloon.currentPlayerId,
+    air: balloon.air,
+    pumpsThisTurn: balloon.pumpsThisTurn,
+    minCapacity: BALLOON_MIN_CAPACITY,
+    maxCapacity: BALLOON_MAX_CAPACITY,
+    walkMs: BALLOON_WALK_MS,
+    turnStartsAt: balloon.turnStartsAt,
+    turnEndsAt: balloon.turnEndsAt,
+    turnToken: balloon.stage === 'pumping' ? balloonTurnToken(balloon) : null,
+    lastPump: balloon.lastPump,
+    outcome: balloon.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Cubiletes                                                           */
+/* ------------------------------------------------------------------ */
+// - 4 rondas mas una ronda bonus final: el crupier mete la bola en un cubilete, los mezcla (cada ronda mas rapido;
+//   la bonus, muy rapido) y despues hay 15 s para elegir cubilete (sin confirmacion; se puede cambiar hasta que acaba
+//   el tiempo). Cada acierto suma 5 (max 25).
+// - Los movimientos los genera el servidor (anfitrion de la sala) y los manda a todos, asi todos ven el mismo
+//   patron. La posicion final de la bola no se envia hasta revelarla: solo se podria deducir del historial.
+// - Movimientos: 'swap' intercambia los cubiletes de dos huecos; 'fake' amaga el cambio y los deja como estaban.
+
+const CUPS_COUNT = 4;
+const CUPS_ROUNDS = 5;
+const CUPS_PLACE_MS = 2000;
+const CUPS_VOTE_MS = 15000;
+const CUPS_REVEAL_PAUSE_MS = 1000;
+const CUPS_REVEAL_MS = 4200;
+const CUPS_POINTS = 5;
+const CUPS_FAKE_CHANCE = 0.25;
+const CUPS_SPEEDS = [
+  { moves: 6, moveMs: 760 },
+  { moves: 8, moveMs: 540 },
+  { moves: 10, moveMs: 370 },
+  { moves: 13, moveMs: 230 },
+  // Ronda 5, bonus: mezcla muy rapida (no sigue la progresion de las anteriores).
+  { moves: 18, moveMs: 110 },
+];
+
+function cupsFinalSlot(initialSlot, moves) {
+  let slot = initialSlot;
+
+  for (const move of moves) {
+    if (move.type === 'swap') {
+      slot = slot === move.a ? move.b : slot === move.b ? move.a : slot;
+    }
+  }
+
+  return slot;
+}
+
+function setupCups(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.cups = {
+    stage: 'shuffling',
+    round: 0,
+    initialSlot: 0,
+    moves: [],
+    moveMs: 0,
+    finalSlot: null,
+    revealedSlot: null,
+    placeStartsAt: null,
+    shuffleStartsAt: null,
+    shuffleEndsAt: null,
+    voteEndsAt: null,
+    revealAt: null,
+    nextRoundAt: null,
+    votes: new Map(),
+    scores: new Map(specialRound.participantIds.map((playerId) => [playerId, 0])),
+    history: [],
+    outcome: null,
+  };
+
+  startCupsRound(room, 1, specialRound.introEndsAt - Date.now());
+}
+
+function startCupsRound(room, round, extraDelayMs = 0) {
+  const cups = room.match?.specialRound?.cups;
+
+  if (!cups) {
+    return;
+  }
+
+  const speed = CUPS_SPEEDS[round - 1];
+  cups.round = round;
+  cups.stage = 'shuffling';
+  cups.initialSlot = crypto.randomInt(CUPS_COUNT);
+  cups.moves = Array.from({ length: speed.moves }, () => {
+    const a = crypto.randomInt(CUPS_COUNT);
+    let b = crypto.randomInt(CUPS_COUNT - 1);
+    b += b >= a ? 1 : 0;
+    return { type: Math.random() < CUPS_FAKE_CHANCE ? 'fake' : 'swap', a, b };
+  });
+  cups.moveMs = speed.moveMs;
+  // La solucion solo vive en el servidor hasta la revelacion.
+  cups.finalSlot = cupsFinalSlot(cups.initialSlot, cups.moves);
+  cups.revealedSlot = null;
+  cups.votes = new Map();
+  cups.placeStartsAt = Date.now() + Math.max(0, extraDelayMs) + 400;
+  cups.shuffleStartsAt = cups.placeStartsAt + CUPS_PLACE_MS;
+  cups.shuffleEndsAt = cups.shuffleStartsAt + cups.moves.length * cups.moveMs;
+  cups.voteEndsAt = cups.shuffleEndsAt + CUPS_VOTE_MS;
+  cups.revealAt = null;
+  cups.nextRoundAt = null;
+
+  // Al terminar de mezclar empieza la votacion (el tiempo de mezcla es el que tarda el crupier, sin contador).
+  setRoomTimer(room, 'cups', cups.shuffleEndsAt, () => {
+    if (cups.round !== round || cups.stage !== 'shuffling') {
+      return;
+    }
+
+    cups.stage = 'voting';
+    setRoomTimer(room, 'cups', cups.voteEndsAt, () => closeCupsVoting(room, round));
+    emitMatchState(room);
+    maybeCloseCupsVoting(room);
+  });
+  emitMatchState(room);
+}
+
+function maybeCloseCupsVoting(room) {
+  const specialRound = room.match?.specialRound;
+  const cups = specialRound?.cups;
+
+  if (cups?.stage === 'voting' && getActiveParticipantIds(room, specialRound).every((playerId) => cups.votes.has(playerId))) {
+    closeCupsVoting(room, cups.round);
+  }
+}
+
+/** Fin de la votacion: un segundo de pausa (el contador se desvanece) y se levanta el cubilete de la bola. */
+function closeCupsVoting(room, round) {
+  const cups = room.match?.specialRound?.cups;
+
+  if (!cups || cups.stage !== 'voting' || cups.round !== round) {
+    return;
+  }
+
+  cups.stage = 'closing';
+  cups.revealAt = Date.now() + CUPS_REVEAL_PAUSE_MS;
+  setRoomTimer(room, 'cups', cups.revealAt, () => revealCups(room, round));
+  emitMatchState(room);
+}
+
+function revealCups(room, round) {
+  const cups = room.match?.specialRound?.cups;
+
+  if (!cups || cups.stage !== 'closing' || cups.round !== round) {
+    return;
+  }
+
+  cups.stage = 'reveal';
+  cups.revealedSlot = cups.finalSlot;
+  const votes = [...cups.votes.entries()].map(([playerId, slot]) => ({ playerId, slot }));
+  const winners = votes.filter((vote) => vote.slot === cups.finalSlot).map((vote) => vote.playerId);
+
+  for (const playerId of winners) {
+    cups.scores.set(playerId, (cups.scores.get(playerId) || 0) + CUPS_POINTS);
+  }
+
+  cups.history.push({ round, ballSlot: cups.finalSlot, votes, winners });
+  cups.nextRoundAt = Date.now() + CUPS_REVEAL_MS;
+  setRoomTimer(room, 'cups', cups.nextRoundAt, () => (round < CUPS_ROUNDS ? startCupsRound(room, round + 1) : finishCups(room)));
+  emitMatchState(room);
+}
+
+function finishCups(room) {
+  const specialRound = room.match?.specialRound;
+  const cups = specialRound?.cups;
+
+  if (!cups || cups.outcome) {
+    return;
+  }
+
+  cups.stage = 'finished';
+  const ranking = [...cups.scores.entries()]
+    .map(([playerId, score]) => ({
+      playerId,
+      playerName: room.players.get(playerId)?.name || '',
+      hits: score / CUPS_POINTS,
+      points: score,
+    }))
+    .sort((first, second) => second.points - first.points);
+  cups.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.hits,
+    answeredCount: CUPS_ROUNDS,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicCups(cups) {
+  if (!cups) {
+    return null;
+  }
+
+  const revealed = cups.stage === 'reveal' || cups.stage === 'finished';
+
+  return {
+    stage: cups.stage,
+    round: cups.round,
+    totalRounds: CUPS_ROUNDS,
+    cupCount: CUPS_COUNT,
+    initialSlot: cups.initialSlot,
+    moves: cups.moves,
+    moveMs: cups.moveMs,
+    placeMs: CUPS_PLACE_MS,
+    placeStartsAt: cups.placeStartsAt,
+    shuffleStartsAt: cups.shuffleStartsAt,
+    shuffleEndsAt: cups.shuffleEndsAt,
+    voteEndsAt: cups.voteEndsAt,
+    revealAt: cups.revealAt,
+    nextRoundAt: cups.nextRoundAt,
+    // La bola solo se publica al revelar.
+    revealedSlot: revealed ? cups.revealedSlot : null,
+    votes: [...cups.votes.entries()].map(([playerId, slot]) => ({ playerId, slot })),
+    scores: [...cups.scores.entries()].map(([playerId, score]) => ({ playerId, score })),
+    history: cups.history,
+    outcome: cups.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Esquiva los coches                                                  */
+/* ------------------------------------------------------------------ */
+// - Carretera de 4 carriles. Cada ronda: 15 s para elegir carril (si no, se asigna uno al azar); despues pasan
+//   coches por carriles al azar (1 en las rondas 1 y 2; 2 distintos desde la 3) y quien este en ellos queda fuera.
+// - Se juega hasta que queda uno o menos, o hasta completar la ronda 6.
+// - Puntos: los supervivientes ganan 30; el resto, por orden de aguante (escalera, el ultimo 0). Si no sobrevive
+//   nadie, los ultimos en caer (todos en la misma ronda) ganan 0 si fue en la ronda 1, 5 en la 2 y 10 desde la 3.
+// - Los carriles de los coches no se publican hasta que pasan.
+
+const CARS_LANES = 4;
+const CARS_MAX_ROUNDS = 6;
+const CARS_CHOOSE_MS = 15000;
+const CARS_FADE_MS = 1000;
+const CARS_HORN_DELAY_MS = 2000;
+const CARS_DRIVE_MS = 2800;
+const CARS_RESULTS_MS = 2600;
+const CARS_RETURN_MS = 2600;
+
+function setupCars(room) {
+  const specialRound = room.match.specialRound;
+  const ids = specialRound.participantIds;
+  const leftCount = Math.ceil(ids.length / 2);
+
+  specialRound.cars = {
+    stage: 'choosing',
+    round: 0,
+    alive: new Set(ids),
+    // Mitad en cada acera (con impares, uno mas a la izquierda).
+    sides: new Map(ids.map((playerId, index) => [playerId, index < leftCount ? { side: 'left', index } : { side: 'right', index: index - leftCount }])),
+    choices: new Map(),
+    carLanes: [],
+    hits: [],
+    eliminatedRound: new Map(),
+    chooseEndsAt: null,
+    hornAt: null,
+    passStartsAt: null,
+    impactAt: null,
+    nextRoundAt: null,
+    outcome: null,
+  };
+
+  startCarsRound(room, 1, specialRound.introEndsAt - Date.now());
+}
+
+function startCarsRound(room, round, extraDelayMs = 0) {
+  const cars = room.match?.specialRound?.cars;
+
+  if (!cars) {
+    return;
+  }
+
+  cars.round = round;
+  cars.stage = 'choosing';
+  cars.choices = new Map();
+  cars.carLanes = [];
+  cars.hits = [];
+  cars.hornAt = null;
+  cars.passStartsAt = null;
+  cars.impactAt = null;
+  cars.nextRoundAt = null;
+  cars.chooseEndsAt = Date.now() + Math.max(0, extraDelayMs) + CARS_CHOOSE_MS;
+  setRoomTimer(room, 'cars', cars.chooseEndsAt, () => closeCarsChoice(room, round));
+  emitMatchState(room);
+}
+
+function maybeCloseCarsChoice(room) {
+  const cars = room.match?.specialRound?.cars;
+
+  if (cars?.stage === 'choosing' && [...cars.alive].filter((playerId) => room.players.get(playerId)?.active).every((playerId) => cars.choices.has(playerId))) {
+    closeCarsChoice(room, cars.round);
+  }
+}
+
+function closeCarsChoice(room, round) {
+  const cars = room.match?.specialRound?.cars;
+
+  if (!cars || cars.stage !== 'choosing' || cars.round !== round) {
+    return;
+  }
+
+  // Quien no eligio a tiempo va a un carril al azar.
+  for (const playerId of cars.alive) {
+    if (!cars.choices.has(playerId)) {
+      cars.choices.set(playerId, crypto.randomInt(CARS_LANES));
+    }
+  }
+
+  cars.stage = 'waiting';
+  cars.carLanes = secureShuffle([...Array(CARS_LANES).keys()]).slice(0, round <= 2 ? 1 : 2);
+  cars.hornAt = Date.now() + CARS_FADE_MS + CARS_HORN_DELAY_MS;
+  cars.passStartsAt = cars.hornAt + 600;
+  cars.impactAt = cars.passStartsAt + CARS_DRIVE_MS / 2;
+  setRoomTimer(room, 'cars', cars.hornAt, () => {
+    if (cars.round !== round || cars.stage !== 'waiting') {
+      return;
+    }
+
+    // Suena el claxon: a partir de aqui se sabe por donde pasan los coches.
+    cars.stage = 'passing';
+    setRoomTimer(room, 'cars', cars.impactAt, () => resolveCarsImpact(room, round));
+    emitMatchState(room);
+  });
+  emitMatchState(room);
+}
+
+function resolveCarsImpact(room, round) {
+  const cars = room.match?.specialRound?.cars;
+
+  if (!cars || cars.stage !== 'passing' || cars.round !== round) {
+    return;
+  }
+
+  cars.hits = [...cars.alive].filter((playerId) => cars.carLanes.includes(cars.choices.get(playerId)));
+
+  for (const playerId of cars.hits) {
+    cars.alive.delete(playerId);
+    cars.eliminatedRound.set(playerId, round);
+  }
+
+  cars.stage = 'aftermath';
+  setRoomTimer(room, 'cars', Date.now() + CARS_RESULTS_MS, () => {
+    if (cars.alive.size <= 1 || round >= CARS_MAX_ROUNDS) {
+      finishCars(room);
+      return;
+    }
+
+    // Los que siguen vivos vuelven andando a las aceras y empieza la ronda siguiente.
+    cars.stage = 'returning';
+    cars.nextRoundAt = Date.now() + CARS_RETURN_MS;
+    setRoomTimer(room, 'cars', cars.nextRoundAt, () => startCarsRound(room, round + 1));
+    emitMatchState(room);
+  });
+  emitMatchState(room);
+}
+
+function finishCars(room) {
+  const specialRound = room.match?.specialRound;
+  const cars = specialRound?.cars;
+
+  if (!cars || cars.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'cars');
+  cars.stage = 'finished';
+  // Grupos por aguante: los supervivientes primero y despues quien cayo mas tarde.
+  const reach = (playerId) => (cars.alive.has(playerId) ? Infinity : cars.eliminatedRound.get(playerId) || 0);
+  const levels = [...new Set(specialRound.participantIds.map(reach))].sort((first, second) => second - first);
+  const survivors = specialRound.participantIds.filter((playerId) => cars.alive.has(playerId));
+  const lastRound = levels[0];
+  const top = survivors.length ? 30 : lastRound >= 3 ? 10 : lastRound === 2 ? 5 : 0;
+  const pointsFor = (level) => {
+    const index = levels.indexOf(level);
+
+    if (index === 0) {
+      return top;
+    }
+
+    if (index === levels.length - 1) {
+      return 0;
+    }
+
+    return Math.min(top, Math.max(5, Math.round((top * (1 - index / (levels.length - 1))) / 5) * 5));
+  };
+
+  const ranking = specialRound.participantIds
+    .map((playerId) => ({
+      playerId,
+      playerName: room.players.get(playerId)?.name || '',
+      survived: cars.alive.has(playerId),
+      eliminatedRound: cars.eliminatedRound.get(playerId) || null,
+      position: levels.indexOf(reach(playerId)) + 1,
+      points: pointsFor(reach(playerId)),
+    }))
+    .sort((first, second) => first.position - second.position);
+  cars.outcome = { ranking, rounds: cars.round };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: 0,
+    answeredCount: 0,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicCars(cars) {
+  if (!cars) {
+    return null;
+  }
+
+  const carsVisible = ['passing', 'aftermath', 'returning', 'finished'].includes(cars.stage);
+
+  return {
+    stage: cars.stage,
+    round: cars.round,
+    maxRounds: CARS_MAX_ROUNDS,
+    lanes: CARS_LANES,
+    sides: [...cars.sides.entries()].map(([playerId, seat]) => ({ playerId, ...seat })),
+    alive: [...cars.alive],
+    choices: [...cars.choices.entries()].map(([playerId, lane]) => ({ playerId, lane })),
+    chooseEndsAt: cars.chooseEndsAt,
+    hornAt: cars.hornAt,
+    passStartsAt: carsVisible ? cars.passStartsAt : null,
+    impactAt: carsVisible ? cars.impactAt : null,
+    driveMs: CARS_DRIVE_MS,
+    nextRoundAt: cars.nextRoundAt,
+    // Por donde pasan los coches solo se sabe cuando suena el claxon.
+    carLanes: carsVisible ? cars.carLanes : [],
+    hits: cars.hits,
+    eliminated: [...cars.eliminatedRound.entries()].map(([playerId, round]) => ({ playerId, round })),
+    outcome: cars.outcome,
+  };
+}
+
 // Revisa si una desconexion o salida desbloquea (o invalida) la fase actual de un minijuego.
 function reevaluateActiveMinigame(room) {
   const specialRound = room.match?.specialRound;
@@ -1562,6 +3126,20 @@ function reevaluateActiveMinigame(room) {
   maybeResolveTenBut(room);
   maybeFinishPinturillo(room);
   maybeFinishPogo(room);
+  maybeStartBlackjackDeal(room);
+  maybeResolveBarrels(room);
+
+  // Si el jugador en turno del blackjack se va o se desconecta, se planta para no bloquear la mesa.
+  const bj = specialRound.blackjack;
+
+  if (bj?.stage === 'player-turns' && bj.currentPlayerId && !room.players.get(bj.currentPlayerId)?.active) {
+    applyBlackjackAction(room, bj.currentPlayerId, 'stand');
+  }
+
+  // Igual en el globo: si quien esta en la palanca se va, pasa el turno al siguiente.
+  skipInactiveBalloonPlayer(room);
+  maybeCloseCupsVoting(room);
+  maybeCloseCarsChoice(room);
 }
 
 /* ------------------------------------------------------------------ */
@@ -2093,6 +3671,11 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if (room.lobbyReturn) {
+      callback?.({ ok: false, reason: 'Espera a que el resto vuelva al lobby.' });
+      return;
+    }
+
     const players = Array.from(room.players.values());
 
     if (players.length < 2) {
@@ -2123,7 +3706,8 @@ io.on('connection', (socket) => {
       scoreboardRequest: null,
       lastScoreboard: null,
       finalStandings: null,
-      lastMinigameId: '',
+      // Ultimos minijuegos jugados (no pueden volver a tocar hasta que se jueguen otros dos distintos).
+      recentMinigameIds: [],
     };
 
     setRoomTimer(room, 'phase', room.match.countdownEndsAt, () => startRoulette(room));
@@ -2250,9 +3834,32 @@ io.on('connection', (socket) => {
       player.ready = false;
     }
 
-    io.to(room.code).emit('match:returned-to-lobby', { lobbyId: room.code, lobby: toLobby(room) });
-    broadcastLobby(room);
+    // Primero vuelve solo el host (la sala sigue siendo la misma, con el mismo codigo). El resto se queda en
+    // el podio hasta que el host confirme que su lobby esta bien; si no confirmara, se les lleva igualmente.
+    room.lobbyReturn = { requestedAt: Date.now(), confirmed: false };
+    socket.emit('match:returned-to-lobby', { lobbyId: room.code, lobby: toLobby(room) });
+    setRoomTimer(room, 'lobby-return', Date.now() + LOBBY_RETURN_FALLBACK_MS, () => bringPlayersToLobby(room));
     callback?.({ ok: true, lobby: toLobby(room) });
+  });
+
+  socket.on('match:lobby-return-confirm', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+
+    if (!room || !isHostRequest(room, payload)) {
+      callback?.({ ok: false, reason: 'Solo el host puede confirmar el lobby.' });
+      return;
+    }
+
+    if (!room.lobbyReturn || room.lobbyReturn.confirmed) {
+      callback?.({ ok: true });
+      return;
+    }
+
+    room.lobbyReturn.confirmed = true;
+    const at = Date.now() + LOBBY_RETURN_DELAY_MS;
+    roomExceptHost(room).emit('match:lobby-return-countdown', { lobbyId: room.code, at });
+    setRoomTimer(room, 'lobby-return', at, () => bringPlayersToLobby(room));
+    callback?.({ ok: true, at });
   });
 
   socket.on('match:minigame-prepared', (payload = {}, callback) => {
@@ -2748,6 +4355,262 @@ io.on('connection', (socket) => {
 
     pushPinturilloMessage(room, { kind: 'chat', playerId: player.id, text });
     callback?.({ ok: true, close: isCloseGuess(normalized, pinturillo.normalizedWord) });
+  });
+
+  socket.on('match:blackjack-bet', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const bj = room?.match?.specialRound?.blackjack;
+    const seat = bj?.players.get(player?.id);
+    const amount = Math.trunc(Number(payload.amount));
+
+    if (!room || !player || !bj || !seat || room.match.phase !== 'special-round' || bj.stage !== 'betting') {
+      callback?.({ ok: false, reason: 'Ahora mismo no se puede apostar.' });
+      return;
+    }
+
+    // La mano indicada evita que un mensaje antiguo apueste en la mano siguiente.
+    if (Number(payload.handNumber) !== bj.handNumber) {
+      callback?.({ ok: false, reason: 'Esa apuesta era de otra mano.' });
+      return;
+    }
+
+    if (!blackjackGroup(bj).includes(player.id)) {
+      callback?.({ ok: false, reason: 'Todavia no le toca a tu mesa.' });
+      return;
+    }
+
+    if (seat.confirmed) {
+      callback?.({ ok: true, bet: seat.bet });
+      return;
+    }
+
+    if (!Number.isFinite(amount) || amount < 0 || (amount > 0 && amount < BLACKJACK_MIN_BET) || amount > seat.chips) {
+      callback?.({ ok: false, reason: `La apuesta debe estar entre ${BLACKJACK_MIN_BET} y ${seat.chips} fichas (o 0 para no jugar).` });
+      return;
+    }
+
+    seat.bet = amount;
+    seat.confirmed = true;
+    seat.status = amount > 0 ? 'ready' : 'sitting-out';
+    emitMatchState(room);
+    maybeStartBlackjackDeal(room);
+    callback?.({ ok: true, bet: amount });
+  });
+
+  socket.on('match:blackjack-action', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const bj = room?.match?.specialRound?.blackjack;
+    const action = String(payload.action || '');
+
+    if (!room || !player || !bj || room.match.phase !== 'special-round' || bj.stage !== 'player-turns') {
+      callback?.({ ok: false, reason: 'No es momento de jugar.' });
+      return;
+    }
+
+    if (bj.currentPlayerId !== player.id) {
+      callback?.({ ok: false, reason: 'No es tu turno.' });
+      return;
+    }
+
+    if (!['hit', 'stand'].includes(action)) {
+      callback?.({ ok: false, reason: 'Accion no valida.' });
+      return;
+    }
+
+    // El token (mano:jugador:cartas) hace que un doble clic o un reintento solo se aplique una vez; durante la
+    // pausa tras plantarse o pasarse ya no se acepta nada mas de ese turno.
+    if (bj.turnLocked || String(payload.turnToken || '') !== blackjackTurnToken(bj)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    applyBlackjackAction(room, player.id, action);
+    callback?.({ ok: true });
+  });
+
+  socket.on('match:cups-vote', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const specialRound = room?.match?.specialRound;
+    const cups = specialRound?.cups;
+    const slot = Number(payload.slot);
+
+    if (!room || !player || !cups || room.match.phase !== 'special-round' || !specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay cubiletes en juego.' });
+      return;
+    }
+
+    // La ronda indicada evita que un clic tardio cuente en la ronda siguiente.
+    if (cups.stage !== 'voting' || Number(payload.round) !== cups.round) {
+      callback?.({ ok: false, reason: 'Ahora no se puede elegir cubilete.' });
+      return;
+    }
+
+    if (!Number.isInteger(slot) || slot < 0 || slot >= CUPS_COUNT) {
+      callback?.({ ok: false, reason: 'Cubilete no valido.' });
+      return;
+    }
+
+    cups.votes.set(player.id, slot);
+    emitMatchState(room);
+    maybeCloseCupsVoting(room);
+    callback?.({ ok: true, slot });
+  });
+
+  socket.on('match:cars-choose', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const cars = room?.match?.specialRound?.cars;
+    const lane = Number(payload.lane);
+
+    if (!room || !player || !cars || room.match.phase !== 'special-round') {
+      callback?.({ ok: false, reason: 'No hay carretera en juego.' });
+      return;
+    }
+
+    if (!cars.alive.has(player.id)) {
+      callback?.({ ok: false, reason: 'Ya te han atropellado: te toca mirar.' });
+      return;
+    }
+
+    if (cars.stage !== 'choosing' || Number(payload.round) !== cars.round) {
+      callback?.({ ok: false, reason: 'Ahora no se puede cambiar de carril.' });
+      return;
+    }
+
+    if (!Number.isInteger(lane) || lane < 0 || lane >= CARS_LANES) {
+      callback?.({ ok: false, reason: 'Carril no valido.' });
+      return;
+    }
+
+    cars.choices.set(player.id, lane);
+    emitMatchState(room);
+    maybeCloseCarsChoice(room);
+    callback?.({ ok: true, lane });
+  });
+
+  socket.on('match:balloon-pump', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const balloon = room?.match?.specialRound?.balloon;
+
+    if (!room || !player || !balloon || room.match.phase !== 'special-round') {
+      callback?.({ ok: false, reason: 'No hay ningun globo en juego.' });
+      return;
+    }
+
+    if (balloon.outcome) {
+      callback?.({ ok: true, ignored: true, exploded: true });
+      return;
+    }
+
+    if (balloon.currentPlayerId !== player.id) {
+      callback?.({ ok: false, reason: 'No es tu turno.' });
+      return;
+    }
+
+    if (balloon.stage !== 'pumping') {
+      callback?.({ ok: false, reason: 'Espera a llegar a la palanca.' });
+      return;
+    }
+
+    // El token (turno:palancazos) hace que un doble clic o un reintento solo cuente una vez.
+    if (String(payload.turnToken || '') !== balloonTurnToken(balloon)) {
+      callback?.({ ok: true, ignored: true, air: balloon.air });
+      return;
+    }
+
+    pumpBalloon(room, player.id);
+    callback?.({ ok: true, air: balloon.air, exploded: Boolean(balloon.outcome) });
+  });
+
+  socket.on('match:balloon-pass', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const balloon = room?.match?.specialRound?.balloon;
+
+    if (!room || !player || !balloon || room.match.phase !== 'special-round' || balloon.outcome) {
+      callback?.({ ok: false, reason: 'No hay ningun globo en juego.' });
+      return;
+    }
+
+    // Un "pasar" de un turno anterior (reintento o doble clic) no puede saltarse al siguiente jugador.
+    if (Number(payload.turnNumber) !== balloon.turnNumber || balloon.currentPlayerId !== player.id) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (balloon.stage !== 'pumping' || !balloon.pumpsThisTurn) {
+      callback?.({ ok: false, reason: 'Dale al menos una vez a la palanca antes de pasar.' });
+      return;
+    }
+
+    passBalloonTurn(room);
+    callback?.({ ok: true });
+  });
+
+  socket.on('match:barrel-stop', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const barrels = room?.match?.specialRound?.barrels;
+    const racer = barrels?.racers.get(player?.id);
+    const now = Date.now();
+
+    if (!room || !player || !barrels || !racer || room.match.phase !== 'special-round') {
+      callback?.({ ok: false, reason: 'No hay barriles en juego.' });
+      return;
+    }
+
+    if (String(payload.roundId || '') !== barrels.roundId) {
+      callback?.({ ok: false, reason: 'Ese barril era de otra ronda.' });
+      return;
+    }
+
+    // Idempotente: el primer resultado registrado es el que vale.
+    if (racer.status !== 'falling') {
+      callback?.({ ok: true, status: racer.status, height: racer.height, elapsedMs: racer.elapsedMs });
+      return;
+    }
+
+    if (barrels.stage !== 'falling' || now < barrels.startsAt) {
+      callback?.({ ok: false, reason: 'La ronda no esta en marcha.' });
+      return;
+    }
+
+    const serverElapsed = now - barrels.startsAt;
+    let elapsedMs = Number(payload.elapsedMs);
+
+    if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
+      callback?.({ ok: false, reason: 'Tiempo no valido.' });
+      return;
+    }
+
+    // No se puede declarar una parada posterior al momento en que el mensaje llega al servidor
+    // (con un margen para el desfase de reloj): impide "parar" el barril mas abajo de lo real.
+    if (elapsedMs > serverElapsed + BARRELS_CLOCK_TOLERANCE_MS) {
+      elapsedMs = serverElapsed;
+    }
+
+    const height = Math.round(barrelHeightAt(elapsedMs) * 100) / 100;
+    racer.elapsedMs = Math.round(elapsedMs);
+
+    if (elapsedMs >= BARRELS_FALL_MS || height <= 0) {
+      racer.status = 'crushed';
+      racer.height = 0;
+    } else {
+      racer.status = 'stopped';
+      racer.height = height;
+    }
+
+    io.to(room.code).emit('match:barrels-update', {
+      lobbyId: room.code,
+      roundId: barrels.roundId,
+      racer: { ...racer },
+    });
+    callback?.({ ok: true, status: racer.status, height: racer.height, elapsedMs: racer.elapsedMs });
+    maybeResolveBarrels(room);
   });
 
   socket.on('match:pogo-jump', (payload = {}, callback) => {
