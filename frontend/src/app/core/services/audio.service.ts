@@ -1,4 +1,4 @@
-﻿import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { ConfigService } from './config.service';
 
 export type SoundEffect =
@@ -21,21 +21,74 @@ export type SoundEffect =
   | 'burst'
   | 'horn';
 
-export type MusicTrack = 'lobby' | 'roulette' | 'minigame' | 'scoreboard';
+/** Efectos de sonido grabados en assets/audio/efectos (se regeneran con scripts/generate-sfx.mjs). */
+export type SfxName =
+  | 'boton'
+  | 'acierto'
+  | 'entregar'
+  | 'voto'
+  | 'carta-repartir'
+  | 'carta-voltear'
+  | 'fichas'
+  | 'barril-cayendo'
+  | 'cuerda-freno'
+  | 'aplastar'
+  | 'globo-inflar'
+  | 'globo-explotar'
+  | 'palanca'
+  | 'pasos'
+  | 'cubilete-deslizar'
+  | 'cubilete-levantar'
+  | 'bola-rodar'
+  | 'salto-carril'
+  | 'atropello'
+  | 'muelle'
+  | 'disparo'
+  | 'timbre'
+  | 'cristal'
+  | 'deslizar'
+  | 'corte'
+  | 'yuju'
+  | 'bolos'
+  | 'cacareo'
+  | 'campana-tren'
+  | 'tren'
+  | 'lanzar'
+  | 'clavar'
+  | 'rebote'
+  | 'chapuzon'
+  | 'clic'
+  | 'tambor'
+  | 'martillo'
+  | 'recarga'
+  | 'bala';
+
+/** Control de un efecto en curso (para cortarlo, p. ej. el silbido del barril al frenarlo). */
+export interface SfxHandle {
+  stop(fadeMs?: number): void;
+}
+
+/** 'minigame:<id>' es la musica propia de un minijuego (opcional; si no existe suena la de minijuego normal). */
+export type MusicTrack = 'lobby' | 'roulette' | 'minigame' | 'scoreboard' | `minigame:${string}`;
+type BaseTrack = 'lobby' | 'roulette' | 'minigame' | 'scoreboard';
 export type FileEffect = 'win' | 'lose';
 /** Estado real de la musica: 'blocked' = el navegador no deja reproducir hasta que el usuario toque la pagina. */
 export type MusicState = 'idle' | 'starting' | 'playing' | 'blocked';
 
 // Archivos de audio: basta con dejarlos en frontend/public/assets/audio con estos nombres.
 // Si falta alguno la app sigue funcionando (la musica no suena y los efectos usan su version sintetizada).
-const MUSIC_FILES: Record<MusicTrack, string> = {
+const MUSIC_FILES: Record<BaseTrack, string> = {
   lobby: 'assets/audio/musica-lobby.mp3',
   roulette: 'assets/audio/musica-ruleta.mp3',
   minigame: 'assets/audio/musica-minijuego.mp3',
   scoreboard: 'assets/audio/musica-marcador.mp3',
 };
-// Si una pista no existe se usa otra en su lugar (la de la ruleta es opcional: sin ella suena la de minijuego).
-const TRACK_FALLBACK: Partial<Record<MusicTrack, MusicTrack>> = { roulette: 'minigame' };
+// Musica propia de un minijuego: assets/audio/sonido-minijuegos/<id del minijuego>.mp3 (p. ej. dance.mp3).
+const MINIGAME_MUSIC_DIR = 'assets/audio/sonido-minijuegos/';
+const isMinigameTrack = (track: MusicTrack): track is `minigame:${string}` => track.startsWith('minigame:');
+const musicFile = (track: MusicTrack) => (isMinigameTrack(track) ? `${MINIGAME_MUSIC_DIR}${track.slice('minigame:'.length)}.mp3` : MUSIC_FILES[track]);
+// Si una pista no existe se usa otra en su lugar: la de la ruleta y las propias de cada minijuego son opcionales.
+const trackFallback = (track: MusicTrack): MusicTrack | undefined => (track === 'roulette' || isMinigameTrack(track) ? 'minigame' : undefined);
 const EFFECT_FILES: Record<FileEffect, { src: string; fallback: SoundEffect; gain: number }> = {
   win: { src: 'assets/audio/efecto-ganar.mp3', fallback: 'victory', gain: 0.85 },
   // El de perder viene mas fuerte que el de ganar: se baja un poco.
@@ -44,16 +97,67 @@ const EFFECT_FILES: Record<FileEffect, { src: string; fallback: SoundEffect; gai
 // La musica va por debajo de los efectos y de la voz en Discord.
 const MUSIC_HEADROOM = 0.55;
 // Ajuste por pista: la de minijuegos viene mas alta que las demas, asi que se atenua un poco.
-const TRACK_GAIN: Record<MusicTrack, number> = {
+const TRACK_GAIN: Record<BaseTrack, number> = {
   lobby: 1,
   roulette: 0.8,
   minigame: 0.65,
   scoreboard: 1,
 };
+const CUSTOM_TRACK_GAIN = 0.75;
+// Musicas propias que vienen mas bajas que el resto: se suben un poco (multiplica a CUSTOM_TRACK_GAIN).
+const CUSTOM_TRACK_BOOST: Record<string, number> = {
+  duel: 1.35,
+};
 const MUSIC_FADE_MS = 450;
 
 // Volumen maximo de los efectos: suaves, pensados para sonar por debajo de una llamada de Discord.
 const EFFECTS_HEADROOM = 0.32;
+const SFX_DIR = 'assets/audio/efectos/';
+// Ajuste de volumen por efecto (los archivos vienen normalizados al mismo pico).
+const SFX_GAIN: Record<SfxName, number> = {
+  boton: 0.45,
+  acierto: 0.9,
+  entregar: 0.8,
+  voto: 0.85,
+  'carta-repartir': 0.8,
+  'carta-voltear': 0.8,
+  fichas: 0.75,
+  'barril-cayendo': 0.5,
+  'cuerda-freno': 0.95,
+  aplastar: 1,
+  'globo-inflar': 0.75,
+  'globo-explotar': 1.1,
+  palanca: 0.8,
+  pasos: 0.7,
+  'cubilete-deslizar': 0.5,
+  'cubilete-levantar': 0.9,
+  'bola-rodar': 0.9,
+  'salto-carril': 0.8,
+  atropello: 1,
+  muelle: 0.75,
+  disparo: 1,
+  timbre: 0.6,
+  cristal: 0.8,
+  deslizar: 0.7,
+  corte: 0.7,
+  yuju: 0.7,
+  bolos: 0.9,
+  cacareo: 0.5,
+  'campana-tren': 0.6,
+  tren: 0.85,
+  lanzar: 0.7,
+  clavar: 0.8,
+  rebote: 0.7,
+  chapuzon: 0.85,
+  clic: 0.9,
+  tambor: 0.7,
+  martillo: 0.7,
+  recarga: 0.7,
+  bala: 0.85,
+};
+const SFX_NAMES = Object.keys(SFX_GAIN) as SfxName[];
+// Si un efecto aun no se ha descargado al pedirlo, solo se reproduce si llega a tiempo (si no, ya no viene a cuento).
+const SFX_LATE_LIMIT_MS = 250;
 const MIN_GAP_MS: Partial<Record<SoundEffect, number>> = { tick: 38, type: 45, select: 60 };
 // Cualquiera de estos gestos cuenta como interaccion para que el navegador permita reproducir audio.
 const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'touchend', 'click'];
@@ -72,6 +176,10 @@ export class AudioService {
   private readonly musicPlayers = new Set<HTMLAudioElement>();
   /** Pistas opcionales que no estan en la carpeta de audio (se usa su pista de reserva directamente). */
   private readonly missingTracks = new Set<MusicTrack>();
+  private readonly sfxBuffers = new Map<SfxName, AudioBuffer>();
+  private readonly sfxLoading = new Map<SfxName, Promise<AudioBuffer | null>>();
+  /** Ultima vez que sono cualquier efecto: el click generico de los botones no se solapa con otro sonido. */
+  private lastAnyEffectAt = 0;
 
   readonly musicVolume = computed(() => this.configService.config().musicVolume / 100);
   readonly effectsVolume = computed(() => this.configService.config().effectsVolume / 100);
@@ -82,6 +190,7 @@ export class AudioService {
     const unlock = () => {
       this.ensureContext();
       void this.context?.resume();
+      this.preloadSfx();
 
       // Si el navegador bloqueo la musica por falta de interaccion, se reintenta en este gesto.
       if (this.musicBlocked && this.music) {
@@ -95,6 +204,18 @@ export class AudioService {
       window.addEventListener(eventName, unlock, { passive: true, capture: true });
     }
 
+    // Click suave en cualquier boton de la interfaz. Se escucha en la fase de burbuja (despues del manejador del
+    // propio boton): si ese manejador ya ha sonado algo, no se anade el click. data-sfx="off" lo desactiva.
+    window.addEventListener('click', (event) => {
+      const button = (event.target as Element | null)?.closest?.('button, [role="button"]');
+
+      if (!button || button.matches(':disabled, [data-sfx="off"]') || performance.now() - this.lastAnyEffectAt < 60) {
+        return;
+      }
+
+      this.playSfx('boton');
+    });
+
     // El volumen de la musica responde en tiempo real al slider.
     effect(() => {
       const volume = this.musicVolume();
@@ -107,7 +228,7 @@ export class AudioService {
 
   /** Cambia la musica de fondo (en bucle). La anterior se apaga con un fundido; null deja silencio. */
   playMusic(requested: MusicTrack | null): void {
-    const track = requested && this.missingTracks.has(requested) ? (TRACK_FALLBACK[requested] ?? requested) : requested;
+    const track = requested && this.missingTracks.has(requested) ? (trackFallback(requested) ?? requested) : requested;
 
     if (track === this.currentTrack) {
       return;
@@ -123,7 +244,7 @@ export class AudioService {
       return;
     }
 
-    const audio = new Audio(MUSIC_FILES[track]);
+    const audio = new Audio(musicFile(track));
     audio.loop = true;
     audio.preload = 'auto';
     audio.volume = 0;
@@ -132,7 +253,7 @@ export class AudioService {
     this.musicPlayers.add(audio);
     this.fadeIn(audio, track);
 
-    const fallback = TRACK_FALLBACK[track];
+    const fallback = trackFallback(track);
 
     if (fallback) {
       // Pista opcional que no esta en la carpeta de audio: suena la de reserva (sin cortes al pedirla despues).
@@ -201,6 +322,7 @@ export class AudioService {
       return;
     }
 
+    this.lastAnyEffectAt = performance.now();
     const audio = new Audio(src);
     audio.volume = Math.min(1, volume * gain);
     audio.onerror = () => this.playEffect(fallback);
@@ -208,7 +330,8 @@ export class AudioService {
   }
 
   private trackVolume(track: MusicTrack, volume = this.musicVolume()): number {
-    return Math.min(1, volume * MUSIC_HEADROOM * TRACK_GAIN[track]);
+    const gain = isMinigameTrack(track) ? CUSTOM_TRACK_GAIN * (CUSTOM_TRACK_BOOST[track.slice('minigame:'.length)] ?? 1) : TRACK_GAIN[track];
+    return Math.min(1, volume * MUSIC_HEADROOM * gain);
   }
 
   private stopAllMusicNow(): void {
@@ -277,6 +400,7 @@ export class AudioService {
     }
 
     this.lastPlayedAt.set(effect, now);
+    this.lastAnyEffectAt = now;
 
     try {
       const context = this.ensureContext();
@@ -290,6 +414,107 @@ export class AudioService {
     } catch {
       // El audio es decorativo: un fallo nunca debe afectar a la partida.
     }
+  }
+
+  /**
+   * Efecto de sonido de la carpeta de efectos (va con el volumen de efectos, nunca con el de musica).
+   * rate cambia velocidad y tono (1 = original); gain ajusta el volumen de esta reproduccion.
+   */
+  playSfx(name: SfxName, options: { rate?: number; gain?: number } = {}): SfxHandle {
+    let source: AudioBufferSourceNode | undefined;
+    let output: GainNode | undefined;
+    let stopped = false;
+    const handle: SfxHandle = {
+      stop: (fadeMs = 60) => {
+        stopped = true;
+
+        if (!source || !output || !this.context) {
+          return;
+        }
+
+        const now = this.context.currentTime;
+        output.gain.cancelScheduledValues(now);
+        output.gain.setValueAtTime(output.gain.value, now);
+        output.gain.linearRampToValueAtTime(0, now + fadeMs / 1000);
+        source.stop(now + fadeMs / 1000 + 0.02);
+      },
+    };
+    const volume = this.effectsVolume();
+
+    if (volume <= 0) {
+      return handle;
+    }
+
+    const requestedAt = performance.now();
+    this.lastAnyEffectAt = requestedAt;
+
+    const start = (buffer: AudioBuffer | null) => {
+      const context = this.context;
+
+      if (!buffer || stopped || !context || !this.master || context.state !== 'running' || performance.now() - requestedAt > SFX_LATE_LIMIT_MS) {
+        return;
+      }
+
+      try {
+        this.master.gain.setValueAtTime(this.effectsVolume() * EFFECTS_HEADROOM, context.currentTime);
+        source = context.createBufferSource();
+        output = context.createGain();
+        source.buffer = buffer;
+        source.playbackRate.value = options.rate ?? 1;
+        output.gain.value = SFX_GAIN[name] * (options.gain ?? 1);
+        source.connect(output).connect(this.master);
+        source.start();
+      } catch {
+        // El audio es decorativo: un fallo nunca debe afectar a la partida.
+      }
+    };
+
+    const ready = this.sfxBuffers.get(name);
+
+    if (ready) {
+      start(ready);
+    } else {
+      void this.loadSfx(name).then(start);
+    }
+
+    return handle;
+  }
+
+  /** Descarga y decodifica todos los efectos de una vez (son pequenos) para que suenen sin retraso. */
+  private preloadSfx(): void {
+    if (this.sfxLoading.size < SFX_NAMES.length) {
+      SFX_NAMES.forEach((name) => void this.loadSfx(name));
+    }
+  }
+
+  private loadSfx(name: SfxName): Promise<AudioBuffer | null> {
+    const cached = this.sfxLoading.get(name);
+
+    if (cached) {
+      return cached;
+    }
+
+    const context = this.ensureContext();
+    const loading = context
+      ? fetch(`${SFX_DIR}${name}.wav`)
+          .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject(new Error(response.statusText))))
+          .then((data) => context.decodeAudioData(data))
+          .then((buffer) => {
+            this.sfxBuffers.set(name, buffer);
+            return buffer;
+          })
+          .catch(() => {
+            // Si falta el archivo se vuelve a intentar la proxima vez.
+            this.sfxLoading.delete(name);
+            return null;
+          })
+      : Promise.resolve(null);
+
+    if (context) {
+      this.sfxLoading.set(name, loading);
+    }
+
+    return loading;
   }
 
   /** Motor de coche que se acerca y se aleja: sube de volumen y de tono y despues se apaga poco a poco. */

@@ -1,0 +1,73 @@
+<section class="crossy" #root aria-label="Minijuego Cruza la carretera">
+  <canvas #canvas class="scene-canvas" aria-hidden="true" (pointerdown)="press('up')"></canvas>
+
+  <div class="labels" #chickenTags aria-hidden="true">
+    @for (view of views(); track view.playerId) {
+    <span class="chicken-tag" [attr.data-cr-label]="view.playerId" [class.mine]="view.isLocal">{{ view.isLocal ? 'Tú' : view.name }}</span>
+    }
+  </div>
+
+  <header class="top-bar">
+    <span class="pill title">Cruza la carretera</span>
+    @if (state(); as crossy) {
+    @if (isPlayer()) {
+    <span class="pill">Fila <b>{{ best() }}</b> / {{ crossy.finishRow }}</span>
+    }
+    @if (started() && crossy.stage === 'playing') {
+    <span class="pill timer" [class.hurry]="playTimer.seconds() <= 10">{{ playTimer.seconds() }}s</span>
+    }
+    }
+  </header>
+
+  @if (countdownText()) {
+  <div class="countdown" [class.go]="countdownText() === '¡YA!'">{{ countdownText() }}</div>
+  }
+
+  <aside class="standings" aria-label="Clasificación en directo">
+    @for (row of standings().slice(0, 6); track row.playerId; let index = $index) {
+    <div class="row" [class.mine]="row.mine" [class.dead]="row.dead">
+      <span class="pos">{{ index + 1 }}</span>
+      <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.name" [color]="row.colorId" [size]="20" />
+      <b>{{ row.mine ? 'Tú' : row.name }}</b>
+      <span>{{ row.finished ? '🏁' : row.dead ? '💥 ' + row.best : row.best }}</span>
+    </div>
+    }
+  </aside>
+
+  <footer class="dock" [class.hidden]="!!state()?.outcome">
+    <p class="status" [class.bad]="!!dead()">{{ statusText() }}</p>
+  </footer>
+
+  @if (isPlayer() && !state()?.outcome) {
+  <div class="dpad" [class.disabled]="!canMove()" role="group" aria-label="Controles">
+    <button type="button" class="up" data-sfx="off" aria-label="Adelante" (pointerdown)="press('up'); $event.preventDefault()">▲</button>
+    <button type="button" class="left" data-sfx="off" aria-label="Izquierda" (pointerdown)="press('left'); $event.preventDefault()">◀</button>
+    <button type="button" class="down" data-sfx="off" aria-label="Atrás" (pointerdown)="press('down'); $event.preventDefault()">▼</button>
+    <button type="button" class="right" data-sfx="off" aria-label="Derecha" (pointerdown)="press('right'); $event.preventDefault()">▶</button>
+  </div>
+  }
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de Cruza la carretera">
+      <h2>Resultados</h2>
+      <p class="hint">Primero quien llega a la meta; después, quien llega más lejos. Atropello: −5.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.finished ? '¡Meta!' : 'Fila ' + row.rows }}{{ row.dead ? ' · 💥 −5' : '' }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la carretera en 3D.</p>
+  }
+</section>

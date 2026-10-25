@@ -1,0 +1,331 @@
+// Pantalla completa: ocupa toda la capa del minijuego y nada se sale de ella (sin barras de scroll).
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: #000;
+}
+
+.beer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-weight: 900;
+  background-color: #3a2418;
+  user-select: none;
+}
+
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    will-change: transform;
+  }
+}
+
+.jug-tag {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+
+  small {
+    padding: 1px 6px;
+    font-size: 0.68rem;
+    white-space: nowrap;
+    background-color: rgba(255, 247, 236, 0.95);
+    border: 2px solid #000;
+    border-radius: 999px;
+  }
+
+  &.mine app-player-avatar {
+    border-radius: 50%;
+    outline: 3px solid #ffe891;
+  }
+
+  &.fell small {
+    color: #fff;
+    background-color: #e8262b;
+  }
+}
+
+.top-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 232px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pill {
+  padding: 6px 14px;
+  font-size: clamp(0.82rem, 1.6vw, 1.02rem);
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  &.title {
+    background-color: #ffe2a8;
+  }
+
+  &.timer {
+    min-width: 58px;
+    text-align: center;
+  }
+
+  &.timer.hurry {
+    color: #9a0000;
+    background-color: #ffc0c0;
+  }
+}
+
+.countdown {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  z-index: 3;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+
+  span {
+    display: block;
+    color: #fff;
+    font-size: clamp(4rem, 14vw, 8rem);
+    line-height: 1;
+    text-shadow:
+      0 6px 0 #000,
+      0 0 3px #000;
+    animation: pop 900ms ease both;
+  }
+}
+
+.dock {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(520px, calc(100% - 24px));
+  transform: translateX(-50%);
+
+  &.hidden {
+    visibility: hidden;
+  }
+}
+
+.aim {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+// Medidor de fuerza vertical: verde abajo, rojo arriba.
+.meter {
+  position: relative;
+  width: 52px;
+  height: 170px;
+  overflow: hidden;
+  background-color: #1b1f2a;
+  border: 4px solid #000;
+  border-radius: 14px;
+
+  // Solo color (sin porcentaje): verde abajo y naranja arriba, para que la linea roja se distinga bien.
+  i {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, #38c172 0%, #ffd23f 60%, #ff9a1f 100%);
+    transform-origin: bottom center;
+  }
+
+  // Linea roja: la fuerza que deja la jarra justo en el borde. Por encima, se cae.
+  .perfect {
+    position: absolute;
+    right: 0;
+    left: 0;
+    z-index: 1;
+    height: 4px;
+    background-color: #e8262b;
+    box-shadow:
+      0 0 0 1px #fff,
+      0 0 6px #e8262b;
+    transform: translateY(50%);
+  }
+
+  &.locked {
+    outline: 3px solid #ffe891;
+  }
+}
+
+.throw-button {
+  display: grid;
+  gap: 2px;
+  min-width: 190px;
+  padding: 12px;
+  color: #fff;
+  font: inherit;
+  background-color: #c77a1c;
+  border: 4px solid #000;
+  border-radius: 18px;
+  box-shadow: 0 6px 0 #000;
+  cursor: pointer;
+  touch-action: manipulation;
+
+  span {
+    font-size: 1.5rem;
+  }
+
+  small {
+    font-size: 0.75rem;
+    opacity: 0.85;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #000;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+}
+
+.status {
+  margin: 0;
+  padding: 6px 14px;
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  text-align: center;
+  background-color: rgba(255, 247, 236, 0.94);
+  border: 3px solid #000;
+  border-radius: 14px;
+}
+
+.results-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  // Arriba, para que debajo se vea donde ha quedado cada jarra.
+  align-items: start;
+  justify-items: center;
+  padding: 60px 12px 92px;
+  pointer-events: none;
+}
+
+.results-card {
+  display: grid;
+  gap: 8px;
+  width: min(520px, 100%);
+  max-height: min(100%, 44vh);
+  pointer-events: auto;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+  box-shadow: 0 6px 0 #000;
+
+  h2,
+  .hint {
+    margin: 0;
+    text-align: center;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+  }
+
+  ol {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 30px auto 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background-color: #fff;
+    border: 2px solid #000;
+    border-radius: 12px;
+
+    &.mine {
+      background-color: #dff6ff;
+    }
+
+    &.fell {
+      background-color: #ffd4d4;
+    }
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .what {
+    font-size: 0.72rem;
+  }
+
+  .points {
+    color: #10752c;
+
+    &.lose {
+      color: #b00020;
+    }
+  }
+}
+
+.no-webgl {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  margin: 0;
+  padding: 14px;
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 16px;
+  transform: translate(-50%, -50%);
+}
+
+@media (max-width: 640px) {
+  .top-bar {
+    top: 96px;
+    left: 12px;
+    justify-content: center;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}

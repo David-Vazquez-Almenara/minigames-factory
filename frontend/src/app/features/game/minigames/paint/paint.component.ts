@@ -1,4 +1,5 @@
-﻿import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { AudioService } from '../../../../core/services/audio.service';
 import { GameTimerService } from '../../../../core/services/game-timer.service';
 import { MatchService } from '../../../../core/services/match.service';
 import { DrawingBoardComponent } from '../../../../shared/components/drawing-board/drawing-board.component';
@@ -15,19 +16,19 @@ const PAINT_TARGETS = [
   'Barco',
   'Robot',
   'Dinosaurio',
-  'Camara',
+  'Cámara',
   'Pizza',
   'Bicicleta',
   'Reloj',
-  'Montana',
-  'Avion',
-  'Lampara',
+  'Montaña',
+  'Avión',
+  'Lámpara',
   'Corona',
   'Paraguas',
   'Fantasma',
   'Taza',
-  'Balon',
-  'Arbol',
+  'Balón',
+  'Árbol',
   'Coche',
 ];
 
@@ -39,6 +40,7 @@ const PAINT_TARGETS = [
 })
 export class PaintComponent {
   private readonly matchService = inject(MatchService);
+  private readonly audioService = inject(AudioService);
   private readonly board = viewChild(DrawingBoardComponent);
   private preparedRoundKey = '';
   private submittedRoundKey = '';
@@ -135,6 +137,7 @@ export class PaintComponent {
     }
 
     this.submitted.set(true);
+    this.audioService.playSfx('entregar');
   }
 
   async vote(targetPlayerId: string): Promise<void> {
@@ -154,6 +157,7 @@ export class PaintComponent {
     }
 
     this.votedTargetId.set(targetPlayerId);
+    this.audioService.playSfx('voto');
   }
 
   private async preparePaint(lobbyId: string): Promise<void> {

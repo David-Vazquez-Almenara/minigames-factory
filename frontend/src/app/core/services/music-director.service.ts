@@ -27,9 +27,10 @@ export class MusicDirectorService {
         if (match.phase === 'scoreboard' || match.phase === 'finished') {
           track = 'scoreboard';
         } else if (match.phase === 'special-round') {
-          // La explicacion sigue con la musica de la ruleta; al acabar entra la del minijuego.
+          // La explicacion sigue con la musica de la ruleta; al acabar entra la del minijuego (la suya propia si
+          // hay un archivo en assets/audio/sonido-minijuegos; si no, la de minijuego normal).
           const remaining = (match.specialRound?.introEndsAt || 0) - this.socketService.serverNow();
-          track = remaining > 0 ? 'roulette' : 'minigame';
+          track = remaining > 0 ? 'roulette' : `minigame:${match.specialRound?.minigameId || ''}`;
 
           if (remaining > 0) {
             this.introTimer = setTimeout(() => this.introTick.update((tick) => tick + 1), remaining + 30);

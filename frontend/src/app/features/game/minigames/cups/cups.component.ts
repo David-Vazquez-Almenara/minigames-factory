@@ -24,6 +24,7 @@ export class CupsComponent implements AfterViewInit, OnDestroy {
   private insetObserver?: ResizeObserver;
   private destroyed = false;
   private lastStageKey = '';
+  private soundTimers: ReturnType<typeof setTimeout>[] = [];
 
   readonly currentPlayerId = this.matchService.currentPlayerId;
   readonly state = computed(() => this.matchService.match()?.specialRound?.cups || null);
@@ -37,6 +38,17 @@ export class CupsComponent implements AfterViewInit, OnDestroy {
   });
 
   readonly isPlayer = computed(() => Boolean(this.matchService.match()?.specialRound?.participantIds.includes(this.currentPlayerId)));
+  readonly voterTotal = computed(() => this.matchService.match()?.specialRound?.participantIds.length || 0);
+  readonly votedCount = computed(() => {
+    const voted = new Set(this.state()?.votedPlayerIds || []);
+
+    // El voto propio cuenta al instante, aunque el servidor aun no lo haya confirmado.
+    if (this.selectedSlot() !== null && this.isPlayer()) {
+      voted.add(this.currentPlayerId);
+    }
+
+    return voted.size;
+  });
   readonly canVote = computed(() => this.state()?.stage === 'voting' && this.isPlayer());
   readonly selectedSlot = computed(() => {
     const state = this.state();
@@ -205,6 +217,7 @@ export class CupsComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    this.clearSoundTimers();
     this.insetObserver?.disconnect();
     this.scene?.dispose();
     this.scene = undefined;
@@ -241,13 +254,47 @@ export class CupsComponent implements AfterViewInit, OnDestroy {
 
   private playStageSound(stage: string): void {
     if (stage === 'shuffling') {
-      this.audioService.playEffect('whoosh');
+      this.scheduleShuffleSounds();
     } else if (stage === 'voting') {
       this.audioService.playEffect('turn');
     } else if (stage === 'reveal') {
-      const won = this.lastRound()?.winners.includes(this.currentPlayerId);
-      this.audioService.playEffect(won ? 'points' : 'reveal');
+      this.audioService.playSfx('cubilete-levantar');
+
+      // Solo suena algo extra si aciertas; fallar no tiene sonido.
+      if (this.lastRound()?.winners.includes(this.currentPlayerId)) {
+        setTimeout(() => !this.destroyed && this.audioService.playFileEffect('win'), 350);
+      }
     }
+  }
+
+  /** La bola entra rodando y cada movimiento del crupier arrastra los cubiletes por el tapete (reloj del servidor). */
+  private scheduleShuffleSounds(): void {
+    const state = this.state();
+    this.clearSoundTimers();
+
+    if (!state) {
+      return;
+    }
+
+    const at = (serverTime: number, play: () => void) => {
+      const delay = serverTime - this.matchService.serverNow();
+
+      if (delay > -50) {
+        this.soundTimers.push(setTimeout(play, Math.max(0, delay)));
+      }
+    };
+
+    at(state.placeStartsAt, () => this.audioService.playSfx('bola-rodar'));
+    // En las mezclas rapidas el arrastre se acorta y suena mas bajo para no saturar.
+    const rate = Math.min(1.8, Math.max(1, 380 / state.moveMs));
+    state.moves.forEach((_move, index) =>
+      at(state.shuffleStartsAt + index * state.moveMs, () => this.audioService.playSfx('cubilete-deslizar', { rate, gain: state.moveMs < 250 ? 0.7 : 1 })),
+    );
+  }
+
+  private clearSoundTimers(): void {
+    this.soundTimers.forEach((timer) => clearTimeout(timer));
+    this.soundTimers = [];
   }
 
   private sceneState(): CupsSceneState | null {

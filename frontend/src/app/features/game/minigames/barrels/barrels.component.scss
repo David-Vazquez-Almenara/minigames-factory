@@ -259,15 +259,28 @@
   inset: 0;
   z-index: 4;
   display: grid;
-  place-items: center;
-  padding: 72px 12px 92px;
+  // Pegada arriba (justo bajo la barra) para que debajo se vea como quedo cada barril.
+  align-items: start;
+  justify-items: center;
+  padding: 62px 12px 92px;
+  pointer-events: none;
+
+  // En pantallas anchas va arriba a la derecha: en el centro taparia los barriles, que se paran arriba.
+  @media (min-width: 900px) {
+    justify-items: end;
+
+    .results-card {
+      width: min(380px, 100%);
+    }
+  }
 }
 
 .results-card {
   display: grid;
   gap: 8px;
   width: min(520px, 100%);
-  max-height: 100%;
+  max-height: min(100%, 46vh);
+  pointer-events: auto;
   padding: 16px;
   overflow-y: auto;
   background-color: #fff7ec;
@@ -334,6 +347,10 @@
 
   .points {
     color: #10752c;
+
+    &.lose {
+      color: #b00020;
+    }
   }
 }
 

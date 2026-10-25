@@ -1,0 +1,373 @@
+// Pantalla completa: ocupa toda la capa del minijuego y nada se sale de ella (sin barras de scroll).
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: #000;
+}
+
+.who {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-weight: 900;
+  // Plato de concurso: focos sobre fondo morado.
+  background:
+    radial-gradient(ellipse at 20% -10%, rgba(255, 240, 160, 0.55), transparent 45%),
+    radial-gradient(ellipse at 80% -10%, rgba(255, 170, 220, 0.5), transparent 45%),
+    linear-gradient(180deg, #5b2a86 0%, #3a1a5e 60%, #26103f 100%);
+  user-select: none;
+}
+
+.top-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 232px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pill {
+  padding: 6px 14px;
+  font-size: clamp(0.82rem, 1.6vw, 1.02rem);
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  &.title {
+    background-color: #ffd1e8;
+  }
+
+  &.timer {
+    min-width: 58px;
+    text-align: center;
+  }
+
+  &.timer.hurry {
+    color: #9a0000;
+    background-color: #ffc0c0;
+  }
+}
+
+.stage {
+  position: absolute;
+  inset: 70px 12px 70px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+.question {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: min(760px, 100%);
+  padding: 16px 22px;
+  text-align: center;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+  box-shadow: 0 6px 0 #000;
+
+  small {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: #7a3b9a;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: clamp(1.25rem, 3.4vw, 2.1rem);
+    line-height: 1.15;
+  }
+
+  &.pop {
+    animation: question-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+}
+
+.vote-meter {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  background-color: #e8dcef;
+  border: 2px solid #000;
+  border-radius: 999px;
+
+  span {
+    display: block;
+    height: 100%;
+    background-color: #c74fd1;
+  }
+}
+
+// Tarjetas centradas (las filas incompletas tambien quedan en el centro).
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  width: min(1040px, 100%);
+  // Hueco para la corona del mas votado.
+  padding-top: 18px;
+}
+
+.card {
+  position: relative;
+  flex: 0 0 150px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
+  min-height: 132px;
+  padding: 12px 8px 10px;
+  font: inherit;
+  color: #000;
+  cursor: pointer;
+  background-color: #fff;
+  border: 3px solid #000;
+  border-radius: 18px;
+  box-shadow: 0 5px 0 #000;
+  transition:
+    transform 0.12s ease,
+    background-color 0.2s ease;
+
+  &:not(:disabled):hover {
+    transform: translateY(-3px) rotate(-1deg);
+    background-color: #fff2fb;
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #000;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &.mine {
+    background-color: #eaf6ff;
+  }
+
+  &.has-voted::after {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 12px;
+    height: 12px;
+    content: '';
+    background-color: #2fbf55;
+    border: 2px solid #000;
+    border-radius: 50%;
+  }
+
+  &.picked {
+    background-color: #ffe891;
+    transform: translateY(-3px);
+    box-shadow:
+      0 5px 0 #000,
+      0 0 0 4px #ffcf33;
+  }
+
+  &.chosen {
+    background-color: #ffd1e8;
+    animation: chosen-pulse 0.9s ease-in-out infinite alternate;
+  }
+
+  .name {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 0.95rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .count {
+    font-size: 0.8rem;
+  }
+
+  .bar {
+    width: 90%;
+    height: 8px;
+    overflow: hidden;
+    background-color: #eee;
+    border: 2px solid #000;
+    border-radius: 999px;
+
+    span {
+      display: block;
+      height: 100%;
+      background-color: #c74fd1;
+      transition: width 0.8s ease-out;
+    }
+  }
+
+  .voters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .voted-tag {
+    font-size: 0.72rem;
+    color: #10752c;
+  }
+
+  .crown {
+    position: absolute;
+    top: -20px;
+    font-size: 1.8rem;
+    animation: crown-drop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+}
+
+.dock {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  width: min(620px, calc(100% - 24px));
+  pointer-events: none;
+  transform: translateX(-50%);
+
+  &.hidden {
+    visibility: hidden;
+  }
+}
+
+.status {
+  margin: 0;
+  padding: 6px 14px;
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  text-align: center;
+  background-color: rgba(255, 247, 236, 0.96);
+  border: 3px solid #000;
+  border-radius: 14px;
+
+  &.good {
+    background-color: #ffe891;
+  }
+}
+
+.results-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: 72px 12px 92px;
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.results-card {
+  display: grid;
+  gap: 8px;
+  width: min(500px, 100%);
+  max-height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+  box-shadow: 0 6px 0 #000;
+
+  h2,
+  .hint {
+    margin: 0;
+    text-align: center;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+  }
+
+  ol {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 30px auto 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background-color: #fff;
+    border: 2px solid #000;
+    border-radius: 12px;
+
+    &.mine {
+      background-color: #dff6ff;
+    }
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .what {
+    font-size: 0.75rem;
+  }
+
+  .points {
+    color: #10752c;
+  }
+}
+
+@keyframes question-pop {
+  from {
+    transform: scale(0.6) rotate(-3deg);
+    opacity: 0;
+  }
+}
+
+@keyframes chosen-pulse {
+  to {
+    transform: translateY(-4px) scale(1.04);
+  }
+}
+
+@keyframes crown-drop {
+  from {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .top-bar {
+    top: 96px;
+    left: 12px;
+    justify-content: center;
+  }
+
+  .stage {
+    top: 150px;
+  }
+
+  .cards {
+    gap: 8px;
+  }
+
+  .card {
+    flex-basis: 104px;
+    min-height: 112px;
+  }
+}

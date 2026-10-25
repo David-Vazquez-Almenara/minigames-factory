@@ -1,0 +1,104 @@
+<section class="russian" #root aria-label="Minijuego Ruleta rusa">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <!-- Nombre bajo los pies de cada Mii. -->
+  <div class="labels" #nameTags aria-hidden="true">
+    @for (tag of tags(); track tag.playerId) {
+    <div class="tag" [attr.data-rr-label]="tag.playerId" [class.mine]="tag.mine" [class.current]="tag.current">
+      {{ tag.mine ? 'Tú' : tag.name }}
+    </div>
+    }
+  </div>
+
+  <div class="blood-flash" [attr.data-level]="bloodFlash()" aria-hidden="true"></div>
+
+  <header class="top-bar" #topBar>
+    <span class="pill title">Ruleta rusa</span>
+    @if (state(); as game) {
+    <span class="pill">Vivos: <b>{{ game.alive.length }}</b></span>
+    @if (game.stage === 'deciding') {
+    <span class="pill timer" [class.hurry]="decideTimer.seconds() <= 5">{{ decideTimer.seconds() }}s</span>
+    }
+    <!-- Tambor: balas (amarillo) y huecos libres (gris). Solo indica cuantas hay, no donde. -->
+    <span class="cylinder" [attr.aria-label]="shownBullets() + ' balas de ' + game.chambers">
+      <!-- Mientras vuela al centro (recarga), el icono de la esquina se queda vacio. -->
+      <svg #cylinderIcon viewBox="0 0 100 100" aria-hidden="true" [class.away]="!!reloadAnim()">
+        <circle cx="50" cy="50" r="46" class="drum" />
+        <circle cx="50" cy="50" r="8" class="axle" />
+        @for (chamber of chambers(); track $index) {
+        <circle [attr.cx]="chamber.x" [attr.cy]="chamber.y" r="12" [class.loaded]="chamber.loaded" class="chamber" />
+        }
+      </svg>
+      <b>{{ shownBullets() }}/{{ game.chambers }}</b>
+    </span>
+    }
+  </header>
+
+  <!-- Recarga con una bala mas: el tambor viaja al centro en grande, entra la bala y vuelve a la esquina. -->
+  @if (reloadAnim(); as anim) {
+  @for (key of [anim.key]; track key) {
+  <div class="reload-cylinder" aria-hidden="true" [style.left.px]="anim.x" [style.top.px]="anim.y" [style.--dx]="anim.dx + 'px'" [style.--dy]="anim.dy + 'px'">
+    <svg viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="46" class="drum" />
+      <circle cx="50" cy="50" r="8" class="axle" />
+      @for (chamber of chambers(); track $index) {
+      <circle [attr.cx]="chamber.x" [attr.cy]="chamber.y" r="12" [class.loaded]="chamber.loaded" [class.fresh]="chamber.fresh" class="chamber" />
+      }
+    </svg>
+  </div>
+  <div class="reload-caption" aria-live="polite">¡Una bala más! <b>{{ anim.to }}</b> en el tambor</div>
+  }
+  }
+
+  @if (!state()?.outcome) {
+  <ol class="queue-strip" aria-label="Orden de la fila">
+    @for (entry of queue(); track entry.playerId) {
+    <li [class.current]="entry.current" [class.mine]="entry.mine" [title]="entry.name">
+      <app-player-avatar [avatarUrl]="entry.avatarUrl" [name]="entry.name" [color]="entry.colorId" [size]="entry.current ? 34 : 26" />
+    </li>
+    }
+  </ol>
+  }
+
+  <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
+    @if (canDecide()) {
+    <div class="choices">
+      <button type="button" class="shoot-button" data-sfx="off" (click)="decide('shoot')">
+        <span>DISPARAR</span>
+      </button>
+      <button type="button" class="skip-button" data-sfx="off" (click)="decide('skip')">
+        <span>SALTAR BALA</span>
+        <small>(saltas la bala y disparas la siguiente)</small>
+      </button>
+    </div>
+    }
+    <p class="status" [class.mine]="isMyTurn()">{{ statusText() }}</p>
+    @if (errorMessage()) {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+    }
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de la ruleta rusa">
+      <h2>Resultados</h2>
+      <p class="hint">Quien más aguanta gana; el primero en caer se queda sin puntos.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.dead]="!row.survived">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.survived ? '¡Sobrevive!' : 'Cayó' }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la taberna en 3D, pero puedes jugar con los botones.</p>
+  }
+</section>

@@ -62,7 +62,7 @@ export class AmongVoteComponent {
       return;
     }
 
-    this.audioService.playEffect('confirm');
+    this.audioService.playSfx('voto');
     this.vote.emit(target);
     this.selectedTarget.set(null);
   }

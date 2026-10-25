@@ -103,6 +103,349 @@ export interface SpecialRoundPayload {
   balloon?: BalloonPublicState | null;
   cups?: CupsPublicState | null;
   cars?: CarsPublicState | null;
+  dance?: DancePublicState | null;
+  count?: CountPublicState | null;
+  duel?: DuelPublicState | null;
+  stopwatch?: StopwatchPublicState | null;
+  tower?: TowerPublicState | null;
+  beer?: BeerPublicState | null;
+  chop?: ChopPublicState | null;
+  swing?: SwingPublicState | null;
+  golf?: GolfPublicState | null;
+  order?: OrderPublicState | null;
+  bowling?: BowlingPublicState | null;
+  who?: WhoPublicState | null;
+  crossy?: CrossyPublicState | null;
+  javelin?: JavelinPublicState | null;
+  quiz?: QuizPublicState | null;
+  push?: PushPublicState | null;
+  russian?: RussianPublicState | null;
+}
+
+export interface RussianPublicState {
+  stage: 'walking' | 'deciding' | 'firing' | 'reload' | 'finished';
+  order: string[];
+  alive: string[];
+  eliminated: Array<{ playerId: string; turnNumber: number }>;
+  /** Balas en el tambor en esta carga (de 6 recamaras). */
+  bullets: number;
+  chambers: number;
+  load: number;
+  turnIndex: number;
+  turnNumber: number;
+  currentPlayerId: string | null;
+  turnStartsAt: number | null;
+  arriveAt: number | null;
+  decideStartsAt: number | null;
+  decideEndsAt: number | null;
+  lastShot: { turnNumber: number; playerId: string; skipped: boolean; bang: boolean; at: number; firesAt: number } | null;
+  nextAt: number | null;
+  timings: { walkMs: number; pickupMs: number; skipMs: number; triggerMs: number; putdownMs: number; deadMs: number };
+  outcome: { ranking: Array<{ playerId: string; playerName: string; survived: boolean; position: number; points: number }> } | null;
+}
+
+export interface QuizPublicState {
+  stage: 'answering' | 'votes' | 'correct' | 'finished';
+  round: number;
+  totalRounds: number;
+  category: string;
+  difficulty: number;
+  question: string;
+  options: string[];
+  questionAt: number | null;
+  answerStartsAt: number | null;
+  answerEndsAt: number | null;
+  correctAt: number | null;
+  nextRoundAt: number | null;
+  answeredPlayerIds: string[];
+  /** Que ha votado cada uno (solo cuando ya se ha revelado). */
+  answers: Array<{ playerId: string; choice: number }>;
+  correctIndex: number | null;
+  history: Array<{ round: number; points: Array<{ playerId: string; points: number }> }>;
+  outcome: { ranking: Array<{ playerId: string; playerName: string; hits: number; points: number }> } | null;
+}
+
+export interface PushPublicState {
+  stage: 'aiming' | 'launching' | 'resolved' | 'finished';
+  round: number;
+  totalRounds: number;
+  arenaRadius: number;
+  discRadius: number;
+  maxSpeed: number;
+  players: Array<{ playerId: string; x: number; y: number; alive: boolean; fellRound: number | null }>;
+  aimStartsAt: number | null;
+  aimEndsAt: number | null;
+  confirmedPlayerIds: string[];
+  impulses: Array<{ playerId: string; vx: number; vy: number }>;
+  /** Posiciones de salida de la ronda (para simularla aunque el resultado ya haya llegado). */
+  launchBodies: Array<{ playerId: string; x: number; y: number }>;
+  launchAt: number | null;
+  nextRoundAt: number | null;
+  outcome: {
+    ranking: Array<{ playerId: string; playerName: string; survived: boolean; fellRound: number | null; position: number; points: number }>;
+  } | null;
+}
+
+export interface WhoRoundResult {
+  round: number;
+  question: string;
+  votes: Array<{ voterId: string; targetId: string }>;
+  tally: Array<{ playerId: string; count: number }>;
+  /** Mas votados de la ronda (varios si hay empate). */
+  chosen: string[];
+  points: Array<{ playerId: string; points: number }>;
+}
+
+export interface WhoPublicState {
+  stage: 'question' | 'voting' | 'reveal' | 'finished';
+  round: number;
+  totalRounds: number;
+  question: string;
+  questionAt: number | null;
+  voteStartsAt: number | null;
+  voteEndsAt: number | null;
+  nextRoundAt: number | null;
+  votedPlayerIds: string[];
+  history: WhoRoundResult[];
+  outcome: { ranking: Array<{ playerId: string; playerName: string; points: number; hits: number }> } | null;
+}
+
+export type CrossyRow =
+  | { type: 'grass'; trees: number[] }
+  | { type: 'road'; dir: 1 | -1; speed: number; length: number; cars: number[]; color: number }
+  | { type: 'rail'; dir: 1 | -1; periodMs: number; offsetMs: number };
+
+export interface CrossyPlayerState {
+  playerId: string;
+  best: number;
+  row: number;
+  col: number;
+  dead: boolean;
+  finished: boolean;
+}
+
+export interface CrossyPublicState {
+  stage: 'playing' | 'finished';
+  cols: number;
+  finishRow: number;
+  /** Longitud (en columnas) del recorrido ciclico de los coches. */
+  wrap: number;
+  rows: CrossyRow[];
+  startsAt: number;
+  endsAt: number;
+  players: CrossyPlayerState[];
+  outcome: {
+    ranking: Array<{ playerId: string; playerName: string; rows: number; finished: boolean; dead: boolean; position: number; points: number }>;
+  } | null;
+}
+
+export interface JavelinThrow {
+  playerId: string;
+  index: number;
+  angle: number;
+  power: number;
+  landX: number;
+  distance: number;
+  at: number;
+}
+
+export interface JavelinPublicState {
+  stage: 'throwing' | 'zoom' | 'finished';
+  map: number;
+  flagX: number;
+  throwsPerPlayer: number;
+  startsAt: number;
+  endsAt: number;
+  zoomEndsAt: number | null;
+  throws: JavelinThrow[];
+  outcome: {
+    ranking: Array<{ playerId: string; playerName: string; distance: number | null; throws: number; position: number; points: number }>;
+  } | null;
+}
+
+export interface GolfShot {
+  playerId: string;
+  angle: number;
+  power: number;
+  holed: boolean;
+  distance: number;
+  missed: boolean;
+}
+
+export interface GolfPublicState {
+  stage: 'aiming' | 'rolling' | 'finished';
+  round: number;
+  totalRounds: number;
+  /** Indice del mapa de la ronda (los mapas estan definidos en el cliente). */
+  map: number;
+  aimStartsAt: number | null;
+  aimEndsAt: number | null;
+  rollStartsAt: number | null;
+  rollMs: number;
+  nextRoundAt: number | null;
+  shotPlayerIds: string[];
+  history: Array<{ round: number; map: number; shots: GolfShot[] }>;
+  outcome: { ranking: Array<{ playerId: string; playerName: string; total: number; holes: number; position: number; points: number }> } | null;
+}
+
+export interface OrderPublicState {
+  stage: 'showing' | 'reveal' | 'finished';
+  round: number;
+  totalRounds: number;
+  ingredientCount: number;
+  /** Capas de la hamburguesa de la ronda (de abajo arriba, sin los panes). */
+  recipe: number[];
+  showStartsAt: number | null;
+  buildStartsAt: number | null;
+  buildEndsAt: number | null;
+  nextRoundAt: number | null;
+  reportedPlayerIds: string[];
+  history: Array<{ round: number; results: Array<{ playerId: string; success: boolean; ms: number }> }>;
+  outcome: { ranking: Array<{ playerId: string; playerName: string; completed: number; totalMs: number; position: number; points: number }> } | null;
+}
+
+export interface BowlingPublicState {
+  stage: 'aiming' | 'rolling' | 'finished';
+  aimStartsAt: number;
+  aimEndsAt: number;
+  thrownPlayerIds: string[];
+  rollStartsAt: number | null;
+  rollMs: number;
+  results: Array<{ playerId: string; pins: number }>;
+  outcome: { ranking: Array<{ playerId: string; playerName: string; pins: number; position: number; points: number }> } | null;
+}
+
+export interface ChopPublicState {
+  stage: 'playing' | 'finished';
+  startsAt: number;
+  endsAt: number;
+  resultsAt: number;
+  reportedPlayerIds: string[];
+  outcome: { ranking: Array<{ playerId: string; playerName: string; veggies: number; position: number; points: number }> } | null;
+}
+
+export interface SwingJump {
+  playerId: string;
+  angle: number;
+  dir: 1 | -1;
+  distance: number;
+  flightMs: number;
+}
+
+export interface SwingPublicState {
+  stage: 'walking' | 'swinging' | 'flying' | 'finished';
+  order: string[];
+  turnIndex: number;
+  currentPlayerId: string | null;
+  periodMs: number;
+  walkStartsAt: number | null;
+  swingStartsAt: number | null;
+  swingEndsAt: number | null;
+  flightStartsAt: number | null;
+  nextTurnAt: number | null;
+  jumps: SwingJump[];
+  outcome: { ranking: Array<{ playerId: string; playerName: string; distance: number; backwards: boolean; position: number; points: number }> } | null;
+}
+
+export interface TowerPublicState {
+  stage: 'playing' | 'finished';
+  startsAt: number;
+  endsAt: number;
+  levels: Array<{ playerId: string; level: number; lost: boolean; finished: boolean }>;
+  outcome: { ranking: Array<{ playerId: string; playerName: string; level: number; lost: boolean; position: number; points: number }> } | null;
+}
+
+export interface BeerThrow {
+  playerId: string;
+  power: number;
+  distance: number;
+  fell: boolean;
+  gap: number;
+}
+
+export interface BeerPublicState {
+  stage: 'aiming' | 'sliding' | 'finished';
+  /** Metros de barra (de la linea de salida al borde). */
+  length: number;
+  /** Metros que recorre una jarra lanzada con la fuerza maxima. */
+  reach: number;
+  /** Fuerza (0-1) que deja la jarra justo en el borde: la linea roja del medidor. */
+  perfectPower: number;
+  aimStartsAt: number;
+  aimEndsAt: number;
+  thrownPlayerIds: string[];
+  slideStartsAt: number | null;
+  slideMs: number;
+  throws: BeerThrow[];
+  outcome: { ranking: Array<BeerThrow & { playerName: string; position: number; points: number }> } | null;
+}
+
+export type CountKind = 'walk' | 'run' | 'bike' | 'moto' | 'car';
+
+export interface CountPublicState {
+  stage: 'watching' | 'answering' | 'reveal';
+  /** Guion completo: cada cliente lo reproduce. `at` en ms desde watchStartsAt; lane 0-2 acera cercana, 3-5 la del fondo. */
+  schedule: Array<{ id: number; at: number; kind: CountKind; lane: number | 'road-near' | 'road-far'; dir: 1 | -1; speed: number; look: number }>;
+  travel: number;
+  watchStartsAt: number;
+  watchEndsAt: number;
+  answerEndsAt: number;
+  timeBannerMs: number;
+  answeredPlayerIds: string[];
+  outcome: {
+    total: number;
+    ranking: Array<{ playerId: string; playerName: string; answer: number | null; distance: number | null; position: number; points: number }>;
+  } | null;
+}
+
+export interface DuelPublicState {
+  stage: 'waiting' | 'result' | 'finished';
+  round: number;
+  totalRounds: number;
+  dealerMs: number;
+  roundStartsAt: number | null;
+  signalAt: number | null;
+  deadline: number | null;
+  nextRoundAt: number | null;
+  results: Array<{ playerId: string; reactionMs: number | null; foul: boolean; hit: boolean }>;
+  history: Array<{ round: number; dealerMs: number; results: Array<{ playerId: string; reactionMs: number | null; foul: boolean; hit: boolean }> }>;
+  outcome: { ranking: Array<{ playerId: string; playerName: string; wins: number; averageMs: number | null; position: number; points: number }> } | null;
+}
+
+export interface StopwatchPublicState {
+  stage: 'running' | 'reveal' | 'finished';
+  round: number;
+  totalRounds: number;
+  targetMs: number;
+  visibleMs: number;
+  maxErrorMs: number;
+  startsAt: number | null;
+  deadline: number | null;
+  nextRoundAt: number | null;
+  stoppedPlayerIds: string[];
+  history: Array<{ round: number; targetMs: number; results: Array<{ playerId: string; elapsedMs: number | null; errorMs: number }> }>;
+  outcome: { ranking: Array<{ playerId: string; playerName: string; totalErrorMs: number; position: number; points: number }> } | null;
+}
+
+export interface DancePublicState {
+  stage: 'playing' | 'break' | 'finished';
+  round: number;
+  totalRounds: number;
+  lengths: number[];
+  timesMs: number[];
+  /** Secuencias de todas las rondas (letras y, para el modo por colores, indices de la paleta). */
+  sequences: Array<{ letters: string[]; colors: number[] }>;
+  paletteSize: number;
+  roundStartsAt: number | null;
+  roundEndsAt: number | null;
+  breakEndsAt: number | null;
+  alive: string[];
+  eliminated: Array<{ playerId: string; round: number }>;
+  roundLosers: string[];
+  outcome: {
+    rounds: number;
+    ranking: Array<{ playerId: string; playerName: string; survived: boolean; eliminatedRound: number | null; position: number; points: number }>;
+  } | null;
 }
 
 export interface CupsPublicState {
@@ -121,7 +464,9 @@ export interface CupsPublicState {
   revealAt: number | null;
   nextRoundAt: number | null;
   revealedSlot: number | null;
+  /** Vacio mientras se vota: los votos de los demas no se ven hasta cerrar la votacion. */
   votes: Array<{ playerId: string; slot: number }>;
+  votedPlayerIds?: string[];
   scores: Array<{ playerId: string; score: number }>;
   history: Array<{ round: number; ballSlot: number; votes: Array<{ playerId: string; slot: number }>; winners: string[] }>;
   outcome: { ranking: Array<{ playerId: string; playerName: string; hits: number; points: number }> } | null;
@@ -520,6 +865,8 @@ export class SocketService {
   readonly pinturilloFrame = signal<string | null>(null);
   /** Ultimo salto recibido en la carrera de pogo, para animar al jugador correspondiente. */
   readonly lastPogoJump = signal<{ playerId: string; gain: number; at: number } | null>(null);
+  /** Cruza la carretera: ultima posicion conocida de cada gallina (llega aparte del estado, cada ~500 ms). */
+  readonly crossyPositions = signal<Record<string, Omit<CrossyPlayerState, 'playerId'> & { at: number }>>({});
   /** Cuando el host ya esta en el lobby: momento (reloj local) en que el resto vuelve tambien. */
   readonly lobbyReturnAt = signal<number | null>(null);
   readonly playerId = this.getOrCreateStoredId(PLAYER_ID_KEY);
@@ -687,6 +1034,16 @@ export class SocketService {
         this.pinturilloFrame.set(payload.imageDataUrl);
       }
     });
+
+    this.socket.on(
+      'match:crossy-move',
+      (payload: { lobbyId: string; playerId: string; row: number; col: number; best: number; dead: boolean; finished: boolean }) => {
+        if (payload.lobbyId === this.match()?.lobbyId) {
+          const { lobbyId: _lobbyId, playerId, ...position } = payload;
+          this.crossyPositions.update((positions) => ({ ...positions, [playerId]: { ...position, at: Date.now() } }));
+        }
+      },
+    );
 
     this.socket.on('match:pogo-progress', (payload: { lobbyId: string; racers: PogoRacer[]; jump: { playerId: string; gain: number } }) => {
       this.lastPogoJump.set({ ...payload.jump, at: Date.now() });
@@ -956,6 +1313,83 @@ export class SocketService {
     return this.emitWithResponse('match:cars-choose', { code, round, lane, playerId: this.playerId });
   }
 
+  answerCount(code: string, value: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:count-answer', { code, value, playerId: this.playerId });
+  }
+
+  /** Desenfundar: tiempo de reaccion medido en este cliente desde que vio la senal (o falta por adelantarse). */
+  duelShot(code: string, round: number, shot: { reactionMs: number } | { foul: true }): Promise<RoomResponse> {
+    return this.emitWithResponse('match:duel-shot', { code, round, ...shot, playerId: this.playerId });
+  }
+
+  towerProgress(code: string, level: number, state: { lost?: boolean; finished?: boolean } = {}): Promise<RoomResponse> {
+    return this.emitWithResponse('match:tower-progress', { code, level, ...state, playerId: this.playerId });
+  }
+
+  golfShot(code: string, round: number, shot: { angle: number; power: number; holed: boolean; distance: number }): Promise<RoomResponse> {
+    return this.emitWithResponse('match:golf-shot', { code, round, ...shot, playerId: this.playerId });
+  }
+
+  reportOrder(code: string, round: number, success: boolean, ms: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:order-report', { code, round, success, ms, playerId: this.playerId });
+  }
+
+  bowlingThrow(code: string, pins: number, aim: number, spin: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:bowling-throw', { code, pins, aim, spin, playerId: this.playerId });
+  }
+
+  whoVote(code: string, round: number, targetId: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:who-vote', { code, round, targetId, playerId: this.playerId });
+  }
+
+  crossyMove(code: string, move: { row: number; col: number; dead?: boolean }): Promise<RoomResponse> {
+    return this.emitWithResponse('match:crossy-move', { code, ...move, playerId: this.playerId });
+  }
+
+  javelinThrow(code: string, shot: { angle: number; power: number; landX: number }): Promise<RoomResponse> {
+    return this.emitWithResponse('match:javelin-throw', { code, ...shot, playerId: this.playerId });
+  }
+
+  russianAction(code: string, turnNumber: number, action: 'shoot' | 'skip'): Promise<RoomResponse> {
+    return this.emitWithResponse('match:russian-action', { code, turnNumber, action, playerId: this.playerId });
+  }
+
+  quizAnswer(code: string, round: number, choice: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:quiz-answer', { code, round, choice, playerId: this.playerId });
+  }
+
+  pushAim(code: string, round: number, vx: number, vy: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:push-aim', { code, round, vx, vy, playerId: this.playerId });
+  }
+
+  pushResult(
+    code: string,
+    result: { round: number; positions: Array<{ playerId: string; x: number; y: number }>; falls: Array<{ playerId: string; step: number }>; steps: number },
+  ): Promise<RoomResponse> {
+    return this.emitWithResponse('match:push-result', { code, ...result, playerId: this.playerId });
+  }
+
+  reportChop(code: string, veggies: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:chop-report', { code, veggies, playerId: this.playerId });
+  }
+
+  releaseSwing(code: string, turnIndex: number, angle: number, dir: 1 | -1): Promise<RoomResponse> {
+    return this.emitWithResponse('match:swing-release', { code, turnIndex, angle, dir, playerId: this.playerId });
+  }
+
+  throwBeer(code: string, power: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:beer-throw', { code, power, playerId: this.playerId });
+  }
+
+  stopStopwatch(code: string, round: number, elapsedMs: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:stopwatch-stop', { code, round, elapsedMs, playerId: this.playerId });
+  }
+
+  /** Pista de baile: este jugador ha completado la secuencia de la ronda (o se le ha acabado el tiempo). */
+  reportDance(code: string, round: number, result: 'done' | 'fail'): Promise<RoomResponse> {
+    return this.emitWithResponse(result === 'done' ? 'match:dance-done' : 'match:dance-fail', { code, round, playerId: this.playerId });
+  }
+
   /** El host confirma que ha vuelto bien a su lobby (mismo codigo): entonces el servidor trae al resto. */
   confirmLobbyReturn(code: string): Promise<RoomResponse> {
     return this.emitWithResponse('match:lobby-return-confirm', { code, lobbyId: code, hostId: this.playerId, playerId: this.playerId });
@@ -1024,6 +1458,7 @@ export class SocketService {
     this.privateState.set(null);
     this.pinturilloFrame.set(null);
     this.lastPogoJump.set(null);
+    this.crossyPositions.set({});
     this.lobbyReturnAt.set(null);
     this.hostPauseDeadline.set(null);
     this.scoreboard.set(null);

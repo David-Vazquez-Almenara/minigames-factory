@@ -1,0 +1,100 @@
+<section class="order" aria-label="Minijuego Memoriza el pedido">
+  <header class="top-bar">
+    <span class="pill title">Memoriza el pedido</span>
+    @if (state(); as game) {
+    <span class="pill">Ronda <b>{{ game.round || 1 }}</b> de {{ game.totalRounds }} · {{ recipe().length }} capas</span>
+    @if (phase() === 'building') {
+    <span class="pill timer" [class.hurry]="buildTimer.seconds() <= 5">{{ buildTimer.seconds() }}s</span>
+    }
+    }
+  </header>
+
+  <div class="kitchen">
+    <!-- Comanda del cliente: la hamburguesa solo se ve unos segundos. -->
+    <section class="ticket" [class.hidden]="phase() !== 'showing' && phase() !== 'reveal'" aria-label="Pedido">
+      <h2>{{ phase() === 'reveal' ? 'El pedido era' : 'Pedido' }}</h2>
+      <div class="burger">
+        <div class="layer bun-top"></div>
+        @for (ingredient of recipe().slice().reverse(); track $index) {
+        <div [class]="layerClass(ingredient)"></div>
+        }
+        <div class="layer bun-bottom"></div>
+      </div>
+      @if (phase() === 'showing') {
+      <div class="show-bar"><i [style.transform]="'scaleX(' + showProgress() + ')'"></i></div>
+      }
+      @if (phase() === 'ready') {
+      <p class="hint">Preparándose…</p>
+      }
+    </section>
+
+    @if (phase() === 'ready') {
+    <section class="ticket covered"><h2>Llega un cliente…</h2><span class="bell">🔔</span></section>
+    }
+
+    <!-- Plato propio: se monta de abajo arriba. -->
+    @if (isPlayer() && phase() !== 'final' && phase() !== 'ready' && phase() !== 'showing') {
+    <section class="plate" [class.fail]="result() === 'fail'" [class.success]="result() === 'success'" aria-label="Tu hamburguesa">
+      <h2>Tu hamburguesa</h2>
+      <div class="burger">
+        @if (result() === 'success') {
+        <div class="layer bun-top"></div>
+        }
+        @for (ingredient of stack().slice().reverse(); track $index; let index = $index) {
+        <div [class]="layerClass(ingredient)" [class.wrong]="stack().length - 1 - index === wrongLayer()"></div>
+        }
+        <div class="layer bun-bottom"></div>
+      </div>
+      <p class="hint">{{ stack().length }} / {{ recipe().length }} capas</p>
+    </section>
+    }
+  </div>
+
+  @if (phase() === 'building') {
+  <div class="pantry" aria-label="Ingredientes">
+    @for (ingredient of ingredients; track ingredient.id; let index = $index) {
+    <button type="button" class="ingredient" data-sfx="off" (pointerdown)="add(index); $event.preventDefault()">
+      <span [class]="'layer mini ' + ingredient.id"></span>
+      <b>{{ ingredient.name }}</b>
+      <small>{{ index + 1 }}</small>
+    </button>
+    }
+  </div>
+  }
+
+  @if (phase() === 'reveal' && roundResults().length) {
+  <aside class="round-results">
+    @for (row of roundResults(); track row.playerId) {
+    <div class="row" [class.mine]="row.mine" [class.ok]="row.success">
+      <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.name" [color]="row.colorId" [size]="22" />
+      <b>{{ row.mine ? 'Tú' : row.name }}</b>
+      <span>{{ row.text }}</span>
+    </div>
+    }
+  </aside>
+  }
+
+  <footer class="dock" [class.hidden]="!!state()?.outcome">
+    <p class="status" [class.bad]="result() === 'fail'">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de los pedidos">
+      <h2>Resultados</h2>
+      <p class="hint">Pedidos servidos y, a igualdad, menos tiempo.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.completed }}/3 · {{ row.timeText }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+</section>

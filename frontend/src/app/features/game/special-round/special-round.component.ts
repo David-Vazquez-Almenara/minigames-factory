@@ -3,20 +3,37 @@ import { GameTimerService } from '../../../core/services/game-timer.service';
 import { MatchService } from '../../../core/services/match.service';
 import { BalloonComponent } from '../minigames/balloon/balloon.component';
 import { BarrelsComponent } from '../minigames/barrels/barrels.component';
+import { BeerComponent } from '../minigames/beer/beer.component';
 import { BlackjackComponent } from '../minigames/blackjack/blackjack.component';
+import { BowlingComponent } from '../minigames/bowling/bowling.component';
 import { CarsComponent } from '../minigames/cars/cars.component';
+import { ChopComponent } from '../minigames/chop/chop.component';
+import { CountComponent } from '../minigames/count/count.component';
+import { CrossyComponent } from '../minigames/crossy/crossy.component';
 import { CupsComponent } from '../minigames/cups/cups.component';
+import { DanceComponent } from '../minigames/dance/dance.component';
+import { DuelComponent } from '../minigames/duel/duel.component';
+import { GolfComponent } from '../minigames/golf/golf.component';
 import { ImpostorComponent } from '../minigames/impostor/impostor.component';
+import { JavelinComponent } from '../minigames/javelin/javelin.component';
 import { MathOperationsComponent } from '../minigames/math-operations/math-operations.component';
+import { OrderComponent } from '../minigames/order/order.component';
 import { PaintComponent } from '../minigames/paint/paint.component';
 import { PinturilloComponent } from '../minigames/pinturillo/pinturillo.component';
 import { PogoComponent } from '../minigames/pogo/pogo.component';
+import { PushComponent } from '../minigames/push/push.component';
+import { QuizComponent } from '../minigames/quiz/quiz.component';
+import { RussianComponent } from '../minigames/russian/russian.component';
+import { StopwatchComponent } from '../minigames/stopwatch/stopwatch.component';
+import { SwingComponent } from '../minigames/swing/swing.component';
 import { TenButComponent } from '../minigames/ten-but/ten-but.component';
+import { TowerComponent } from '../minigames/tower/tower.component';
+import { WhoComponent } from '../minigames/who/who.component';
 
 type SpecialStage = 'intro' | 'explanation' | 'game';
 
 // Minijuegos que se juegan a pantalla completa (escena 3D que ocupa toda la ventana).
-const FULLSCREEN_MINIGAMES = new Set(['blackjack', 'barrels', 'balloon', 'cups', 'cars']);
+const FULLSCREEN_MINIGAMES = new Set(['blackjack', 'barrels', 'balloon', 'cups', 'cars', 'dance', 'count', 'duel', 'stopwatch', 'tower', 'beer', 'chop', 'swing', 'golf', 'order', 'bowling', 'who', 'crossy', 'javelin', 'quiz', 'push', 'russian']);
 // Respaldo si el servidor no enviara los tiempos de la intro.
 const INTRO_MS = 1750;
 const EXPLANATION_MS = 5000;
@@ -26,15 +43,32 @@ const EXPLANATION_MS = 5000;
   imports: [
     BalloonComponent,
     BarrelsComponent,
+    BeerComponent,
     BlackjackComponent,
+    BowlingComponent,
     CarsComponent,
+    ChopComponent,
+    CountComponent,
+    CrossyComponent,
     CupsComponent,
+    DanceComponent,
+    DuelComponent,
+    GolfComponent,
     ImpostorComponent,
+    JavelinComponent,
     MathOperationsComponent,
+    OrderComponent,
     PaintComponent,
     PinturilloComponent,
     PogoComponent,
+    PushComponent,
+    QuizComponent,
+    RussianComponent,
+    StopwatchComponent,
+    SwingComponent,
     TenButComponent,
+    TowerComponent,
+    WhoComponent,
   ],
   templateUrl: './special-round.component.html',
   styleUrl: './special-round.component.scss',

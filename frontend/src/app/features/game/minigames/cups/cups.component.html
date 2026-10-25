@@ -25,6 +25,10 @@
     <span class="pill timer" [class.gone]="game.stage !== 'voting'" [class.hurry]="game.stage === 'voting' && voteTimer.seconds() <= 5">
       {{ game.stage === 'voting' ? voteTimer.seconds() : 0 }}s
     </span>
+    @if (game.stage === 'voting') {
+    <!-- Solo se ve cuantos han votado: que cubilete eligio cada uno se descubre al cerrar la votacion. -->
+    <span class="pill">Han votado <b>{{ votedCount() }}</b>/{{ voterTotal() }}</span>
+    }
     }
   </header>
 

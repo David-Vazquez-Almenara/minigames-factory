@@ -1,0 +1,331 @@
+// Pantalla completa: ocupa toda la capa del minijuego y nada se sale de ella (sin barras de scroll).
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: #000;
+}
+
+.chop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-weight: 900;
+  background-color: #fdf1dc;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    will-change: transform;
+  }
+}
+
+.name-tag {
+  max-width: 120px;
+  padding: 1px 8px;
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background-color: rgba(255, 247, 236, 0.95);
+  border: 2px solid #000;
+  border-radius: 999px;
+
+  &.mine {
+    background-color: #ffe891;
+  }
+}
+
+.top-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 232px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pill {
+  padding: 6px 14px;
+  font-size: clamp(0.82rem, 1.6vw, 1.02rem);
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  &.title {
+    background-color: #d8f5c4;
+  }
+
+  &.timer {
+    min-width: 58px;
+    text-align: center;
+  }
+
+  &.timer.hurry {
+    color: #9a0000;
+    background-color: #ffc0c0;
+  }
+}
+
+.countdown {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  z-index: 3;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+
+  span {
+    display: block;
+    color: #fff;
+    font-size: clamp(4rem, 14vw, 8rem);
+    line-height: 1;
+    text-shadow:
+      0 6px 0 #000,
+      0 0 3px #000;
+    animation: pop 900ms ease both;
+  }
+
+  &.go span {
+    color: #7cff6b;
+  }
+
+  &.time span {
+    color: #ffe891;
+    font-size: clamp(3rem, 11vw, 6rem);
+  }
+}
+
+.dock {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(560px, calc(100% - 24px));
+  transform: translateX(-50%);
+
+  &.hidden {
+    visibility: hidden;
+  }
+}
+
+.score {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  background-color: rgba(255, 247, 236, 0.95);
+  border: 3px solid #000;
+  border-radius: 18px;
+}
+
+.veggies {
+  display: grid;
+  justify-items: center;
+  min-width: 74px;
+
+  small {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+  }
+
+  strong {
+    font-size: 2.2rem;
+    line-height: 1;
+  }
+}
+
+// Barra de 10 cortes hasta la siguiente verdura.
+.next {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+
+  i {
+    height: 18px;
+    background-color: #e6dccb;
+    border: 2px solid #000;
+    border-radius: 5px;
+
+    &.on {
+      background-color: #ff8a1f;
+    }
+  }
+}
+
+.chop-button {
+  display: grid;
+  gap: 2px;
+  min-width: 150px;
+  padding: 10px 14px;
+  color: #fff;
+  font: inherit;
+  background-color: #e8262b;
+  border: 4px solid #000;
+  border-radius: 16px;
+  box-shadow: 0 5px 0 #000;
+  cursor: pointer;
+  touch-action: manipulation;
+
+  span {
+    font-size: 1.4rem;
+  }
+
+  small {
+    font-size: 0.72rem;
+    opacity: 0.9;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #000;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+}
+
+.status {
+  margin: 0;
+  padding: 6px 14px;
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  text-align: center;
+  background-color: rgba(255, 247, 236, 0.94);
+  border: 3px solid #000;
+  border-radius: 14px;
+}
+
+.results-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: 72px 12px 92px;
+}
+
+.results-card {
+  display: grid;
+  gap: 8px;
+  width: min(500px, 100%);
+  max-height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+  box-shadow: 0 6px 0 #000;
+
+  h2,
+  .hint {
+    margin: 0;
+    text-align: center;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+  }
+
+  ol {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 30px auto 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background-color: #fff;
+    border: 2px solid #000;
+    border-radius: 12px;
+
+    &.mine {
+      background-color: #dff6ff;
+    }
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .what {
+    font-size: 0.75rem;
+  }
+
+  .points {
+    color: #10752c;
+  }
+}
+
+.no-webgl {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  margin: 0;
+  padding: 14px;
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 16px;
+  transform: translate(-50%, -50%);
+}
+
+@media (max-width: 640px) {
+  .top-bar {
+    top: 96px;
+    left: 12px;
+    justify-content: center;
+  }
+
+  .score {
+    grid-template-columns: auto 1fr;
+  }
+
+  .chop-button {
+    grid-column: 1 / -1;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}

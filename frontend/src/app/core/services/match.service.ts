@@ -29,6 +29,7 @@ export class MatchService {
   readonly currentPlayerId = this.socketService.playerId;
   readonly pinturilloFrame = this.socketService.pinturilloFrame;
   readonly lastPogoJump = this.socketService.lastPogoJump;
+  readonly crossyPositions = this.socketService.crossyPositions;
 
   readonly totalPlayers = computed(() => this.match()?.totalPlayers || 0);
   readonly hostPaused = computed(() => Boolean(this.match()?.hostPaused));
@@ -191,6 +192,78 @@ export class MatchService {
 
   chooseLane(lobbyId: string, round: number, lane: number) {
     return this.socketService.chooseLane(lobbyId, round, lane);
+  }
+
+  answerCount(lobbyId: string, value: number) {
+    return this.socketService.answerCount(lobbyId, value);
+  }
+
+  duelShot(lobbyId: string, round: number, shot: { reactionMs: number } | { foul: true }) {
+    return this.socketService.duelShot(lobbyId, round, shot);
+  }
+
+  towerProgress(lobbyId: string, level: number, state: { lost?: boolean; finished?: boolean } = {}) {
+    return this.socketService.towerProgress(lobbyId, level, state);
+  }
+
+  golfShot(lobbyId: string, round: number, shot: { angle: number; power: number; holed: boolean; distance: number }) {
+    return this.socketService.golfShot(lobbyId, round, shot);
+  }
+
+  reportOrder(lobbyId: string, round: number, success: boolean, ms: number) {
+    return this.socketService.reportOrder(lobbyId, round, success, ms);
+  }
+
+  bowlingThrow(lobbyId: string, pins: number, aim: number, spin: number) {
+    return this.socketService.bowlingThrow(lobbyId, pins, aim, spin);
+  }
+
+  whoVote(lobbyId: string, round: number, targetId: string) {
+    return this.socketService.whoVote(lobbyId, round, targetId);
+  }
+
+  crossyMove(lobbyId: string, move: { row: number; col: number; dead?: boolean }) {
+    return this.socketService.crossyMove(lobbyId, move);
+  }
+
+  javelinThrow(lobbyId: string, shot: { angle: number; power: number; landX: number }) {
+    return this.socketService.javelinThrow(lobbyId, shot);
+  }
+
+  russianAction(lobbyId: string, turnNumber: number, action: 'shoot' | 'skip') {
+    return this.socketService.russianAction(lobbyId, turnNumber, action);
+  }
+
+  quizAnswer(lobbyId: string, round: number, choice: number) {
+    return this.socketService.quizAnswer(lobbyId, round, choice);
+  }
+
+  pushAim(lobbyId: string, round: number, vx: number, vy: number) {
+    return this.socketService.pushAim(lobbyId, round, vx, vy);
+  }
+
+  pushResult(lobbyId: string, result: Parameters<SocketService['pushResult']>[1]) {
+    return this.socketService.pushResult(lobbyId, result);
+  }
+
+  reportChop(lobbyId: string, veggies: number) {
+    return this.socketService.reportChop(lobbyId, veggies);
+  }
+
+  releaseSwing(lobbyId: string, turnIndex: number, angle: number, dir: 1 | -1) {
+    return this.socketService.releaseSwing(lobbyId, turnIndex, angle, dir);
+  }
+
+  throwBeer(lobbyId: string, power: number) {
+    return this.socketService.throwBeer(lobbyId, power);
+  }
+
+  stopStopwatch(lobbyId: string, round: number, elapsedMs: number) {
+    return this.socketService.stopStopwatch(lobbyId, round, elapsedMs);
+  }
+
+  reportDance(lobbyId: string, round: number, result: 'done' | 'fail') {
+    return this.socketService.reportDance(lobbyId, round, result);
   }
 
   serverNow(): number {

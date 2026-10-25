@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AudioService } from '../../../../core/services/audio.service';
 import { MatchService } from '../../../../core/services/match.service';
 import { MathOperationPayload } from '../../../../core/services/socket.service';
 
@@ -15,6 +16,7 @@ interface MathOperation extends MathOperationPayload {
 })
 export class MathOperationsComponent {
   private readonly matchService = inject(MatchService);
+  private readonly audioService = inject(AudioService);
   private preparedRoundKey = '';
   private activeRoundKey = '';
   private answeredOperations = new Set<string>();
@@ -122,6 +124,13 @@ export class MathOperationsComponent {
 
     if (completed) {
       this.submitted.set(true);
+    }
+
+    // Acertar suena a campanita; fallar no tiene sonido (el boton ya hace su clic). Al terminar, entrega.
+    if (completed) {
+      this.audioService.playSfx('entregar');
+    } else if (isCorrect) {
+      this.audioService.playSfx('acierto');
     }
 
     void this.matchService.submitMinigameProgress(lobbyId, {

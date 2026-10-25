@@ -23,8 +23,26 @@ export type MiiMood =
   | 'walk'
   | 'lever'
   // Cubiletes: el crupier mueve los brazos arriba y abajo mientras mezcla.
-  | 'shuffle';
+  | 'shuffle'
+  // ¿Cuantos hay?: correr por la acera y conducir (sentado, con las manos al frente).
+  | 'run'
+  | 'ride'
+  // Desenfundar: brazo derecho estirado apuntando al frente.
+  | 'aim'
+  // Salto con cuerda: colgado con los brazos arriba y volando con los brazos abiertos.
+  | 'hang'
+  | 'fly';
 export type MiiPose = 'stand' | 'sit' | 'ground-sit';
+
+/** Partes articuladas del Mii, para animaciones a medida de un minijuego (ver `poseOverride`). */
+export interface MiiParts {
+  body: ThreeModule.Group;
+  head: ThreeModule.Group;
+  armLeft: ThreeModule.Group;
+  armRight: ThreeModule.Group;
+  legLeft: ThreeModule.Group;
+  legRight: ThreeModule.Group;
+}
 export type MiiUpdateMode = 'lobby' | 'scoreboard' | 'podium' | 'game';
 
 export interface MiiRigOptions {
@@ -88,6 +106,8 @@ export class MiiRig {
   baseY = 0;
   targetX = 0;
   removed = false;
+  /** Ajuste final de la postura en cada fotograma (despues del animo y la pose), para animaciones propias. */
+  poseOverride: ((parts: MiiParts) => void) | null = null;
 
   constructor(
     private readonly THREE: Three,
@@ -228,6 +248,12 @@ export class MiiRig {
     this.faceMaterial.needsUpdate = true;
   }
 
+  /** Coloca un objeto (p. ej. un revolver) en la mano derecha; se mueve con el brazo. */
+  attachToRightHand(object: ThreeModule.Object3D): void {
+    object.position.y += -0.47;
+    this.armRight.add(object);
+  }
+
   setShirtColor(color: string): void {
     this.shirtMaterial.color.set(color);
   }
@@ -270,6 +296,14 @@ export class MiiRig {
     }
 
     this.applyPose();
+    this.poseOverride?.({
+      body: this.body,
+      head: this.head,
+      armLeft: this.armLeft,
+      armRight: this.armRight,
+      legLeft: this.legLeft,
+      legRight: this.legRight,
+    });
     this.updateDizzyStars(time);
     this.applyEnterAndLeave(time);
   }
@@ -578,6 +612,53 @@ export class MiiRig {
         this.head.rotation.x = 0.04;
         return true;
       }
+      case 'run': {
+        // Carrera: zancadas largas y rapidas, brazos doblados y cuerpo inclinado hacia delante.
+        const stride = Math.sin(local * 15);
+        this.legLeft.rotation.x = stride * 0.9;
+        this.legRight.rotation.x = -stride * 0.9;
+        this.armLeft.rotation.x = -stride * 0.9 - 0.3;
+        this.armRight.rotation.x = stride * 0.9 - 0.3;
+        this.body.rotation.x = 0.18;
+        this.body.position.y += Math.abs(Math.cos(local * 15)) * 0.09;
+        this.head.rotation.x = -0.12;
+        return true;
+      }
+      case 'ride': {
+        // Al volante o al manillar: manos al frente y algun bote del camino.
+        this.armLeft.rotation.set(-1.25, 0, -0.1);
+        this.armRight.rotation.set(-1.25, 0, 0.1);
+        this.body.position.y += Math.abs(Math.sin(local * 11)) * 0.012;
+        this.head.rotation.y *= 0.3;
+        return true;
+      }
+      case 'aim':
+        // Brazo derecho estirado al frente con el arma; el otro, quieto junto al cuerpo.
+        this.armRight.rotation.set(-1.55, 0, 0.05);
+        this.armLeft.rotation.set(0.05, 0, -0.12);
+        this.head.rotation.y *= 0.2;
+        this.head.rotation.x = 0.05;
+        return true;
+      case 'hang': {
+        // Agarrado a la cuerda con las dos manos por encima de la cabeza; las piernas cuelgan y se mecen.
+        const sway = Math.sin(local * 4);
+        this.armLeft.rotation.set(0, 0, -2.95);
+        this.armRight.rotation.set(0, 0, 2.95);
+        this.legLeft.rotation.x = sway * 0.25;
+        this.legRight.rotation.x = -sway * 0.25;
+        this.head.rotation.x = -0.15;
+        return true;
+      }
+      case 'fly': {
+        // En el aire: brazos abiertos agitandose y piernas pataleando.
+        const flap = Math.sin(local * 16);
+        this.armLeft.rotation.set(0, 0, -(1.5 + flap * 0.35));
+        this.armRight.rotation.set(0, 0, 1.5 + flap * 0.35);
+        this.legLeft.rotation.x = Math.sin(local * 12) * 0.6;
+        this.legRight.rotation.x = -Math.sin(local * 12) * 0.6;
+        this.head.rotation.x = -0.2;
+        return true;
+      }
       case 'shuffle': {
         // Brazos alternos arriba y abajo sobre la mesa, rapido, como moviendo los cubiletes.
         const beat = Math.sin(local * 13);
@@ -725,7 +806,7 @@ export async function createFaceTexture(THREE: Three, avatarUrl: string, name: s
   return texture;
 }
 
-function loadCorsImage(url: string): Promise<HTMLImageElement | null> {
+export function loadCorsImage(url: string): Promise<HTMLImageElement | null> {
   if (!url) {
     return Promise.resolve(null);
   }

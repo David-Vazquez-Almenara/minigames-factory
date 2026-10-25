@@ -1,0 +1,65 @@
+<section class="swing" #root aria-label="Minijuego Salto con cuerda">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <div class="labels" #labels aria-hidden="true">
+    @for (tag of tags(); track tag.playerId) {
+    <span class="name-tag" [attr.data-sw-jumper]="tag.playerId" [class.mine]="tag.isLocal" [class.negative]="tag.negative">
+      <b>{{ tag.isLocal ? 'Tú' : tag.name }}</b>
+      @if (tag.detail) {<small>{{ tag.detail }}</small>}
+    </span>
+    }
+  </div>
+
+  <!-- Barra de distancias arriba (el arbol en 0 y cada jugador donde ha caido). -->
+  <div class="track" aria-label="Distancias">
+    <div class="line">
+      <span class="tree" [style.left.%]="track().zero">🌳</span>
+      @for (mark of track().marks; track mark.playerId) {
+      <span class="mark" [style.left.%]="mark.left" [class.mine]="mark.mine" [class.negative]="mark.negative" [title]="mark.name">
+        <app-player-avatar [avatarUrl]="mark.avatarUrl" [name]="mark.name" [color]="mark.colorId" [size]="24" />
+      </span>
+      }
+    </div>
+  </div>
+
+  <header class="top-bar">
+    <span class="pill title">Salto con cuerda</span>
+    @if (state()?.stage === 'swinging') {
+    <span class="pill timer" [class.hurry]="turnTimer.seconds() <= 3">{{ turnTimer.seconds() }}s</span>
+    }
+  </header>
+
+  <footer class="dock" [class.hidden]="!!state()?.outcome">
+    @if (isMyTurn()) {
+    <button type="button" class="release-button" data-sfx="off" [disabled]="!canRelease()" (pointerdown)="release($event.timeStamp); $event.preventDefault()">
+      <span>¡SUÉLTATE!</span>
+      <small>o pulsa Espacio</small>
+    </button>
+    }
+    <p class="status">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de los saltos">
+      <h2>Resultados</h2>
+      <p class="hint">Gana quien llega más lejos. Hacia atrás resta 15 puntos.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.negative]="row.backwards">
+          <span class="pos">{{ row.backwards ? '✖' : row.position + 'º' }}</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.distanceText }}</span>
+          <span class="points" [class.lose]="row.points < 0">{{ row.pointsText }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar el árbol en 3D, pero puedes soltarte con el botón.</p>
+  }
+</section>

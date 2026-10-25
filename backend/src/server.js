@@ -34,6 +34,8 @@ const allowedOrigins = CLIENT_ORIGIN.split(',')
   .filter(Boolean);
 
 const IMPOSTOR_WORDS = require('./data/impostor-words.json').entries;
+const WHO_QUESTIONS = require('./data/who-questions.json').questions;
+const QUIZ_QUESTIONS = require('./data/quiz-questions.json').questions;
 
 const app = express();
 const server = http.createServer(app);
@@ -58,7 +60,7 @@ const TIMER_GRACE_MS = 1500;
 const ROULETTE_LEAD_MS = 900;
 const ROULETTE_SPIN_MS = 6400;
 const ROULETTE_REVEAL_MS = 2600;
-const PAINT_DRAWING_MS = 60000;
+const PAINT_DRAWING_MS = 120000;
 const PAINT_VOTING_MS = 20000;
 const IMPOSTOR_MAX_ROUNDS = 5;
 const IMPOSTOR_VOTE_MS = 90000;
@@ -70,7 +72,7 @@ const TEN_BUT_ANSWER_MS = 75000;
 // Intro del minijuego en los clientes ("Minijuego" + explicacion) antes de que empiece a correr el tiempo.
 // La explicacion dura como minimo lo de siempre y se alarga con textos largos para que de tiempo a leerlos.
 const MINIGAME_TITLE_MS = 1750;
-const MINIGAME_INTRO_MS = 7000;
+const MINIGAME_INTRO_MS = 4000;
 const MINIGAME_READING_MS_PER_CHAR = 60;
 const MINIGAME_INTRO_MAX_MS = 20000;
 // El portavoz no tiene que pulsar nada: su cliente gira la ruleta 1 s despues de mostrarla y, si no lo hace
@@ -80,17 +82,17 @@ const TEN_BUT_AUTO_SPIN_EXTRA_MS = 2500;
 const LOBBY_RETURN_DELAY_MS = 1000;
 // Si el host no pulsa "Ver marcador" cuando el minijuego ya tiene resultados, se pulsa solo pasado este tiempo.
 const AUTO_SCOREBOARD_MS = 7000;
-// Un minijuego jugado no puede volver a tocar hasta que se hayan jugado este numero de minijuegos distintos.
-const MINIGAME_COOLDOWN = 2;
 const LOBBY_RETURN_FALLBACK_MS = 12000;
 const PINTURILLO_DRAW_MS = 90000;
 const PINTURILLO_FRAME_MIN_GAP_MS = 150;
 const PINTURILLO_MAX_FRAME_LENGTH = 450000;
 const PINTURILLO_CHAT_HISTORY = 80;
 const POGO_COUNTDOWN_MS = 3000;
-const POGO_RACE_MS = 60000;
+const POGO_RACE_MS = 35000;
 const POGO_GOAL = 30;
-const POGO_MIN_JUMP_GAP_MS = 450;
+// Solo frena el spam: el cliente ya espera 500 ms entre ruletas, pero con la latencia variable de internet dos
+// saltos legitimos pueden llegar mas juntos y no deben perderse.
+const POGO_MIN_JUMP_GAP_MS = 250;
 const PLAYER_COLORS = [
   'red',
   'blue',
@@ -117,9 +119,9 @@ const PLAYER_COLORS = [
 const MINIGAMES = [
   {
     id: 'math-operations',
-    title: 'Operaciones matematicas',
+    title: 'Operaciones matemáticas',
     description:
-      'Resuelve las operaciones. Cuantas mas aciertes y mas rapido termines, mas puntos podras ganar.',
+      'Resuelve las operaciones. Cuantas más aciertes y más rápido termines, más puntos podrás ganar.',
     image: 'assets/minigames/math-operations.png',
     accent: '#d9f4ff',
     minPlayers: 1,
@@ -128,7 +130,7 @@ const MINIGAMES = [
     id: 'paint',
     title: 'A Pintar',
     description:
-      'Dibuja el objeto y vota despues por la obra que mas se parezca.',
+      'Dibuja el objeto y vota después por la obra que más se parezca.',
     image: 'assets/minigames/paint.png',
     accent: '#fff4b8',
     minPlayers: 2,
@@ -146,7 +148,7 @@ const MINIGAMES = [
     id: 'ten-but',
     title: 'Es un 10, pero...',
     description:
-      'El portavoz gira una ruleta del 1 al 10 y describe su numero con una frase del tipo "es un 10, pero...". El resto tiene que adivinarlo.',
+      'El portavoz gira una ruleta del 1 al 10 y describe su número con una frase del tipo "es un 10, pero...". El resto tiene que adivinarlo.',
     image: 'assets/minigames/ten-but.png',
     accent: '#b9f7a7',
     minPlayers: 2,
@@ -155,7 +157,7 @@ const MINIGAMES = [
     id: 'pinturillo',
     title: 'Pinturillo',
     description:
-      'Un jugador dibuja y el resto la adivina por el chat. Cuanto antes la aciertes, mas puntos.',
+      'Un jugador dibuja y el resto la adivina por el chat. Cuanto antes la aciertes, más puntos.',
     image: 'assets/minigames/pinturillo.png',
     accent: '#ffb3b3',
     minPlayers: 2,
@@ -164,7 +166,7 @@ const MINIGAMES = [
     id: 'pogo',
     title: 'Carrera en pogo',
     description:
-      'Pulsa ESPACIO (o el boton) cuando la aguja pase por la zona marcada para saltar. La zona blanca vale el doble. Llega el primero a la meta.',
+      'Pulsa ESPACIO (o el botón) cuando la aguja pase por la zona marcada para saltar. La zona blanca vale el doble. Llega el primero a la meta.',
     image: 'assets/minigames/pogo.png',
     accent: '#d9f4ff',
     minPlayers: 2,
@@ -173,7 +175,7 @@ const MINIGAMES = [
     id: 'blackjack',
     title: 'Blackjack',
     description:
-      'Mesa de casino con 300 fichas para 3 manos. Gana al crupier sin pasarte de 21. Gana quien acabe con mas fichas.',
+      'Mesa de casino con 300 fichas para 3 manos. Gana al crupier sin pasarte de 21. Gana quien acabe con más fichas.',
     image: 'assets/minigames/blackjack.png',
     accent: '#b9f7a7',
     minPlayers: 2,
@@ -182,7 +184,7 @@ const MINIGAMES = [
     id: 'barrels',
     title: 'Barriles',
     description:
-      'Un barril cae sobre tu cabeza. Pulsa ESPACIO (O el boton) para pararlo lo mas cerca posible de tu cabeza... sin que te aplaste.',
+      'Un barril cae sobre tu cabeza. Pulsa ESPACIO (o el botón) para pararlo lo más cerca posible de tu cabeza... sin que te aplaste.',
     image: 'assets/minigames/barrels.png',
     accent: '#ffe891',
     minPlayers: 2,
@@ -191,7 +193,7 @@ const MINIGAMES = [
     id: 'cups',
     title: 'Cubiletes',
     description:
-      'El crupier esconde una bola bajo uno de los 4 cubiletes y los mezcla. Cuando paren, tienes 15 segundos para elegir donde esta la bola.',
+      'El crupier esconde una bola bajo uno de los 4 cubiletes y los mezcla. Cuando paren, tienes 15 segundos para elegir dónde está la bola.',
     image: 'assets/minigames/cups.png',
     accent: '#fff0a8',
     minPlayers: 2,
@@ -200,7 +202,7 @@ const MINIGAMES = [
     id: 'cars',
     title: 'Esquiva los coches',
     description:
-      'Elige uno de los 4 carriles y cruza los dedos. Gana quien aguante mas rondas.',
+      'Elige uno de los 4 carriles y cruza los dedos. Gana quien aguante más rondas.',
     image: 'assets/minigames/cars.png',
     accent: '#d9f4ff',
     minPlayers: 2,
@@ -212,6 +214,159 @@ const MINIGAMES = [
       'Por turnos, sube al escenario y dale a la palanca para hinchar el globo hasta que explote. A quien le explote pierde 15 puntos; el resto gana 5 puntos.',
     image: 'assets/minigames/balloon.png',
     accent: '#ffc4dc',
+    minPlayers: 2,
+  },
+  {
+    id: 'dance',
+    title: 'Pista de baile',
+    description:
+      'Pulsa las letras (o los colores) en el orden en que salen antes de que acabe el tiempo. Cada ronda la secuencia es más larga. Si te equivocas o no llegas a tiempo, quedas eliminado.',
+    image: 'assets/minigames/dance.png',
+    accent: '#d6c4ff',
+    minPlayers: 2,
+  },
+  {
+    id: 'count',
+    title: '¿Cuántos hay?',
+    description:
+      'Desde el callejón ves pasar gente por la calle: andando, corriendo, en coche, en moto o en bici. Cuenta cuántas personas pasan. Gana quien más se acerque.',
+    image: 'assets/minigames/count.png',
+    accent: '#ffe0b3',
+    minPlayers: 2,
+  },
+  {
+    id: 'duel',
+    title: 'Desenfundar',
+    description:
+      'Duelo contra el crupier. Cuando salga "¡YA!", dispara (ESPACIO o el botón) antes que él. Si disparas antes de tiempo, pierdes la ronda.',
+    image: 'assets/minigames/duel.png',
+    accent: '#f3d29b',
+    minPlayers: 2,
+  },
+  {
+    id: 'stopwatch',
+    title: 'Para el cronómetro',
+    description:
+      'El cronómetro arranca y a los 3 segundos deja de verse. Páralo (ESPACIO o el botón) lo más cerca posible del tiempo que marca el panel.',
+    image: 'assets/minigames/stopwatch.png',
+    accent: '#bfe3ff',
+    minPlayers: 2,
+  },
+  {
+    id: 'tower',
+    title: 'Torre de cajas',
+    description:
+      'Suelta la caja (ESPACIO o tocando la pantalla) justo encima de la torre: lo que sobresalga se corta. Tienes 45 segundos. Gana quien llegue más alto.',
+    image: 'assets/minigames/tower.png',
+    accent: '#c8f0d2',
+    minPlayers: 2,
+  },
+  {
+    id: 'beer',
+    title: 'Jarras en la barra',
+    description:
+      'El medidor de fuerza sube y baja muy rápido: páralo lo más cerca posible de la línea roja, que deja la jarra justo en el borde. Si te pasas, la tiras.',
+    image: 'assets/minigames/beer.png',
+    accent: '#ffe2a8',
+    minPlayers: 2,
+  },
+  {
+    id: 'chop',
+    title: 'Corta verduras',
+    description:
+      'Haz clic (o pulsa el botón) lo más rápido que puedas durante 10 segundos: cada 10 cortes, una verdura. Gana quien más verduras corte.',
+    image: 'assets/minigames/chop.png',
+    accent: '#d8f5c4',
+    minPlayers: 2,
+  },
+  {
+    id: 'swing',
+    title: 'Salto con cuerda',
+    description:
+      'Por turnos, balancéate en la cuerda y suéltate (ESPACIO o el botón) en el momento justo. El ángulo decide hasta dónde llegas; si te sueltas yendo hacia atrás, restas metros.',
+    image: 'assets/minigames/swing.png',
+    accent: '#c9ecff',
+    minPlayers: 2,
+  },
+  {
+    id: 'golf',
+    title: 'Mini golf',
+    description:
+      'Tres hoyos, un único golpe en cada uno. Arrastra hacia atrás desde tu bola (la blanca) para apuntar y elegir la fuerza, y suelta. Gana quien menos se aleje del hoyo en total.',
+    image: 'assets/minigames/golf.png',
+    accent: '#c8f0c0',
+    minPlayers: 2,
+  },
+  {
+    id: 'order',
+    title: 'Memoriza el pedido',
+    description:
+      'Mira bien la hamburguesa que pide el cliente: después tendrás que montarla capa a capa en el mismo orden. Si te equivocas en una capa, pierdes la ronda.',
+    image: 'assets/minigames/order.png',
+    accent: '#ffe0a8',
+    minPlayers: 2,
+  },
+  {
+    id: 'bowling',
+    title: 'Bolos',
+    description:
+      'Una sola tirada. Para el medidor de dirección y después el de efecto (ESPACIO o el botón). Gana quien más bolos derribe.',
+    image: 'assets/minigames/bowling.png',
+    accent: '#d9d4ff',
+    minPlayers: 2,
+  },
+  {
+    id: 'who',
+    title: '¿Quién es quién?',
+    description:
+      'Tres preguntas comprometidas. Vota en secreto a quien mejor encaje (también a ti): si votas al más votado ganas 10 puntos; si hay empate, quien votó a uno de los empatados gana 5.',
+    image: 'assets/minigames/who.png',
+    accent: '#ffd1e8',
+    minPlayers: 3,
+  },
+  {
+    id: 'crossy',
+    title: 'Cruza la carretera',
+    description:
+      'Avanza con las flechas (o WASD) esquivando coches y trenes: cuando la luz roja de la vía parpadea, viene un tren. Gana quien llegue más lejos en 40 s; si te atropellan, pierdes 5 puntos.',
+    image: 'assets/minigames/crossy.png',
+    accent: '#c8f5d0',
+    minPlayers: 2,
+  },
+  {
+    id: 'javelin',
+    title: 'Tiro de jabalina',
+    description:
+      'Arrastra hacia atrás para elegir ángulo y fuerza y suelta. Tienes 3 jabalinas y 40 s: gana quien deje una más cerca de la bandera.',
+    image: 'assets/minigames/javelin.png',
+    accent: '#ffe7c2',
+    minPlayers: 2,
+  },
+  {
+    id: 'quiz',
+    title: 'Preguntas y respuestas',
+    description:
+      'Tres preguntas de cultura general, cada vez más difíciles. Elige la respuesta correcta (A, B, C o D) en 15 s. Cada acierto vale 10 puntos.',
+    image: 'assets/minigames/quiz.png',
+    accent: '#cfe3ff',
+    minPlayers: 2,
+  },
+  {
+    id: 'push',
+    title: 'Empujar',
+    description:
+      'Arrastra desde tu ficha para elegir dirección y fuerza (puedes rectificar) y confirma. Todos salen a la vez: echa a los demás al agua y no te caigas tú. 5 rondas seguidas.',
+    image: 'assets/minigames/push.png',
+    accent: '#c6f1ff',
+    minPlayers: 2,
+  },
+  {
+    id: 'russian',
+    title: 'Ruleta rusa',
+    description:
+      'Por turnos, coge el revólver: dispara o salta una bala y dispara la siguiente. Empieza con 1 bala y cada vez que alguien cae se recarga con una más (máximo 3). Gana quien sobreviva.',
+    image: 'assets/minigames/russian.png',
+    accent: '#ffd0c4',
     minPlayers: 2,
   },
 ];
@@ -471,6 +626,24 @@ function shiftMatchDeadlines(room, shiftMs) {
       }
     }
   }
+
+  // Minijuegos con plazos fijos: la pausa los desplaza (los temporizadores ya se desplazan aparte).
+  const deadlines = [
+    [specialRound.who, ['questionAt', 'voteStartsAt', 'voteEndsAt', 'nextRoundAt']],
+    [specialRound.crossy, ['startsAt', 'endsAt']],
+    [specialRound.javelin, ['startsAt', 'endsAt', 'zoomEndsAt']],
+    [specialRound.quiz, ['questionAt', 'answerStartsAt', 'answerEndsAt', 'correctAt', 'nextRoundAt']],
+    [specialRound.push, ['aimStartsAt', 'aimEndsAt', 'launchAt', 'nextRoundAt']],
+    [specialRound.russian, ['turnStartsAt', 'arriveAt', 'decideStartsAt', 'decideEndsAt', 'nextAt']],
+  ];
+
+  for (const [state, keys] of deadlines) {
+    for (const key of state ? keys : []) {
+      if (state[key]) {
+        state[key] += shiftMs;
+      }
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -573,6 +746,23 @@ function toPublicSpecialRound(specialRound) {
     balloon: toPublicBalloon(specialRound.balloon),
     cups: toPublicCups(specialRound.cups),
     cars: toPublicCars(specialRound.cars),
+    dance: toPublicDance(specialRound.dance),
+    count: toPublicCount(specialRound.count),
+    duel: toPublicDuel(specialRound.duel),
+    stopwatch: toPublicStopwatch(specialRound.stopwatch),
+    tower: toPublicTower(specialRound.tower),
+    beer: toPublicBeer(specialRound.beer),
+    chop: toPublicChop(specialRound.chop),
+    swing: toPublicSwing(specialRound.swing),
+    golf: toPublicGolf(specialRound.golf),
+    order: toPublicOrder(specialRound.order),
+    bowling: toPublicBowling(specialRound.bowling),
+    who: toPublicWho(specialRound.who),
+    crossy: toPublicCrossy(specialRound.crossy),
+    javelin: toPublicJavelin(specialRound.javelin),
+    quiz: toPublicQuiz(specialRound.quiz),
+    push: toPublicPush(specialRound.push),
+    russian: toPublicRussian(specialRound.russian),
   };
 }
 
@@ -741,23 +931,22 @@ function getAvailableMinigames(room) {
 }
 
 /**
- * Un minijuego no puede volver a tocar hasta que se hayan jugado otros dos distintos. Sigue apareciendo en la
- * ruleta (para que se vea variedad), pero no puede ser el ganador. Si hay pocos minijuegos activos y no queda
- * ninguno libre, la espera se acorta (con 2 minijuegos se alternan; con 1, se repite).
+ * Ciclos sin repeticion: en una partida no se repite ningun minijuego hasta que se han jugado todos los activos.
+ * Entonces empieza un ciclo nuevo y vuelven a salir al azar entre todos (sin repetir de nuevo hasta completarlo).
+ * Los ya jugados siguen apareciendo en la ruleta (para que se vea variedad), pero no pueden ser el ganador. Al
+ * empezar un ciclo nuevo, el ultimo jugado no sale justo despues (si hay alternativa).
  */
 function chooseMinigame(room, candidates) {
-  const recent = room.match?.recentMinigameIds || [];
+  const cycle = room.match?.cycleMinigameIds || [];
+  let pool = candidates.filter((minigame) => !cycle.includes(minigame.id));
 
-  for (let cooldown = MINIGAME_COOLDOWN; cooldown >= 0; cooldown -= 1) {
-    const blocked = new Set(cooldown ? recent.slice(-cooldown) : []);
-    const pool = candidates.filter((minigame) => !blocked.has(minigame.id));
-
-    if (pool.length) {
-      return randomItem(pool);
-    }
+  if (!pool.length) {
+    room.match.cycleMinigameIds = [];
+    const last = cycle[cycle.length - 1];
+    pool = candidates.length > 1 ? candidates.filter((minigame) => minigame.id !== last) : candidates;
   }
 
-  return candidates[0];
+  return randomItem(pool);
 }
 
 function startRoulette(room) {
@@ -781,7 +970,7 @@ function startRoulette(room) {
   room.match.specialRound = null;
   room.match.scoreboard = null;
   room.match.scoreboardRequest = null;
-  room.match.recentMinigameIds = [...(room.match.recentMinigameIds || []), winner.id].slice(-MINIGAME_COOLDOWN);
+  room.match.cycleMinigameIds = [...(room.match.cycleMinigameIds || []), winner.id];
   room.match.roulette = {
     roundNumber: room.match.roundNumber,
     options: options.map(toPublicMinigame),
@@ -804,7 +993,10 @@ function startSpecialRound(room, minigameId) {
   const minigame = MINIGAMES.find((entry) => entry.id === minigameId) || MINIGAMES[0];
   const participantIds = getActivePlayers(room).map((player) => player.id);
   const startedAt = Date.now();
-  const introMs = minigameIntroMs(minigame.description);
+  // Si el minijuego ya se jugo en esta partida, la explicacion dura lo minimo: ya la conocen.
+  const playedMinigameIds = room.match.playedMinigameIds || (room.match.playedMinigameIds = new Set());
+  const introMs = playedMinigameIds.has(minigame.id) ? MINIGAME_INTRO_MS : minigameIntroMs(minigame.description);
+  playedMinigameIds.add(minigame.id);
 
   room.match.phase = 'special-round';
   room.match.roulette = null;
@@ -840,6 +1032,23 @@ function startSpecialRound(room, minigameId) {
     balloon: null,
     cups: null,
     cars: null,
+    dance: null,
+    count: null,
+    duel: null,
+    stopwatch: null,
+    tower: null,
+    beer: null,
+    chop: null,
+    swing: null,
+    golf: null,
+    order: null,
+    bowling: null,
+    who: null,
+    crossy: null,
+    javelin: null,
+    quiz: null,
+    push: null,
+    russian: null,
   };
 
   if (minigame.id === 'blackjack') {
@@ -852,6 +1061,40 @@ function startSpecialRound(room, minigameId) {
     setupCups(room);
   } else if (minigame.id === 'cars') {
     setupCars(room);
+  } else if (minigame.id === 'dance') {
+    setupDance(room);
+  } else if (minigame.id === 'count') {
+    setupCount(room);
+  } else if (minigame.id === 'duel') {
+    setupDuel(room);
+  } else if (minigame.id === 'stopwatch') {
+    setupStopwatch(room);
+  } else if (minigame.id === 'tower') {
+    setupTower(room);
+  } else if (minigame.id === 'beer') {
+    setupBeer(room);
+  } else if (minigame.id === 'chop') {
+    setupChop(room);
+  } else if (minigame.id === 'swing') {
+    setupSwing(room);
+  } else if (minigame.id === 'golf') {
+    setupGolf(room);
+  } else if (minigame.id === 'order') {
+    setupOrder(room);
+  } else if (minigame.id === 'bowling') {
+    setupBowling(room);
+  } else if (minigame.id === 'who') {
+    setupWho(room);
+  } else if (minigame.id === 'crossy') {
+    setupCrossy(room);
+  } else if (minigame.id === 'javelin') {
+    setupJavelin(room);
+  } else if (minigame.id === 'quiz') {
+    setupQuiz(room);
+  } else if (minigame.id === 'push') {
+    setupPush(room);
+  } else if (minigame.id === 'russian') {
+    setupRussian(room);
   } else if (minigame.id === 'impostor') {
     setupImpostor(room);
   } else if (minigame.id === 'ten-but') {
@@ -1734,9 +1977,10 @@ function resolvePogo(room) {
 /* ------------------------------------------------------------------ */
 // Reglas de esta version:
 // - 300 fichas por jugador para toda la partida, 3 manos. Apuesta minima 10; apostar 0 = no jugar esa mano.
-// - Mesas de 4: con mas jugadores se juega por grupos de 4 (en orden de asiento). Cada grupo apuesta, recibe sus
-//   cartas y juega sus turnos; despues se sienta el grupo siguiente. El crupier tiene una sola mano para toda la
-//   ronda (se reparte con el primer grupo que apuesta) y la juega al final contra todos los grupos a la vez.
+// - Mesas de 4: con mas jugadores se juega por grupos de 4 (en orden de asiento). Todos los grupos apuestan a la
+//   vez al empezar la mano (nadie puede ajustar su apuesta viendo a los grupos anteriores); despues cada grupo
+//   recibe sus cartas y juega sus turnos y se sienta el siguiente. El crupier tiene una sola mano para toda la
+//   ronda (se reparte con el primer grupo que juega) y la juega al final contra todos los grupos a la vez.
 // - Pago 1:1 en victoria normal; blackjack natural del jugador paga 3:2 (redondeando hacia abajo); empate devuelve.
 // - El crupier NUNCA tiene blackjack natural: si sus dos primeras cartas suman 21, la carta oculta vuelve al
 //   mazo en una posicion aleatoria y roba otra (todo antes de mostrar nada a nadie).
@@ -1892,10 +2136,14 @@ function startBlackjackHand(room, handNumber, extraDelayMs = 0) {
     player.status = 'queued';
   }
 
-  startBlackjackGroupBetting(room, 0, extraDelayMs);
+  startBlackjackBetting(room, extraDelayMs);
 }
 
-function startBlackjackGroupBetting(room, groupIndex, extraDelayMs = 0) {
+/**
+ * Apuestas de la mano: todos los grupos apuestan a la vez (cada uno ve su mesa), asi nadie de un grupo posterior
+ * puede ajustar su apuesta viendo como les ha ido a los grupos anteriores. Despues se juega grupo a grupo.
+ */
+function startBlackjackBetting(room, extraDelayMs = 0) {
   const bj = room.match?.specialRound?.blackjack;
 
   if (!bj) {
@@ -1903,7 +2151,8 @@ function startBlackjackGroupBetting(room, groupIndex, extraDelayMs = 0) {
   }
 
   bj.stage = 'betting';
-  bj.groupIndex = groupIndex;
+  bj.groupIndex = 0;
+  bj.previousGroupIndex = null;
   bj.dealOrder = [];
   bj.dealStartedAt = null;
   bj.turnOrder = [];
@@ -1914,14 +2163,13 @@ function startBlackjackGroupBetting(room, groupIndex, extraDelayMs = 0) {
   bj.groupChangeEndsAt = null;
   bj.betEndsAt = Date.now() + Math.max(0, extraDelayMs) + BLACKJACK_BET_MS;
 
-  for (const playerId of blackjackGroup(bj)) {
-    const player = bj.players.get(playerId);
+  for (const player of bj.players.values()) {
     // Sin fichas suficientes no se puede apostar: mira la mano desde su asiento.
     player.confirmed = player.chips < BLACKJACK_MIN_BET;
     player.status = player.confirmed ? 'broke' : 'betting';
   }
 
-  setRoomTimer(room, 'blackjack', bj.betEndsAt, () => startBlackjackDeal(room));
+  setRoomTimer(room, 'blackjack', bj.betEndsAt, () => closeBlackjackBetting(room));
   emitMatchState(room);
   maybeStartBlackjackDeal(room);
 }
@@ -1936,12 +2184,24 @@ function maybeStartBlackjackDeal(room) {
 
   const activeIds = getActiveParticipantIds(room, specialRound);
 
-  if (blackjackGroup(bj).filter((playerId) => activeIds.includes(playerId)).every((playerId) => bj.players.get(playerId)?.confirmed)) {
-    startBlackjackDeal(room);
+  if (bj.seats.filter((playerId) => activeIds.includes(playerId)).every((playerId) => bj.players.get(playerId)?.confirmed)) {
+    closeBlackjackBetting(room);
   }
 }
 
-function startBlackjackDeal(room) {
+/** Primer grupo (desde `from`) en el que alguien ha apostado; -1 si no queda ninguno. */
+function nextBlackjackGroupWithBets(bj, from) {
+  for (let index = from; index < bj.groups.length; index += 1) {
+    if (bj.groups[index].some((playerId) => bj.players.get(playerId).bet > 0)) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+/** Se cierran las apuestas de todos y empieza a jugar el primer grupo con apuestas. */
+function closeBlackjackBetting(room) {
   const bj = room.match?.specialRound?.blackjack;
 
   if (!bj || bj.stage !== 'betting') {
@@ -1949,22 +2209,53 @@ function startBlackjackDeal(room) {
   }
 
   clearRoomTimer(room, 'blackjack');
-  const group = blackjackGroup(bj);
 
-  // Quien no confirmo a tiempo (o se desconecto) no juega esta mano.
-  for (const playerId of group) {
-    const player = bj.players.get(playerId);
-
+  // Quien no confirmo a tiempo (o se desconecto) no juega esta mano. Quien aposto espera a que juegue su mesa.
+  for (const player of bj.players.values()) {
     if (!player.confirmed) {
       player.confirmed = true;
       player.bet = 0;
     }
 
     if (player.status === 'betting' || player.status === 'ready') {
-      player.status = player.bet > 0 ? 'waiting' : 'sitting-out';
+      player.status = player.bet > 0 ? 'queued' : 'sitting-out';
     }
   }
 
+  const first = nextBlackjackGroupWithBets(bj, 0);
+
+  // Nadie ha apostado: el crupier no juega y la mano se liquida sin mas.
+  if (first < 0) {
+    startBlackjackDealer(room);
+    return;
+  }
+
+  bj.groupIndex = first;
+
+  // Con varios grupos, cada uno estaba viendo su mesa: transicion hasta la mesa que empieza.
+  if (bj.groups.length > 1) {
+    bj.stage = 'group-change';
+    bj.previousGroupIndex = null;
+    bj.groupChangeEndsAt = Date.now() + BLACKJACK_GROUP_CHANGE_MS;
+    setRoomTimer(room, 'blackjack', bj.groupChangeEndsAt, () => startBlackjackDeal(room));
+    emitMatchState(room);
+    return;
+  }
+
+  startBlackjackDeal(room);
+}
+
+/** Reparte al grupo que esta en la mesa (sus apuestas ya estan hechas). */
+function startBlackjackDeal(room) {
+  const bj = room.match?.specialRound?.blackjack;
+
+  if (!bj || (bj.stage !== 'betting' && bj.stage !== 'group-change')) {
+    return;
+  }
+
+  clearRoomTimer(room, 'blackjack');
+  bj.groupChangeEndsAt = null;
+  const group = blackjackGroup(bj);
   const bettors = group.filter((playerId) => bj.players.get(playerId).bet > 0);
 
   if (!bettors.length) {
@@ -2111,17 +2402,19 @@ function finishBlackjackGroup(room) {
   bj.turnEndsAt = null;
   bj.turnLocked = false;
 
-  if (bj.groupIndex + 1 >= bj.groups.length) {
+  // Los grupos en los que nadie ha apostado no se sientan a la mesa.
+  const nextGroup = nextBlackjackGroupWithBets(bj, bj.groupIndex + 1);
+
+  if (nextGroup < 0) {
     startBlackjackDealer(room);
     return;
   }
 
-  const nextGroup = bj.groupIndex + 1;
   bj.stage = 'group-change';
   bj.previousGroupIndex = bj.groupIndex;
   bj.groupIndex = nextGroup;
   bj.groupChangeEndsAt = Date.now() + BLACKJACK_GROUP_CHANGE_MS;
-  setRoomTimer(room, 'blackjack', bj.groupChangeEndsAt, () => startBlackjackGroupBetting(room, nextGroup));
+  setRoomTimer(room, 'blackjack', bj.groupChangeEndsAt, () => startBlackjackDeal(room));
   emitMatchState(room);
 }
 
@@ -2693,9 +2986,9 @@ const CUPS_POINTS = 5;
 const CUPS_FAKE_CHANCE = 0.25;
 const CUPS_SPEEDS = [
   { moves: 6, moveMs: 760 },
-  { moves: 8, moveMs: 540 },
-  { moves: 10, moveMs: 370 },
   { moves: 13, moveMs: 230 },
+  { moves: 15, moveMs: 190 },
+  { moves: 17, moveMs: 150 },
   // Ronda 5, bonus: mezcla muy rapida (no sigue la progresion de las anteriores).
   { moves: 18, moveMs: 110 },
 ];
@@ -2881,7 +3174,9 @@ function toPublicCups(cups) {
     nextRoundAt: cups.nextRoundAt,
     // La bola solo se publica al revelar.
     revealedSlot: revealed ? cups.revealedSlot : null,
-    votes: [...cups.votes.entries()].map(([playerId, slot]) => ({ playerId, slot })),
+    // Mientras se vota nadie ve que eligieron los demas (daria ventaja a los ultimos): solo quien ya ha votado.
+    votes: cups.stage === 'voting' ? [] : [...cups.votes.entries()].map(([playerId, slot]) => ({ playerId, slot })),
+    votedPlayerIds: [...cups.votes.keys()],
     scores: [...cups.scores.entries()].map(([playerId, score]) => ({ playerId, score })),
     history: cups.history,
     outcome: cups.outcome,
@@ -3107,6 +3402,2602 @@ function toPublicCars(cars) {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Pista de baile                                                      */
+/* ------------------------------------------------------------------ */
+// - 5 rondas: en cada una hay que pulsar en orden una secuencia de letras (o de colores, en el modo por colores)
+//   antes de que acabe el tiempo. Quien no la completa queda eliminado y se baja del escenario.
+// - Todas las secuencias se publican desde el principio: el juego corre entero en el cliente, que solo avisa al
+//   servidor cuando termina la secuencia o cuando se le acaba el tiempo. El servidor solo reparte quien cae.
+// - Puntos como en los coches: quien mas aguanta gana 30 y el resto por escalera (el ultimo 0). Caer en la
+//   primera ronda resta 10.
+
+const DANCE_LENGTHS = [4, 7, 10, 15, 20];
+// Todas las rondas duran lo mismo: lo que se complica es la longitud de la secuencia.
+const DANCE_TIMES_MS = [15000, 15000, 15000, 15000, 15000];
+const DANCE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+// Colores solidos del modo por colores (el cliente tiene la misma paleta en el mismo orden).
+const DANCE_PALETTE_SIZE = 12;
+// Antes de la ronda 1 se muestra el aviso del teclado / modo por colores; las siguientes llevan solo la cuenta atras.
+const DANCE_FIRST_LEAD_MS = 10000;
+const DANCE_LEAD_MS = 3500;
+// Margen para que llegue el aviso de "terminado" de quien acaba justo al limite.
+const DANCE_GRACE_MS = 1500;
+// Tiempo minimo humano por pulsacion: completar mas rapido que esto no es creible.
+const DANCE_MIN_MS_PER_KEY = 70;
+const DANCE_CLAP_MS = 3000;
+const DANCE_EXIT_MS = 3800;
+
+function danceSequence(length, alphabetSize) {
+  const sequence = [];
+
+  // Sin dos seguidos iguales: asi cada paso de la lista se distingue del anterior.
+  while (sequence.length < length) {
+    const value = crypto.randomInt(alphabetSize);
+
+    if (value !== sequence[sequence.length - 1]) {
+      sequence.push(value);
+    }
+  }
+
+  return sequence;
+}
+
+function setupDance(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.dance = {
+    stage: 'playing',
+    round: 0,
+    sequences: DANCE_LENGTHS.map((length) => ({
+      letters: danceSequence(length, DANCE_LETTERS.length).map((index) => DANCE_LETTERS[index]),
+      colors: danceSequence(length, DANCE_PALETTE_SIZE),
+    })),
+    alive: new Set(specialRound.participantIds),
+    done: new Set(),
+    eliminatedRound: new Map(),
+    roundLosers: [],
+    roundStartsAt: null,
+    roundEndsAt: null,
+    breakEndsAt: null,
+    outcome: null,
+  };
+
+  startDanceRound(room, 1, specialRound.introEndsAt - Date.now() + DANCE_FIRST_LEAD_MS);
+}
+
+function startDanceRound(room, round, leadMs) {
+  const dance = room.match?.specialRound?.dance;
+
+  if (!dance) {
+    return;
+  }
+
+  dance.round = round;
+  dance.stage = 'playing';
+  dance.done = new Set();
+  dance.roundLosers = [];
+  dance.breakEndsAt = null;
+  dance.roundStartsAt = Date.now() + Math.max(0, leadMs);
+  dance.roundEndsAt = dance.roundStartsAt + DANCE_TIMES_MS[round - 1];
+  setRoomTimer(room, 'dance', dance.roundEndsAt + DANCE_GRACE_MS, () => closeDanceRound(room, round));
+  emitMatchState(room);
+}
+
+function eliminateDancer(dance, playerId) {
+  if (!dance.alive.delete(playerId)) {
+    return;
+  }
+
+  dance.eliminatedRound.set(playerId, dance.round);
+  dance.roundLosers.push(playerId);
+}
+
+function maybeCloseDanceRound(room) {
+  const dance = room.match?.specialRound?.dance;
+
+  if (
+    dance?.stage === 'playing' &&
+    [...dance.alive].filter((playerId) => room.players.get(playerId)?.active).every((playerId) => dance.done.has(playerId))
+  ) {
+    closeDanceRound(room, dance.round);
+  }
+}
+
+function closeDanceRound(room, round) {
+  const dance = room.match?.specialRound?.dance;
+
+  if (!dance || dance.stage !== 'playing' || dance.round !== round) {
+    return;
+  }
+
+  // Quien no ha terminado (o se ha desconectado) cae aqui.
+  for (const playerId of [...dance.alive]) {
+    if (!dance.done.has(playerId)) {
+      eliminateDancer(dance, playerId);
+    }
+  }
+
+  const participants = room.match.specialRound.participantIds.length;
+  const over = round >= DANCE_LENGTHS.length || dance.alive.size === 0 || (participants > 1 && dance.alive.size <= 1);
+  // Los supervivientes aplauden; si alguien ha caido, se espera a que salga del escenario.
+  dance.stage = 'break';
+  dance.breakEndsAt = Date.now() + (dance.roundLosers.length ? DANCE_EXIT_MS : DANCE_CLAP_MS);
+  setRoomTimer(room, 'dance', dance.breakEndsAt, () => (over ? finishDance(room) : startDanceRound(room, round + 1, DANCE_LEAD_MS)));
+  emitMatchState(room);
+}
+
+function finishDance(room) {
+  const specialRound = room.match?.specialRound;
+  const dance = specialRound?.dance;
+
+  if (!dance || dance.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'dance');
+  dance.stage = 'finished';
+  const reach = (playerId) => (dance.alive.has(playerId) ? Infinity : dance.eliminatedRound.get(playerId) || 0);
+  const levels = [...new Set(specialRound.participantIds.map(reach))].sort((first, second) => second - first);
+  const pointsFor = (playerId) => {
+    if (dance.eliminatedRound.get(playerId) === 1) {
+      return -10;
+    }
+
+    const index = levels.indexOf(reach(playerId));
+
+    if (index === 0) {
+      return 30;
+    }
+
+    if (index === levels.length - 1) {
+      return 0;
+    }
+
+    return Math.min(30, Math.max(5, Math.round((30 * (1 - index / (levels.length - 1))) / 5) * 5));
+  };
+
+  const ranking = specialRound.participantIds
+    .map((playerId) => ({
+      playerId,
+      playerName: room.players.get(playerId)?.name || '',
+      survived: dance.alive.has(playerId),
+      eliminatedRound: dance.eliminatedRound.get(playerId) || null,
+      position: levels.indexOf(reach(playerId)) + 1,
+      points: pointsFor(playerId),
+    }))
+    .sort((first, second) => first.position - second.position);
+  dance.outcome = { ranking, rounds: dance.round };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: 0,
+    answeredCount: 0,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicDance(dance) {
+  if (!dance) {
+    return null;
+  }
+
+  return {
+    stage: dance.stage,
+    round: dance.round,
+    totalRounds: DANCE_LENGTHS.length,
+    lengths: DANCE_LENGTHS,
+    timesMs: DANCE_TIMES_MS,
+    // Todas las secuencias desde el principio: el cliente juega sin esperar a nadie.
+    sequences: dance.sequences,
+    paletteSize: DANCE_PALETTE_SIZE,
+    roundStartsAt: dance.roundStartsAt,
+    roundEndsAt: dance.roundEndsAt,
+    breakEndsAt: dance.breakEndsAt,
+    alive: [...dance.alive],
+    eliminated: [...dance.eliminatedRound.entries()].map(([playerId, round]) => ({ playerId, round })),
+    roundLosers: dance.roundLosers,
+    outcome: dance.outcome,
+  };
+}
+
+/**
+ * Puntos en escalera comunes a los minijuegos de clasificacion: el primer grupo gana `top`, el ultimo 0 y los de
+ * en medio bajan de forma proporcional (redondeado a 5).
+ */
+function ladderPoints(levelIndex, levelCount, top = 30) {
+  if (levelIndex === 0) {
+    return top;
+  }
+
+  if (levelIndex >= levelCount - 1) {
+    return 0;
+  }
+
+  return Math.min(top, Math.max(5, Math.round((top * (1 - levelIndex / (levelCount - 1))) / 5) * 5));
+}
+
+/* ------------------------------------------------------------------ */
+/* ¿Cuantos hay?                                                       */
+/* ------------------------------------------------------------------ */
+// - Vista desde un callejon a una calle con dos aceras (3 carriles de paso cada una) y una carretera de dos
+//   carriles (cada uno en un sentido). Pasan entre 5 y 40 personas: andando, corriendo o en coche, moto o bici
+//   (una sola persona por vehiculo). Hay que decir cuantas han pasado.
+// - El servidor genera el guion completo (quien pasa, cuando, por donde y a que velocidad) y lo publica al empezar:
+//   cada cliente lo reproduce por su cuenta. En un carril de la carretera no entra un vehiculo hasta que sale el
+//   anterior; en las aceras nadie alcanza al que va delante en su mismo carril.
+// - Puntos en escalera por cercania al numero real (el mas cercano 30, el ultimo 0; sin respuesta, 0).
+
+const COUNT_MIN = 5;
+const COUNT_MAX = 40;
+// Distancia (m) que recorre cada uno de punta a punta de la calle (nace y desaparece fuera de la vista).
+const COUNT_TRAVEL = 24;
+const COUNT_SPEEDS = { walk: 2.3, run: 4.8, bike: 5.5, moto: 9.5, car: 15 };
+const COUNT_FAST_BOOST = { walk: 1.35, run: 1.3, bike: 1.35, moto: 1.3, car: 1.3 };
+// Antes de empezar: travelling de la camara por el callejon y cuenta atras.
+const COUNT_LEAD_MS = 6000;
+const COUNT_TIME_BANNER_MS = 2200;
+const COUNT_ANSWER_MS = 15000;
+const COUNT_GRACE_MS = 1500;
+
+function countTravelMs(speed) {
+  return Math.round((COUNT_TRAVEL / speed) * 1000);
+}
+
+function buildCountSchedule(total) {
+  // Carriles: 0-2 acera cercana, 3-5 acera del fondo, 'road-near' (derecha a izquierda) y 'road-far' (al reves).
+  const laneDir = new Map([...Array(6).keys()].map((lane) => [lane, crypto.randomInt(2) ? 1 : -1]));
+  laneDir.set('road-near', -1);
+  laneDir.set('road-far', 1);
+  const lastInLane = new Map();
+  const schedule = [];
+  let time = 400;
+
+  const earliestFor = (lane, speed) => {
+    const previous = lastInLane.get(lane);
+
+    if (!previous) {
+      return 0;
+    }
+
+    if (typeof lane === 'string') {
+      // Carretera: hasta que no sale el vehiculo anterior no entra otro.
+      return previous.exitAt + 250;
+    }
+
+    // Acera: dejar distancia con el de delante y no alcanzarle antes de que salga.
+    const gapMs = (1.5 / previous.speed) * 1000;
+    return Math.max(previous.at + gapMs, previous.exitAt + gapMs - countTravelMs(speed));
+  };
+
+  for (let index = 0; index < total; index += 1) {
+    // Salidas muy seguidas: asi coinciden muchos a la vez en pantalla.
+    time += 90 + crypto.randomInt(560);
+    const pick = (onRoad) => {
+      const kind = onRoad ? ['car', 'car', 'moto', 'moto', 'bike'][crypto.randomInt(5)] : crypto.randomInt(100) < 50 ? 'walk' : 'run';
+      // Cada uno va a su ritmo normal o, al azar, algo mas rapido.
+      const boost = crypto.randomInt(2) ? COUNT_FAST_BOOST[kind] : 1;
+      const speed = COUNT_SPEEDS[kind] * boost * (0.92 + crypto.randomInt(17) / 100);
+      const lanes = onRoad ? ['road-near', 'road-far'] : [...Array(6).keys()];
+      // El carril que antes quede libre (sin esperar si alguno ya lo esta).
+      const options = secureShuffle(lanes).map((lane) => ({ lane, earliest: earliestFor(lane, speed) }));
+      return { kind, speed, chosen: options.reduce((best, option) => (option.earliest < best.earliest ? option : best)) };
+    };
+    let candidate = pick(crypto.randomInt(100) < 32);
+
+    // Si la carretera esta ocupada no se espera al vehiculo: pasa alguien por la acera y la calle no se vacia.
+    if (candidate.chosen.earliest > time && typeof candidate.chosen.lane === 'string') {
+      candidate = pick(false);
+    }
+
+    const { kind, speed, chosen } = candidate;
+    time = Math.max(time, Math.ceil(chosen.earliest));
+    const exitAt = time + countTravelMs(speed);
+    lastInLane.set(chosen.lane, { at: time, speed, exitAt });
+    schedule.push({
+      id: index,
+      at: time,
+      kind,
+      lane: chosen.lane,
+      dir: laneDir.get(chosen.lane),
+      speed: Math.round(speed * 100) / 100,
+      look: crypto.randomInt(1000),
+    });
+  }
+
+  return schedule;
+}
+
+function setupCount(room) {
+  const specialRound = room.match.specialRound;
+  const total = COUNT_MIN + crypto.randomInt(COUNT_MAX - COUNT_MIN + 1);
+  const schedule = buildCountSchedule(total);
+  const watchStartsAt = specialRound.introEndsAt + COUNT_LEAD_MS;
+  const watchEndsAt = watchStartsAt + Math.max(...schedule.map((entry) => entry.at + countTravelMs(entry.speed))) + 400;
+
+  specialRound.count = {
+    stage: 'watching',
+    total,
+    schedule,
+    travel: COUNT_TRAVEL,
+    watchStartsAt,
+    watchEndsAt,
+    answerEndsAt: watchEndsAt + COUNT_TIME_BANNER_MS + COUNT_ANSWER_MS,
+    answers: new Map(),
+    outcome: null,
+  };
+
+  setRoomTimer(room, 'count', watchEndsAt, () => {
+    const count = room.match?.specialRound?.count;
+
+    if (count?.stage === 'watching') {
+      count.stage = 'answering';
+      setRoomTimer(room, 'count', count.answerEndsAt + COUNT_GRACE_MS, () => finishCount(room));
+      emitMatchState(room);
+    }
+  });
+}
+
+function maybeFinishCount(room) {
+  const count = room.match?.specialRound?.count;
+
+  if (count?.stage === 'answering' && getActiveParticipantIds(room, room.match.specialRound).every((playerId) => count.answers.has(playerId))) {
+    finishCount(room);
+  }
+}
+
+function finishCount(room) {
+  const specialRound = room.match?.specialRound;
+  const count = specialRound?.count;
+
+  if (!count || count.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'count');
+  count.stage = 'reveal';
+  const distance = (playerId) => (count.answers.has(playerId) ? Math.abs(count.answers.get(playerId) - count.total) : Infinity);
+  const levels = [...new Set(specialRound.participantIds.map(distance))].sort((first, second) => first - second);
+  const ranking = specialRound.participantIds
+    .map((playerId) => ({
+      playerId,
+      playerName: room.players.get(playerId)?.name || '',
+      answer: count.answers.has(playerId) ? count.answers.get(playerId) : null,
+      distance: Number.isFinite(distance(playerId)) ? distance(playerId) : null,
+      position: levels.indexOf(distance(playerId)) + 1,
+      points: Number.isFinite(distance(playerId)) ? ladderPoints(levels.indexOf(distance(playerId)), levels.length) : 0,
+    }))
+    .sort((first, second) => first.position - second.position);
+  count.outcome = { total: count.total, ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.distance === 0 ? 1 : 0,
+    answeredCount: entry.answer === null ? 0 : 1,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicCount(count) {
+  if (!count) {
+    return null;
+  }
+
+  return {
+    stage: count.stage,
+    // El guion se publica entero (cada cliente lo reproduce); el total solo se anuncia al final.
+    schedule: count.schedule,
+    travel: count.travel,
+    watchStartsAt: count.watchStartsAt,
+    watchEndsAt: count.watchEndsAt,
+    answerEndsAt: count.answerEndsAt,
+    timeBannerMs: COUNT_TIME_BANNER_MS,
+    answeredPlayerIds: [...count.answers.keys()],
+    outcome: count.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Desenfundar                                                         */
+/* ------------------------------------------------------------------ */
+// - Duelo en una calle del oeste contra el crupier. 3 rondas: tras una espera al azar aparece "¡YA!" y hay que
+//   disparar antes de que dispare el crupier (cada ronda mas rapido). Disparar antes de la senal es falta.
+// - Cada cliente mide su propio tiempo de reaccion desde que ve la senal en su pantalla y solo envia el
+//   resultado; el servidor lo apunta y al acabar la ronda reparte quien ha caido.
+// - Clasificacion: rondas ganadas y, a igualdad, reaccion media mas rapida. Puntos en escalera (30 ... 0).
+
+// Un solo duelo.
+const DUEL_ROUNDS = 1;
+const DUEL_DEALER_MS = [600];
+const DUEL_FIRST_LEAD_MS = 3500;
+const DUEL_LEAD_MS = 2000;
+// Espera aleatoria antes de la senal (desde que empieza la ronda).
+const DUEL_WAIT_MIN_MS = 2500;
+const DUEL_WAIT_RANGE_MS = 3500;
+// Margen para que lleguen los disparos tras el limite, y lo que dura el resultado en pantalla.
+const DUEL_GRACE_MS = 900;
+const DUEL_RESULT_MS = 4200;
+const DUEL_MIN_REACTION_MS = 90;
+
+function setupDuel(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.duel = {
+    stage: 'waiting',
+    round: 0,
+    roundStartsAt: null,
+    signalAt: null,
+    deadline: null,
+    nextRoundAt: null,
+    shots: new Map(),
+    results: [],
+    history: [],
+    outcome: null,
+  };
+
+  startDuelRound(room, 1, specialRound.introEndsAt - Date.now() + DUEL_FIRST_LEAD_MS);
+}
+
+function startDuelRound(room, round, leadMs) {
+  const duel = room.match?.specialRound?.duel;
+
+  if (!duel) {
+    return;
+  }
+
+  duel.round = round;
+  duel.stage = 'waiting';
+  duel.shots = new Map();
+  duel.results = [];
+  duel.nextRoundAt = null;
+  duel.roundStartsAt = Date.now() + Math.max(0, leadMs);
+  duel.signalAt = duel.roundStartsAt + DUEL_WAIT_MIN_MS + crypto.randomInt(DUEL_WAIT_RANGE_MS);
+  duel.deadline = duel.signalAt + DUEL_DEALER_MS[round - 1];
+  setRoomTimer(room, 'duel', duel.deadline + DUEL_GRACE_MS, () => resolveDuelRound(room, round));
+  emitMatchState(room);
+}
+
+function resolveDuelRound(room, round) {
+  const specialRound = room.match?.specialRound;
+  const duel = specialRound?.duel;
+
+  if (!duel || duel.round !== round || duel.stage !== 'waiting') {
+    return;
+  }
+
+  const dealerMs = DUEL_DEALER_MS[round - 1];
+  duel.results = specialRound.participantIds.map((playerId) => {
+    const shot = duel.shots.get(playerId);
+    const reactionMs = shot && !shot.foul ? shot.reactionMs : null;
+    return { playerId, reactionMs, foul: Boolean(shot?.foul), hit: reactionMs !== null && reactionMs <= dealerMs };
+  });
+  duel.history.push({ round, dealerMs, results: duel.results });
+  duel.stage = 'result';
+  duel.nextRoundAt = Date.now() + DUEL_RESULT_MS;
+  setRoomTimer(room, 'duel', duel.nextRoundAt, () => (round < DUEL_ROUNDS ? startDuelRound(room, round + 1, DUEL_LEAD_MS) : finishDuel(room)));
+  emitMatchState(room);
+}
+
+function finishDuel(room) {
+  const specialRound = room.match?.specialRound;
+  const duel = specialRound?.duel;
+
+  if (!duel || duel.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'duel');
+  duel.stage = 'finished';
+  const stats = specialRound.participantIds.map((playerId) => {
+    const hits = duel.history.flatMap((entry) => entry.results).filter((result) => result.playerId === playerId && result.hit);
+    const averageMs = hits.length ? Math.round(hits.reduce((sum, result) => sum + result.reactionMs, 0) / hits.length) : null;
+    return { playerId, wins: hits.length, averageMs, key: `${hits.length}:${averageMs ?? 0}` };
+  });
+  const ordered = [...stats].sort((first, second) => second.wins - first.wins || (first.averageMs ?? Infinity) - (second.averageMs ?? Infinity));
+  const levels = [...new Set(ordered.map((entry) => entry.key))];
+  const ranking = ordered.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: room.players.get(entry.playerId)?.name || '',
+    wins: entry.wins,
+    averageMs: entry.averageMs,
+    position: levels.indexOf(entry.key) + 1,
+    points: entry.wins ? ladderPoints(levels.indexOf(entry.key), levels.length) : 0,
+  }));
+  duel.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.wins,
+    answeredCount: DUEL_ROUNDS,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicDuel(duel) {
+  if (!duel) {
+    return null;
+  }
+
+  return {
+    stage: duel.stage,
+    round: duel.round,
+    totalRounds: DUEL_ROUNDS,
+    dealerMs: DUEL_DEALER_MS[Math.max(0, duel.round - 1)],
+    roundStartsAt: duel.roundStartsAt,
+    signalAt: duel.signalAt,
+    deadline: duel.deadline,
+    nextRoundAt: duel.nextRoundAt,
+    // Los disparos de los demas no se reparten hasta el final de la ronda.
+    results: duel.results,
+    history: duel.history,
+    outcome: duel.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Para el cronometro                                                  */
+/* ------------------------------------------------------------------ */
+// - 3 rondas. Arriba sale el tiempo objetivo (p. ej. 08,0); el cronometro arranca y a los 3 s deja de verse.
+//   Hay que pararlo lo mas cerca posible del objetivo. El cronometro corre en cada cliente y solo se envia el tiempo.
+// - Gana quien menos error acumula; puntos en escalera (30 ... 0). Quien no para se lleva el error maximo.
+
+// Una sola ronda, con un objetivo entre 6,0 y 12,0 s.
+const STOPWATCH_ROUNDS = 1;
+const STOPWATCH_TARGETS = [[60, 120]];
+const STOPWATCH_VISIBLE_MS = 3000;
+const STOPWATCH_MAX_ERROR_MS = 5000;
+const STOPWATCH_FIRST_LEAD_MS = 3500;
+const STOPWATCH_LEAD_MS = 3500;
+const STOPWATCH_REVEAL_MS = 4500;
+
+function setupStopwatch(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.stopwatch = {
+    stage: 'running',
+    round: 0,
+    targetMs: 0,
+    startsAt: null,
+    deadline: null,
+    nextRoundAt: null,
+    stops: new Map(),
+    history: [],
+    outcome: null,
+  };
+
+  startStopwatchRound(room, 1, specialRound.introEndsAt - Date.now() + STOPWATCH_FIRST_LEAD_MS);
+}
+
+function startStopwatchRound(room, round, leadMs) {
+  const stopwatch = room.match?.specialRound?.stopwatch;
+
+  if (!stopwatch) {
+    return;
+  }
+
+  const [low, high] = STOPWATCH_TARGETS[round - 1];
+  stopwatch.round = round;
+  stopwatch.stage = 'running';
+  stopwatch.stops = new Map();
+  stopwatch.nextRoundAt = null;
+  // Objetivo en decimas de segundo (p. ej. 8,3 s).
+  stopwatch.targetMs = (low + crypto.randomInt(high - low + 1)) * 100;
+  stopwatch.startsAt = Date.now() + Math.max(0, leadMs);
+  stopwatch.deadline = stopwatch.startsAt + stopwatch.targetMs + STOPWATCH_MAX_ERROR_MS;
+  setRoomTimer(room, 'stopwatch', stopwatch.deadline + 800, () => revealStopwatchRound(room, round));
+  emitMatchState(room);
+}
+
+function maybeRevealStopwatch(room) {
+  const stopwatch = room.match?.specialRound?.stopwatch;
+
+  if (
+    stopwatch?.stage === 'running' &&
+    getActiveParticipantIds(room, room.match.specialRound).every((playerId) => stopwatch.stops.has(playerId))
+  ) {
+    revealStopwatchRound(room, stopwatch.round);
+  }
+}
+
+function revealStopwatchRound(room, round) {
+  const specialRound = room.match?.specialRound;
+  const stopwatch = specialRound?.stopwatch;
+
+  if (!stopwatch || stopwatch.round !== round || stopwatch.stage !== 'running') {
+    return;
+  }
+
+  const results = specialRound.participantIds.map((playerId) => {
+    const elapsedMs = stopwatch.stops.has(playerId) ? stopwatch.stops.get(playerId) : null;
+    return {
+      playerId,
+      elapsedMs,
+      errorMs: elapsedMs === null ? STOPWATCH_MAX_ERROR_MS : Math.min(STOPWATCH_MAX_ERROR_MS, Math.abs(elapsedMs - stopwatch.targetMs)),
+    };
+  });
+  stopwatch.history.push({ round, targetMs: stopwatch.targetMs, results });
+  stopwatch.stage = 'reveal';
+  stopwatch.nextRoundAt = Date.now() + STOPWATCH_REVEAL_MS;
+  setRoomTimer(room, 'stopwatch', stopwatch.nextRoundAt, () =>
+    round < STOPWATCH_ROUNDS ? startStopwatchRound(room, round + 1, STOPWATCH_LEAD_MS) : finishStopwatch(room),
+  );
+  emitMatchState(room);
+}
+
+function finishStopwatch(room) {
+  const specialRound = room.match?.specialRound;
+  const stopwatch = specialRound?.stopwatch;
+
+  if (!stopwatch || stopwatch.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'stopwatch');
+  stopwatch.stage = 'finished';
+  const totals = specialRound.participantIds.map((playerId) => ({
+    playerId,
+    totalErrorMs: stopwatch.history.reduce((sum, entry) => sum + (entry.results.find((result) => result.playerId === playerId)?.errorMs ?? STOPWATCH_MAX_ERROR_MS), 0),
+  }));
+  const levels = [...new Set(totals.map((entry) => entry.totalErrorMs))].sort((first, second) => first - second);
+  const ranking = totals
+    .map((entry) => ({
+      ...entry,
+      playerName: room.players.get(entry.playerId)?.name || '',
+      position: levels.indexOf(entry.totalErrorMs) + 1,
+      points: ladderPoints(levels.indexOf(entry.totalErrorMs), levels.length),
+    }))
+    .sort((first, second) => first.position - second.position);
+  stopwatch.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: 0,
+    answeredCount: STOPWATCH_ROUNDS,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicStopwatch(stopwatch) {
+  if (!stopwatch) {
+    return null;
+  }
+
+  return {
+    stage: stopwatch.stage,
+    round: stopwatch.round,
+    totalRounds: STOPWATCH_ROUNDS,
+    targetMs: stopwatch.targetMs,
+    visibleMs: STOPWATCH_VISIBLE_MS,
+    maxErrorMs: STOPWATCH_MAX_ERROR_MS,
+    startsAt: stopwatch.startsAt,
+    deadline: stopwatch.deadline,
+    nextRoundAt: stopwatch.nextRoundAt,
+    // Quien ya ha parado se sabe; su tiempo, solo al revelar la ronda.
+    stoppedPlayerIds: [...stopwatch.stops.keys()],
+    history: stopwatch.history,
+    outcome: stopwatch.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Torre de cajas                                                      */
+/* ------------------------------------------------------------------ */
+// - Juego 2D de una sola partida de 45 s: una caja va y viene y hay que soltarla encima de la torre; lo que
+//   sobresale se corta. Si no toca la torre, se acabo. Gana quien mas alto llega (aunque haya perdido antes).
+// - Todo se juega en el cliente: solo envia su altura cada vez que coloca una caja (para que el resto la vea) y
+//   si ha perdido. Puntos en escalera por altura (empates comparten puntos); quien no coloca ni una, -10.
+
+const TOWER_LEAD_MS = 3500;
+const TOWER_PLAY_MS = 45000;
+const TOWER_GRACE_MS = 1500;
+// Ritmo maximo creible (una caja cada 250 ms) para descartar alturas imposibles.
+const TOWER_MIN_MS_PER_BOX = 250;
+
+function setupTower(room) {
+  const specialRound = room.match.specialRound;
+  const startsAt = specialRound.introEndsAt + TOWER_LEAD_MS;
+
+  specialRound.tower = {
+    stage: 'playing',
+    startsAt,
+    endsAt: startsAt + TOWER_PLAY_MS,
+    levels: new Map(specialRound.participantIds.map((playerId) => [playerId, 0])),
+    lost: new Set(),
+    finished: new Set(),
+    outcome: null,
+  };
+
+  setRoomTimer(room, 'tower', startsAt + TOWER_PLAY_MS + TOWER_GRACE_MS, () => finishTower(room));
+}
+
+function maybeFinishTower(room) {
+  const tower = room.match?.specialRound?.tower;
+
+  if (tower?.stage === 'playing' && getActiveParticipantIds(room, room.match.specialRound).every((playerId) => tower.finished.has(playerId))) {
+    finishTower(room);
+  }
+}
+
+function finishTower(room) {
+  const specialRound = room.match?.specialRound;
+  const tower = specialRound?.tower;
+
+  if (!tower || tower.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'tower');
+  tower.stage = 'finished';
+  const levels = [...new Set(specialRound.participantIds.map((playerId) => tower.levels.get(playerId) || 0))].sort((first, second) => second - first);
+  const ranking = specialRound.participantIds
+    .map((playerId) => {
+      const level = tower.levels.get(playerId) || 0;
+      return {
+        playerId,
+        playerName: room.players.get(playerId)?.name || '',
+        level,
+        lost: tower.lost.has(playerId),
+        position: levels.indexOf(level) + 1,
+        points: level === 0 ? -10 : ladderPoints(levels.indexOf(level), levels.length),
+      };
+    })
+    .sort((first, second) => first.position - second.position);
+  tower.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.level,
+    answeredCount: entry.level,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicTower(tower) {
+  if (!tower) {
+    return null;
+  }
+
+  return {
+    stage: tower.stage,
+    startsAt: tower.startsAt,
+    endsAt: tower.endsAt,
+    levels: [...tower.levels.entries()].map(([playerId, level]) => ({ playerId, level, lost: tower.lost.has(playerId), finished: tower.finished.has(playerId) })),
+    outcome: tower.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Jarras en la barra                                                  */
+/* ------------------------------------------------------------------ */
+// - Juego de habilidad: la barra mide siempre lo mismo y la misma fuerza deja la jarra siempre en el mismo sitio.
+//   El 80 % del medidor (marcado con una linea roja) la deja justo en el borde; por encima, se cae. El medidor
+//   sube y baja muy rapido: hay que pararlo lo mas cerca posible de la linea sin pasarse.
+// - El medidor corre en el cliente; solo se envia la fuerza. Cuando todos han lanzado se reparten las distancias
+//   y cada cliente anima todas las jarras a la vez, frenando poco a poco hasta su punto final.
+// - Puntos en escalera por cercania al borde (el mejor 30, el ultimo 0); quien tira su jarra, -5.
+
+const BEER_LENGTH = 12;
+// Fuerza (0-1) que deja la jarra exactamente en el borde: la linea roja del medidor.
+const BEER_PERFECT_POWER = 0.8;
+// Metros que recorre la jarra con la fuerza maxima (asi el 80 % son justo los metros de la barra).
+const BEER_REACH = BEER_LENGTH / BEER_PERFECT_POWER;
+const BEER_LEAD_MS = 3000;
+const BEER_AIM_MS = 12000;
+const BEER_SLIDE_LEAD_MS = 1200;
+const BEER_SLIDE_MS = 4500;
+const BEER_RESULT_DELAY_MS = 1200;
+
+function setupBeer(room) {
+  const specialRound = room.match.specialRound;
+  const aimStartsAt = specialRound.introEndsAt + BEER_LEAD_MS;
+  const length = BEER_LENGTH;
+
+  specialRound.beer = {
+    stage: 'aiming',
+    length,
+    reach: BEER_REACH,
+    aimStartsAt,
+    aimEndsAt: aimStartsAt + BEER_AIM_MS,
+    powers: new Map(),
+    slideStartsAt: null,
+    slideMs: BEER_SLIDE_MS,
+    throws: [],
+    outcome: null,
+  };
+
+  setRoomTimer(room, 'beer', aimStartsAt + BEER_AIM_MS + 1000, () => startBeerSlide(room));
+}
+
+function maybeStartBeerSlide(room) {
+  const beer = room.match?.specialRound?.beer;
+
+  if (beer?.stage === 'aiming' && getActiveParticipantIds(room, room.match.specialRound).every((playerId) => beer.powers.has(playerId))) {
+    startBeerSlide(room);
+  }
+}
+
+function startBeerSlide(room) {
+  const specialRound = room.match?.specialRound;
+  const beer = specialRound?.beer;
+
+  if (!beer || beer.stage !== 'aiming') {
+    return;
+  }
+
+  // Quien no ha lanzado (desconectado) desliza sin fuerza: se queda en la salida.
+  beer.throws = specialRound.participantIds.map((playerId) => {
+    const power = beer.powers.has(playerId) ? beer.powers.get(playerId) : 0;
+    const distance = Math.round(power * beer.reach * 100) / 100;
+    return { playerId, power, distance, fell: distance > beer.length, gap: Math.round((beer.length - distance) * 100) / 100 };
+  });
+  beer.stage = 'sliding';
+  beer.slideStartsAt = Date.now() + BEER_SLIDE_LEAD_MS;
+  setRoomTimer(room, 'beer', beer.slideStartsAt + BEER_SLIDE_MS + BEER_RESULT_DELAY_MS, () => finishBeer(room));
+  emitMatchState(room);
+}
+
+function finishBeer(room) {
+  const specialRound = room.match?.specialRound;
+  const beer = specialRound?.beer;
+
+  if (!beer || beer.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'beer');
+  beer.stage = 'finished';
+  const standing = beer.throws.filter((entry) => !entry.fell);
+  const gaps = [...new Set(standing.map((entry) => entry.gap))].sort((first, second) => first - second);
+  const ranking = beer.throws
+    .map((entry) => ({
+      ...entry,
+      playerName: room.players.get(entry.playerId)?.name || '',
+      position: entry.fell ? gaps.length + 1 : gaps.indexOf(entry.gap) + 1,
+      points: entry.fell ? -5 : ladderPoints(gaps.indexOf(entry.gap), gaps.length),
+    }))
+    .sort((first, second) => first.position - second.position || second.distance - first.distance);
+  beer.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.fell ? 0 : 1,
+    answeredCount: 1,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicBeer(beer) {
+  if (!beer) {
+    return null;
+  }
+
+  return {
+    stage: beer.stage,
+    length: beer.length,
+    reach: beer.reach,
+    perfectPower: BEER_PERFECT_POWER,
+    aimStartsAt: beer.aimStartsAt,
+    aimEndsAt: beer.aimEndsAt,
+    thrownPlayerIds: [...beer.powers.keys()],
+    slideStartsAt: beer.slideStartsAt,
+    slideMs: beer.slideMs,
+    // Las distancias solo se reparten cuando han lanzado todos (para animar todas las jarras a la vez).
+    throws: beer.throws,
+    outcome: beer.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Corta verduras                                                      */
+/* ------------------------------------------------------------------ */
+// - Clicker de 10 s en una cocina: cada 10 cortes, una verdura. Los clics se cuentan solo en el cliente; al
+//   acabar, cada cliente envia cuantas verduras ha cortado (clics / 10) y 3 s despues salen los resultados.
+// - Puntos en escalera por verduras (empates comparten); quien no corta ninguna, 0.
+
+const CHOP_LEAD_MS = 4500;
+const CHOP_PLAY_MS = 10000;
+const CHOP_RESULT_PAUSE_MS = 3000;
+// Tope creible: 20 clics por segundo durante los 10 s.
+const CHOP_MAX_VEGGIES = 20;
+
+function setupChop(room) {
+  const specialRound = room.match.specialRound;
+  const startsAt = specialRound.introEndsAt + CHOP_LEAD_MS;
+
+  specialRound.chop = {
+    stage: 'playing',
+    startsAt,
+    endsAt: startsAt + CHOP_PLAY_MS,
+    resultsAt: startsAt + CHOP_PLAY_MS + CHOP_RESULT_PAUSE_MS,
+    veggies: new Map(),
+    outcome: null,
+  };
+
+  setRoomTimer(room, 'chop', specialRound.chop.resultsAt, () => finishChop(room));
+}
+
+function finishChop(room) {
+  const specialRound = room.match?.specialRound;
+  const chop = specialRound?.chop;
+
+  if (!chop || chop.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'chop');
+  chop.stage = 'finished';
+  const count = (playerId) => chop.veggies.get(playerId) || 0;
+  const levels = [...new Set(specialRound.participantIds.map(count))].sort((first, second) => second - first);
+  const ranking = specialRound.participantIds
+    .map((playerId) => ({
+      playerId,
+      playerName: room.players.get(playerId)?.name || '',
+      veggies: count(playerId),
+      position: levels.indexOf(count(playerId)) + 1,
+      points: count(playerId) ? ladderPoints(levels.indexOf(count(playerId)), levels.length) : 0,
+    }))
+    .sort((first, second) => first.position - second.position);
+  chop.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.veggies,
+    answeredCount: entry.veggies,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicChop(chop) {
+  if (!chop) {
+    return null;
+  }
+
+  return {
+    stage: chop.stage,
+    startsAt: chop.startsAt,
+    endsAt: chop.endsAt,
+    resultsAt: chop.resultsAt,
+    reportedPlayerIds: [...chop.veggies.keys()],
+    outcome: chop.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Salto con cuerda                                                    */
+/* ------------------------------------------------------------------ */
+// - Plataforma en lo alto de un arbol y una cuerda colgada de una rama. Por turnos (orden al azar), cada jugador
+//   se balancea en media circunferencia y se suelta cuando quiere. Todos salen con la misma velocidad: el angulo
+//   decide la distancia (a 45 grados hacia delante se llega mas lejos; soltarse yendo hacia atras resta metros).
+// - El balanceo corre en el cliente con un reloj comun; el cliente envia el angulo y el sentido al soltarse y el
+//   servidor calcula el salto con la misma fisica que el cliente (que ya lo esta animando).
+// - Puntos en escalera por distancia (el mas lejos 30, el ultimo 0). Quien acaba en negativo, -15.
+
+const SWING_PIVOT = { x: 1, y: 13.2 };
+const SWING_ROPE = 4.5;
+const SWING_SPEED = 14;
+const SWING_GRAVITY = 9.8;
+// Una ida y vuelta completa del balanceo (de un extremo al otro y vuelta).
+const SWING_PERIOD_MS = 2600;
+const SWING_WALK_MS = 1600;
+const SWING_TURN_MS = 10000;
+const SWING_AFTER_LANDING_MS = 3200;
+
+/** Angulo de la cuerda (grados, 0 = vertical, +90 = horizontal hacia delante) y sentido en que se mueve. */
+function swingAngleAt(elapsedMs) {
+  const phase = (2 * Math.PI * elapsedMs) / SWING_PERIOD_MS;
+  return { angle: 90 * Math.sin(phase), dir: Math.cos(phase) >= 0 ? 1 : -1 };
+}
+
+/** Salto al soltarse: misma fisica en cliente y servidor. Distancia desde el tronco (x = 0). */
+function swingJump(angleDeg, dir) {
+  const angle = (Math.max(-90, Math.min(90, angleDeg)) * Math.PI) / 180;
+  const x0 = SWING_PIVOT.x + SWING_ROPE * Math.sin(angle);
+  const y0 = SWING_PIVOT.y - SWING_ROPE * Math.cos(angle);
+  const vx = dir * SWING_SPEED * Math.cos(angle);
+  const vy = dir * SWING_SPEED * Math.sin(angle);
+  const time = (vy + Math.sqrt(vy * vy + 2 * SWING_GRAVITY * y0)) / SWING_GRAVITY;
+  return { distance: Math.round((x0 + vx * time) * 100) / 100, flightMs: Math.round(time * 1000) };
+}
+
+function setupSwing(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.swing = {
+    stage: 'walking',
+    order: secureShuffle(specialRound.participantIds),
+    turnIndex: 0,
+    walkStartsAt: null,
+    swingStartsAt: null,
+    swingEndsAt: null,
+    flightStartsAt: null,
+    nextTurnAt: null,
+    jumps: [],
+    outcome: null,
+  };
+
+  startSwingTurn(room, 0, specialRound.introEndsAt - Date.now() + 1500);
+}
+
+function startSwingTurn(room, turnIndex, leadMs = 0) {
+  const swing = room.match?.specialRound?.swing;
+
+  if (!swing) {
+    return;
+  }
+
+  if (turnIndex >= swing.order.length) {
+    finishSwing(room);
+    return;
+  }
+
+  swing.turnIndex = turnIndex;
+  swing.stage = 'walking';
+  swing.walkStartsAt = Date.now() + Math.max(0, leadMs);
+  swing.swingStartsAt = swing.walkStartsAt + SWING_WALK_MS;
+  swing.swingEndsAt = swing.swingStartsAt + SWING_TURN_MS;
+  swing.flightStartsAt = null;
+  swing.nextTurnAt = null;
+  setRoomTimer(room, 'swing', swing.swingStartsAt, () => {
+    if (swing.turnIndex !== turnIndex || swing.stage !== 'walking') {
+      return;
+    }
+
+    swing.stage = 'swinging';
+    // Si no se suelta a tiempo (o se ha desconectado), se suelta solo donde este la cuerda.
+    setRoomTimer(room, 'swing', swing.swingEndsAt + 1500, () => {
+      const { angle, dir } = swingAngleAt(swing.swingEndsAt - swing.swingStartsAt);
+      releaseSwing(room, turnIndex, angle, dir);
+    });
+    emitMatchState(room);
+  });
+  emitMatchState(room);
+}
+
+function releaseSwing(room, turnIndex, angle, dir) {
+  const swing = room.match?.specialRound?.swing;
+
+  if (!swing || swing.turnIndex !== turnIndex || swing.stage !== 'swinging') {
+    return;
+  }
+
+  const playerId = swing.order[turnIndex];
+  const { distance, flightMs } = swingJump(angle, dir);
+  swing.jumps.push({ playerId, angle: Math.round(angle * 100) / 100, dir, distance, flightMs });
+  swing.stage = 'flying';
+  swing.flightStartsAt = Date.now();
+  swing.nextTurnAt = swing.flightStartsAt + flightMs + SWING_AFTER_LANDING_MS;
+  setRoomTimer(room, 'swing', swing.nextTurnAt, () => startSwingTurn(room, turnIndex + 1));
+  emitMatchState(room);
+}
+
+function finishSwing(room) {
+  const specialRound = room.match?.specialRound;
+  const swing = specialRound?.swing;
+
+  if (!swing || swing.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'swing');
+  swing.stage = 'finished';
+  const distanceOf = (playerId) => swing.jumps.find((jump) => jump.playerId === playerId)?.distance ?? 0;
+  const forward = specialRound.participantIds.filter((playerId) => distanceOf(playerId) >= 0);
+  const levels = [...new Set(forward.map(distanceOf))].sort((first, second) => second - first);
+  const ranking = specialRound.participantIds
+    .map((playerId) => {
+      const distance = distanceOf(playerId);
+      const backwards = distance < 0;
+      return {
+        playerId,
+        playerName: room.players.get(playerId)?.name || '',
+        distance,
+        backwards,
+        position: backwards ? levels.length + 1 : levels.indexOf(distance) + 1,
+        points: backwards ? -15 : ladderPoints(levels.indexOf(distance), levels.length),
+      };
+    })
+    .sort((first, second) => first.position - second.position || second.distance - first.distance);
+  swing.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.backwards ? 0 : 1,
+    answeredCount: 1,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicSwing(swing) {
+  if (!swing) {
+    return null;
+  }
+
+  return {
+    stage: swing.stage,
+    order: swing.order,
+    turnIndex: swing.turnIndex,
+    currentPlayerId: swing.order[swing.turnIndex] || null,
+    periodMs: SWING_PERIOD_MS,
+    walkStartsAt: swing.walkStartsAt,
+    swingStartsAt: swing.swingStartsAt,
+    swingEndsAt: swing.swingEndsAt,
+    flightStartsAt: swing.flightStartsAt,
+    nextTurnAt: swing.nextTurnAt,
+    jumps: swing.jumps,
+    outcome: swing.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Mini golf                                                           */
+/* ------------------------------------------------------------------ */
+// - 2D, 3 rondas con 3 de los 20 mapas al azar. Un unico golpe por ronda (15 s para tirar; si no, cuenta como
+//   fallo). La fisica es determinista y corre en el cliente: cada uno simula su golpe al momento y envia el tiro
+//   (angulo y fuerza) y su resultado. Al tirar todos, se reparten los tiros y cada cliente simula las bolas de los
+//   demas con la misma fisica (mismo recorrido exacto).
+// - Gana quien menos distancia al hoyo acumula (meterla cuenta 0; no tirar cuenta como fallo). Escalera 30 ... 0.
+
+// 10 hoyos sencillos y 10 dificiles (con rebotes): cada partida juega 3 al azar.
+const GOLF_MAP_COUNT = 20;
+const GOLF_ROUNDS = 3;
+const GOLF_PREVIEW_MS = 2500;
+const GOLF_AIM_MS = 15000;
+const GOLF_ROLL_LEAD_MS = 600;
+const GOLF_ROLL_MS = 7000;
+const GOLF_REVEAL_MS = 3000;
+// Distancia que cuenta quien no tira (o la tira al agua): peor que cualquier tiro real.
+const GOLF_MISS_DISTANCE = 1000;
+
+function setupGolf(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.golf = {
+    stage: 'aiming',
+    maps: secureShuffle([...Array(GOLF_MAP_COUNT).keys()]).slice(0, GOLF_ROUNDS),
+    round: 0,
+    aimStartsAt: null,
+    aimEndsAt: null,
+    rollStartsAt: null,
+    nextRoundAt: null,
+    shots: new Map(),
+    history: [],
+    outcome: null,
+  };
+
+  startGolfRound(room, 1, specialRound.introEndsAt - Date.now());
+}
+
+function startGolfRound(room, round, extraMs = 0) {
+  const golf = room.match?.specialRound?.golf;
+
+  if (!golf) {
+    return;
+  }
+
+  golf.round = round;
+  golf.stage = 'aiming';
+  golf.shots = new Map();
+  golf.aimStartsAt = Date.now() + Math.max(0, extraMs) + GOLF_PREVIEW_MS;
+  golf.aimEndsAt = golf.aimStartsAt + GOLF_AIM_MS;
+  golf.rollStartsAt = null;
+  golf.nextRoundAt = null;
+  setRoomTimer(room, 'golf', golf.aimEndsAt + 1000, () => revealGolfRound(room, round));
+  emitMatchState(room);
+}
+
+function maybeRevealGolf(room) {
+  const golf = room.match?.specialRound?.golf;
+
+  if (golf?.stage === 'aiming' && getActiveParticipantIds(room, room.match.specialRound).every((playerId) => golf.shots.has(playerId))) {
+    revealGolfRound(room, golf.round);
+  }
+}
+
+function revealGolfRound(room, round) {
+  const specialRound = room.match?.specialRound;
+  const golf = specialRound?.golf;
+
+  if (!golf || golf.round !== round || golf.stage !== 'aiming') {
+    return;
+  }
+
+  const shots = specialRound.participantIds.map((playerId) => {
+    const shot = golf.shots.get(playerId);
+    return shot ? { playerId, ...shot, missed: false } : { playerId, angle: 0, power: 0, holed: false, distance: GOLF_MISS_DISTANCE, missed: true };
+  });
+  golf.history.push({ round, map: golf.maps[round - 1], shots });
+  golf.stage = 'rolling';
+  golf.rollStartsAt = Date.now() + GOLF_ROLL_LEAD_MS;
+  golf.nextRoundAt = golf.rollStartsAt + GOLF_ROLL_MS + GOLF_REVEAL_MS;
+  setRoomTimer(room, 'golf', golf.nextRoundAt, () => (round < GOLF_ROUNDS ? startGolfRound(room, round + 1) : finishGolf(room)));
+  emitMatchState(room);
+}
+
+function finishGolf(room) {
+  const specialRound = room.match?.specialRound;
+  const golf = specialRound?.golf;
+
+  if (!golf || golf.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'golf');
+  golf.stage = 'finished';
+  const totals = specialRound.participantIds.map((playerId) => {
+    const shots = golf.history.map((entry) => entry.shots.find((shot) => shot.playerId === playerId));
+    return {
+      playerId,
+      total: Math.round(shots.reduce((sum, shot) => sum + (shot ? (shot.holed ? 0 : shot.distance) : GOLF_MISS_DISTANCE), 0)),
+      holes: shots.filter((shot) => shot?.holed).length,
+    };
+  });
+  const levels = [...new Set(totals.map((entry) => entry.total))].sort((first, second) => first - second);
+  const ranking = totals
+    .map((entry) => ({
+      ...entry,
+      playerName: room.players.get(entry.playerId)?.name || '',
+      position: levels.indexOf(entry.total) + 1,
+      points: ladderPoints(levels.indexOf(entry.total), levels.length),
+    }))
+    .sort((first, second) => first.position - second.position);
+  golf.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.holes,
+    answeredCount: GOLF_ROUNDS,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicGolf(golf) {
+  if (!golf) {
+    return null;
+  }
+
+  return {
+    stage: golf.stage,
+    round: golf.round,
+    totalRounds: GOLF_ROUNDS,
+    map: golf.maps[Math.max(0, golf.round - 1)],
+    aimStartsAt: golf.aimStartsAt,
+    aimEndsAt: golf.aimEndsAt,
+    rollStartsAt: golf.rollStartsAt,
+    rollMs: GOLF_ROLL_MS,
+    nextRoundAt: golf.nextRoundAt,
+    shotPlayerIds: [...golf.shots.keys()],
+    // Los tiros de los demas solo se reparten cuando han tirado todos.
+    history: golf.history,
+    outcome: golf.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Memoriza el pedido                                                  */
+/* ------------------------------------------------------------------ */
+// - 3 rondas: se ve una hamburguesa unos segundos y despues hay que montarla capa a capa en el mismo orden.
+//   Cada ronda lleva mas ingredientes y se ve menos tiempo en proporcion. Equivocarse en una capa pierde la ronda.
+// - Todo en el cliente; al acabar cada ronda envia si la ha completado y cuanto ha tardado.
+// - Clasificacion: rondas completadas y, a igualdad, menos tiempo total. Escalera 30 ... 0.
+
+const ORDER_INGREDIENTS = 8;
+const ORDER_LAYERS = [4, 6, 8];
+const ORDER_SHOW_MS = [5000, 5500, 6500];
+const ORDER_BUILD_MS = 20000;
+const ORDER_LEAD_MS = 2500;
+const ORDER_REVEAL_MS = 3000;
+
+function setupOrder(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.order = {
+    stage: 'showing',
+    recipes: ORDER_LAYERS.map((layers) => {
+      const recipe = [];
+
+      // Sin dos capas iguales seguidas (para que el orden sea claro).
+      while (recipe.length < layers) {
+        const value = crypto.randomInt(ORDER_INGREDIENTS);
+
+        if (value !== recipe[recipe.length - 1]) {
+          recipe.push(value);
+        }
+      }
+
+      return recipe;
+    }),
+    round: 0,
+    showStartsAt: null,
+    buildStartsAt: null,
+    buildEndsAt: null,
+    nextRoundAt: null,
+    reports: new Map(),
+    history: [],
+    outcome: null,
+  };
+
+  startOrderRound(room, 1, specialRound.introEndsAt - Date.now());
+}
+
+function startOrderRound(room, round, extraMs = 0) {
+  const order = room.match?.specialRound?.order;
+
+  if (!order) {
+    return;
+  }
+
+  order.round = round;
+  order.stage = 'showing';
+  order.reports = new Map();
+  order.showStartsAt = Date.now() + Math.max(0, extraMs) + ORDER_LEAD_MS;
+  order.buildStartsAt = order.showStartsAt + ORDER_SHOW_MS[round - 1];
+  order.buildEndsAt = order.buildStartsAt + ORDER_BUILD_MS;
+  order.nextRoundAt = null;
+  setRoomTimer(room, 'order', order.buildEndsAt + 1000, () => closeOrderRound(room, round));
+  emitMatchState(room);
+}
+
+function maybeCloseOrderRound(room) {
+  const order = room.match?.specialRound?.order;
+
+  if (order && order.stage === 'showing' && getActiveParticipantIds(room, room.match.specialRound).every((playerId) => order.reports.has(playerId))) {
+    closeOrderRound(room, order.round);
+  }
+}
+
+function closeOrderRound(room, round) {
+  const specialRound = room.match?.specialRound;
+  const order = specialRound?.order;
+
+  if (!order || order.round !== round || order.stage !== 'showing') {
+    return;
+  }
+
+  order.history.push({
+    round,
+    results: specialRound.participantIds.map((playerId) => ({ playerId, ...(order.reports.get(playerId) || { success: false, ms: ORDER_BUILD_MS }) })),
+  });
+  order.stage = 'reveal';
+  order.nextRoundAt = Date.now() + ORDER_REVEAL_MS;
+  setRoomTimer(room, 'order', order.nextRoundAt, () => (round < ORDER_LAYERS.length ? startOrderRound(room, round + 1) : finishOrder(room)));
+  emitMatchState(room);
+}
+
+function finishOrder(room) {
+  const specialRound = room.match?.specialRound;
+  const order = specialRound?.order;
+
+  if (!order || order.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'order');
+  order.stage = 'finished';
+  const stats = specialRound.participantIds.map((playerId) => {
+    const results = order.history.map((entry) => entry.results.find((result) => result.playerId === playerId)).filter(Boolean);
+    const done = results.filter((result) => result.success);
+    return { playerId, completed: done.length, totalMs: done.reduce((sum, result) => sum + result.ms, 0) };
+  });
+  const keyOf = (entry) => `${entry.completed}:${entry.totalMs}`;
+  const ordered = [...stats].sort((first, second) => second.completed - first.completed || first.totalMs - second.totalMs);
+  const levels = [...new Set(ordered.map(keyOf))];
+  const ranking = ordered.map((entry) => ({
+    ...entry,
+    playerName: room.players.get(entry.playerId)?.name || '',
+    position: levels.indexOf(keyOf(entry)) + 1,
+    points: entry.completed ? ladderPoints(levels.indexOf(keyOf(entry)), levels.length) : 0,
+  }));
+  order.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.completed,
+    answeredCount: ORDER_LAYERS.length,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicOrder(order) {
+  if (!order) {
+    return null;
+  }
+
+  return {
+    stage: order.stage,
+    round: order.round,
+    totalRounds: ORDER_LAYERS.length,
+    ingredientCount: ORDER_INGREDIENTS,
+    recipe: order.recipes[Math.max(0, order.round - 1)],
+    showStartsAt: order.showStartsAt,
+    buildStartsAt: order.buildStartsAt,
+    buildEndsAt: order.buildEndsAt,
+    nextRoundAt: order.nextRoundAt,
+    reportedPlayerIds: [...order.reports.keys()],
+    history: order.history,
+    outcome: order.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Bolos                                                               */
+/* ------------------------------------------------------------------ */
+// - Bolera 3D, una tirada por jugador y todos a la vez. Cada jugador para dos medidores (direccion y efecto) y su
+//   cliente simula la bola y los bolos (fisica completa en su pista). Solo envia cuantos bolos ha tirado.
+// - Cuando han tirado todos, se reparten los bolos de cada uno y en las pistas de los demas se ve una tirada normal
+//   que derriba ese numero de bolos. Escalera por bolos (empates comparten); 0 bolos, 0 puntos.
+
+const BOWLING_LEAD_MS = 4000;
+const BOWLING_AIM_MS = 15000;
+const BOWLING_ROLL_LEAD_MS = 800;
+const BOWLING_ROLL_MS = 6500;
+
+function setupBowling(room) {
+  const specialRound = room.match.specialRound;
+  const aimStartsAt = specialRound.introEndsAt + BOWLING_LEAD_MS;
+
+  specialRound.bowling = {
+    stage: 'aiming',
+    aimStartsAt,
+    aimEndsAt: aimStartsAt + BOWLING_AIM_MS,
+    throws: new Map(),
+    rollStartsAt: null,
+    results: [],
+    outcome: null,
+  };
+
+  setRoomTimer(room, 'bowling', aimStartsAt + BOWLING_AIM_MS + 1500, () => startBowlingRoll(room));
+}
+
+function maybeStartBowlingRoll(room) {
+  const bowling = room.match?.specialRound?.bowling;
+
+  if (bowling?.stage === 'aiming' && getActiveParticipantIds(room, room.match.specialRound).every((playerId) => bowling.throws.has(playerId))) {
+    startBowlingRoll(room);
+  }
+}
+
+function startBowlingRoll(room) {
+  const specialRound = room.match?.specialRound;
+  const bowling = specialRound?.bowling;
+
+  if (!bowling || bowling.stage !== 'aiming') {
+    return;
+  }
+
+  bowling.results = specialRound.participantIds.map((playerId) => ({ playerId, pins: bowling.throws.get(playerId)?.pins ?? 0 }));
+  bowling.stage = 'rolling';
+  bowling.rollStartsAt = Date.now() + BOWLING_ROLL_LEAD_MS;
+  setRoomTimer(room, 'bowling', bowling.rollStartsAt + BOWLING_ROLL_MS, () => finishBowling(room));
+  emitMatchState(room);
+}
+
+function finishBowling(room) {
+  const specialRound = room.match?.specialRound;
+  const bowling = specialRound?.bowling;
+
+  if (!bowling || bowling.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'bowling');
+  bowling.stage = 'finished';
+  const levels = [...new Set(bowling.results.map((entry) => entry.pins))].sort((first, second) => second - first);
+  const ranking = bowling.results
+    .map((entry) => ({
+      ...entry,
+      playerName: room.players.get(entry.playerId)?.name || '',
+      position: levels.indexOf(entry.pins) + 1,
+      points: entry.pins ? ladderPoints(levels.indexOf(entry.pins), levels.length) : 0,
+    }))
+    .sort((first, second) => first.position - second.position);
+  bowling.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.pins,
+    answeredCount: 10,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicBowling(bowling) {
+  if (!bowling) {
+    return null;
+  }
+
+  return {
+    stage: bowling.stage,
+    aimStartsAt: bowling.aimStartsAt,
+    aimEndsAt: bowling.aimEndsAt,
+    thrownPlayerIds: [...bowling.throws.keys()],
+    rollStartsAt: bowling.rollStartsAt,
+    rollMs: BOWLING_ROLL_MS,
+    // Los bolos de cada uno solo se reparten cuando han tirado todos.
+    results: bowling.results,
+    outcome: bowling.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* ¿Quien es quien?                                                    */
+/* ------------------------------------------------------------------ */
+// - 3 rondas con preguntas al azar ("¿Quien llegaria tarde a su propia boda?"). Cada uno vota en secreto a otro
+//   jugador (15 s). El mas votado de la ronda "gana" la pregunta: quien le voto suma 10 puntos; si hay empate entre
+//   los mas votados, quien voto a cualquiera de ellos suma 5. Sin votar, 0. Maximo 30 puntos.
+
+const WHO_ROUNDS = 3;
+const WHO_QUESTION_MS = 2500;
+const WHO_VOTE_MS = 15000;
+const WHO_REVEAL_MS = 6500;
+
+function setupWho(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.who = {
+    stage: 'question',
+    questions: secureShuffle(WHO_QUESTIONS).slice(0, WHO_ROUNDS),
+    round: 0,
+    questionAt: null,
+    voteStartsAt: null,
+    voteEndsAt: null,
+    nextRoundAt: null,
+    votes: new Map(),
+    history: [],
+    outcome: null,
+  };
+
+  startWhoRound(room, 1, specialRound.introEndsAt - Date.now());
+}
+
+function startWhoRound(room, round, extraMs = 0) {
+  const who = room.match?.specialRound?.who;
+
+  if (!who) {
+    return;
+  }
+
+  who.round = round;
+  who.stage = 'question';
+  who.votes = new Map();
+  who.questionAt = Date.now() + Math.max(0, extraMs);
+  who.voteStartsAt = who.questionAt + WHO_QUESTION_MS;
+  who.voteEndsAt = who.voteStartsAt + WHO_VOTE_MS;
+  who.nextRoundAt = null;
+  setRoomTimer(room, 'who', who.voteStartsAt, () => {
+    if (who.round === round && who.stage === 'question') {
+      who.stage = 'voting';
+      setRoomTimer(room, 'who', who.voteEndsAt + 500, () => revealWhoRound(room, round));
+      emitMatchState(room);
+    }
+  });
+  emitMatchState(room);
+}
+
+function maybeRevealWho(room) {
+  const who = room.match?.specialRound?.who;
+
+  if (who?.stage === 'voting' && getActiveParticipantIds(room, room.match.specialRound).every((playerId) => who.votes.has(playerId))) {
+    revealWhoRound(room, who.round);
+  }
+}
+
+function revealWhoRound(room, round) {
+  const specialRound = room.match?.specialRound;
+  const who = specialRound?.who;
+
+  if (!who || who.round !== round || who.stage !== 'voting') {
+    return;
+  }
+
+  const tally = new Map();
+
+  for (const target of who.votes.values()) {
+    tally.set(target, (tally.get(target) || 0) + 1);
+  }
+
+  const top = Math.max(0, ...tally.values());
+  const chosen = top ? [...tally.entries()].filter(([, count]) => count === top).map(([playerId]) => playerId) : [];
+  const award = chosen.length === 1 ? 10 : chosen.length > 1 ? 5 : 0;
+  const votes = [...who.votes.entries()].map(([voterId, targetId]) => ({ voterId, targetId }));
+  const points = specialRound.participantIds.map((playerId) => ({
+    playerId,
+    points: who.votes.has(playerId) && chosen.includes(who.votes.get(playerId)) ? award : 0,
+  }));
+  who.history.push({ round, question: who.questions[round - 1], votes, tally: [...tally.entries()].map(([playerId, count]) => ({ playerId, count })), chosen, points });
+  who.stage = 'reveal';
+  who.nextRoundAt = Date.now() + WHO_REVEAL_MS;
+  setRoomTimer(room, 'who', who.nextRoundAt, () => (round < WHO_ROUNDS ? startWhoRound(room, round + 1) : finishWho(room)));
+  emitMatchState(room);
+}
+
+function finishWho(room) {
+  const specialRound = room.match?.specialRound;
+  const who = specialRound?.who;
+
+  if (!who || who.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'who');
+  who.stage = 'finished';
+  const ranking = specialRound.participantIds
+    .map((playerId) => {
+      const total = who.history.reduce((sum, entry) => sum + (entry.points.find((row) => row.playerId === playerId)?.points || 0), 0);
+      const hits = who.history.filter((entry) => (entry.points.find((row) => row.playerId === playerId)?.points || 0) > 0).length;
+      return { playerId, playerName: room.players.get(playerId)?.name || '', points: total, hits };
+    })
+    .sort((first, second) => second.points - first.points);
+  who.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.hits,
+    answeredCount: WHO_ROUNDS,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicWho(who) {
+  if (!who) {
+    return null;
+  }
+
+  return {
+    stage: who.stage,
+    round: who.round,
+    totalRounds: WHO_ROUNDS,
+    question: who.questions[Math.max(0, who.round - 1)],
+    questionAt: who.questionAt,
+    voteStartsAt: who.voteStartsAt,
+    voteEndsAt: who.voteEndsAt,
+    nextRoundAt: who.nextRoundAt,
+    // A quien vota cada uno no se sabe hasta el final de la ronda; solo quien ha votado ya.
+    votedPlayerIds: [...who.votes.keys()],
+    history: who.history,
+    outcome: who.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Cruza la carretera                                                  */
+/* ------------------------------------------------------------------ */
+// - Tipo Crossy Road: cuadricula de 9 columnas y filas de cesped (seguro, con arboles), carretera (coches a distintas
+//   velocidades) y via de tren (trenes muy rapidos avisados con una luz roja). 40 s para llegar lo mas lejos posible.
+// - El nivel lo genera el servidor; los coches y trenes se mueven con formulas deterministas sobre el reloj comun, asi
+//   cada cliente detecta sus atropellos al instante. Cada cliente envia su posicion como mucho cada 500 ms y el resto la
+//   ve interpolada.
+// - Clasificacion: quien llega a la meta antes; despues, la fila mas lejana. Escalera 30 ... 0 y -5 si te atropellan.
+
+const CROSSY_COLS = 9;
+const CROSSY_FINISH_ROW = 60;
+const CROSSY_LEAD_MS = 3500;
+const CROSSY_PLAY_MS = 40000;
+const CROSSY_GRACE_MS = 1500;
+// Ritmo maximo creible de saltos (para descartar posiciones imposibles).
+const CROSSY_MIN_MS_PER_HOP = 90;
+const CROSSY_WRAP = 16;
+const CROSSY_CAR_SPEEDS = [1.8, 3.2, 5.4];
+
+function buildCrossyRows() {
+  const rows = [];
+  let roadRun = 0;
+
+  for (let row = 0; row <= CROSSY_FINISH_ROW; row += 1) {
+    const previous = rows[row - 1]?.type;
+    let type = 'grass';
+
+    if (row > 2 && row < CROSSY_FINISH_ROW) {
+      const roll = crypto.randomInt(100);
+      type = roll < 52 ? 'road' : roll < 72 && previous !== 'rail' ? 'rail' : 'grass';
+
+      if (type === 'road' && roadRun >= 4) {
+        type = 'grass';
+      }
+    }
+
+    roadRun = type === 'road' ? roadRun + 1 : 0;
+
+    if (type === 'road') {
+      const count = 1 + crypto.randomInt(3);
+      const length = crypto.randomInt(4) === 0 ? 2 : 1.4;
+      const base = crypto.randomInt(1000) / 1000;
+      rows.push({
+        type,
+        dir: crypto.randomInt(2) ? 1 : -1,
+        speed: CROSSY_CAR_SPEEDS[crypto.randomInt(CROSSY_CAR_SPEEDS.length)] * (0.9 + crypto.randomInt(21) / 100),
+        length,
+        // Posiciones de partida repartidas por todo el carril (que vuelve a empezar cada CROSSY_WRAP columnas).
+        cars: Array.from({ length: count }, (_unused, index) => Math.round(((base + index / count) % 1) * CROSSY_WRAP * 100) / 100),
+        color: crypto.randomInt(8),
+      });
+    } else if (type === 'rail') {
+      rows.push({ type, dir: crypto.randomInt(2) ? 1 : -1, periodMs: 4500 + crypto.randomInt(3500), offsetMs: crypto.randomInt(4000) });
+    } else {
+      // Arboles en el cesped (nunca en la salida ni en la meta, y siempre con hueco de sobra para pasar).
+      const trees = row > 2 && row < CROSSY_FINISH_ROW ? secureShuffle([...Array(CROSSY_COLS).keys()].map((col) => col - 4)).slice(0, crypto.randomInt(4)) : [];
+      rows.push({ type, trees });
+    }
+  }
+
+  return rows;
+}
+
+function setupCrossy(room) {
+  const specialRound = room.match.specialRound;
+  const startsAt = specialRound.introEndsAt + CROSSY_LEAD_MS;
+
+  specialRound.crossy = {
+    stage: 'playing',
+    rows: buildCrossyRows(),
+    startsAt,
+    endsAt: startsAt + CROSSY_PLAY_MS,
+    players: new Map(specialRound.participantIds.map((playerId) => [playerId, { best: 0, row: 0, col: 0, dead: false, finishedAt: null }])),
+    outcome: null,
+  };
+
+  setRoomTimer(room, 'crossy', startsAt + CROSSY_PLAY_MS + CROSSY_GRACE_MS, () => finishCrossy(room));
+}
+
+function maybeFinishCrossy(room) {
+  const crossy = room.match?.specialRound?.crossy;
+
+  if (
+    crossy?.stage === 'playing' &&
+    getActiveParticipantIds(room, room.match.specialRound).every((playerId) => {
+      const player = crossy.players.get(playerId);
+      return player && (player.dead || player.finishedAt);
+    })
+  ) {
+    setRoomTimer(room, 'crossy', Date.now() + 1200, () => finishCrossy(room));
+  }
+}
+
+function finishCrossy(room) {
+  const specialRound = room.match?.specialRound;
+  const crossy = specialRound?.crossy;
+
+  if (!crossy || crossy.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'crossy');
+  crossy.stage = 'finished';
+  const entries = specialRound.participantIds.map((playerId) => ({ playerId, ...crossy.players.get(playerId) }));
+  // Los que llegan a la meta van primero y por orden de llegada; despues, por fila alcanzada (empates comparten).
+  const keyOf = (entry) => (entry.finishedAt ? `meta:${entry.finishedAt}` : `fila:${entry.best}`);
+  const ordered = [...entries].sort((first, second) => {
+    if (first.finishedAt && second.finishedAt) return first.finishedAt - second.finishedAt;
+    if (first.finishedAt || second.finishedAt) return first.finishedAt ? -1 : 1;
+    return second.best - first.best;
+  });
+  const levels = [...new Set(ordered.map(keyOf))];
+  const ranking = ordered.map((entry) => {
+    const base = ladderPoints(levels.indexOf(keyOf(entry)), levels.length);
+    return {
+      playerId: entry.playerId,
+      playerName: room.players.get(entry.playerId)?.name || '',
+      rows: entry.best,
+      finished: Boolean(entry.finishedAt),
+      dead: entry.dead,
+      position: levels.indexOf(keyOf(entry)) + 1,
+      points: Math.max(0, base - (entry.dead ? 5 : 0)),
+    };
+  });
+  crossy.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.rows,
+    answeredCount: CROSSY_FINISH_ROW,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicCrossy(crossy) {
+  if (!crossy) {
+    return null;
+  }
+
+  return {
+    stage: crossy.stage,
+    cols: CROSSY_COLS,
+    finishRow: CROSSY_FINISH_ROW,
+    wrap: CROSSY_WRAP,
+    rows: crossy.rows,
+    startsAt: crossy.startsAt,
+    endsAt: crossy.endsAt,
+    players: [...crossy.players.entries()].map(([playerId, player]) => ({ playerId, best: player.best, row: player.row, col: player.col, dead: player.dead, finished: Boolean(player.finishedAt) })),
+    outcome: crossy.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Tiro de jabalina                                                    */
+/* ------------------------------------------------------------------ */
+// - 2D: terreno con colinas (varios mapas) y una bandera entre 25 y 50 m. Cada jugador tiene 3 jabalinas y 40 s;
+//   gana quien deja una mas cerca de la bandera (solo cuenta la mejor; no hace falta tirar las tres).
+// - El tiro (angulo y fuerza) lo simula cada cliente con la misma fisica: el propio al instante y los de los demas
+//   en cuanto llegan. Al acabar, la camara se aleja para ver todas y 2,5 s despues salen los resultados.
+
+const JAVELIN_MAPS = 6;
+const JAVELIN_THROWS = 3;
+const JAVELIN_LEAD_MS = 2500;
+const JAVELIN_PLAY_MS = 40000;
+const JAVELIN_ZOOM_MS = 2600;
+
+function setupJavelin(room) {
+  const specialRound = room.match.specialRound;
+  const startsAt = specialRound.introEndsAt + JAVELIN_LEAD_MS;
+
+  specialRound.javelin = {
+    stage: 'throwing',
+    map: crypto.randomInt(JAVELIN_MAPS),
+    // Bandera entre 25 y 50 m (en medios metros).
+    flagX: (50 + crypto.randomInt(51)) / 2,
+    startsAt,
+    endsAt: startsAt + JAVELIN_PLAY_MS,
+    zoomEndsAt: null,
+    throws: new Map(specialRound.participantIds.map((playerId) => [playerId, []])),
+    outcome: null,
+  };
+
+  setRoomTimer(room, 'javelin', startsAt + JAVELIN_PLAY_MS + 800, () => startJavelinZoom(room));
+}
+
+function maybeEndJavelin(room) {
+  const javelin = room.match?.specialRound?.javelin;
+
+  if (
+    javelin?.stage === 'throwing' &&
+    getActiveParticipantIds(room, room.match.specialRound).every((playerId) => (javelin.throws.get(playerId) || []).length >= JAVELIN_THROWS)
+  ) {
+    // Margen para que la ultima jabalina termine de volar antes de alejar la camara.
+    setRoomTimer(room, 'javelin', Date.now() + 3500, () => startJavelinZoom(room));
+  }
+}
+
+function startJavelinZoom(room) {
+  const javelin = room.match?.specialRound?.javelin;
+
+  if (!javelin || javelin.stage !== 'throwing') {
+    return;
+  }
+
+  javelin.stage = 'zoom';
+  javelin.zoomEndsAt = Date.now() + JAVELIN_ZOOM_MS;
+  setRoomTimer(room, 'javelin', javelin.zoomEndsAt, () => finishJavelin(room));
+  emitMatchState(room);
+}
+
+function finishJavelin(room) {
+  const specialRound = room.match?.specialRound;
+  const javelin = specialRound?.javelin;
+
+  if (!javelin || javelin.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'javelin');
+  javelin.stage = 'finished';
+  const best = (playerId) => {
+    const throws = javelin.throws.get(playerId) || [];
+    return throws.length ? Math.min(...throws.map((entry) => entry.distance)) : null;
+  };
+  const thrown = specialRound.participantIds.filter((playerId) => best(playerId) !== null);
+  const levels = [...new Set(thrown.map(best))].sort((first, second) => first - second);
+  const ranking = specialRound.participantIds
+    .map((playerId) => {
+      const distance = best(playerId);
+      return {
+        playerId,
+        playerName: room.players.get(playerId)?.name || '',
+        distance,
+        throws: (javelin.throws.get(playerId) || []).length,
+        position: distance === null ? levels.length + 1 : levels.indexOf(distance) + 1,
+        points: distance === null ? 0 : ladderPoints(levels.indexOf(distance), levels.length),
+      };
+    })
+    .sort((first, second) => first.position - second.position);
+  javelin.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.throws,
+    answeredCount: JAVELIN_THROWS,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicJavelin(javelin) {
+  if (!javelin) {
+    return null;
+  }
+
+  return {
+    stage: javelin.stage,
+    map: javelin.map,
+    flagX: javelin.flagX,
+    throwsPerPlayer: JAVELIN_THROWS,
+    startsAt: javelin.startsAt,
+    endsAt: javelin.endsAt,
+    zoomEndsAt: javelin.zoomEndsAt,
+    // Los tiros se reparten en cuanto llegan: cada cliente reproduce las jabalinas de los demas.
+    throws: [...javelin.throws.entries()].flatMap(([playerId, throws]) => throws.map((entry, index) => ({ playerId, index, ...entry }))),
+    outcome: javelin.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Preguntas y respuestas                                              */
+/* ------------------------------------------------------------------ */
+// - 3 preguntas (de mas facil a mas dificil) con 4 respuestas A-D. 15 s para contestar; no se ve quien ha votado
+//   que hasta que han contestado todos (o se acaba el tiempo). Entonces salen las caras en cada respuesta y 2 s
+//   despues se marca en verde la correcta. 10 puntos por acierto (no hay posiciones: maximo 30).
+
+const QUIZ_ROUNDS = 3;
+const QUIZ_LEAD_MS = 1800;
+const QUIZ_ANSWER_MS = 15000;
+const QUIZ_VOTES_MS = 2000;
+const QUIZ_CORRECT_MS = 4500;
+const QUIZ_POINTS = 10;
+
+/** Una pregunta por ronda subiendo la dificultad: facil (1-2), media (3) y dificil (4-5). Respuestas barajadas. */
+function pickQuizQuestions() {
+  const bands = [
+    (difficulty) => difficulty <= 2,
+    (difficulty) => difficulty === 3,
+    (difficulty) => difficulty >= 4,
+  ];
+
+  return bands.map((inBand) => {
+    const entry = randomItem(QUIZ_QUESTIONS.filter((question) => inBand(question.difficulty)));
+    const order = secureShuffle([0, 1, 2, 3]);
+    return {
+      category: entry.category,
+      difficulty: entry.difficulty,
+      question: entry.question,
+      options: order.map((index) => entry.answers[index]),
+      // En el fichero la primera respuesta es la correcta.
+      correctIndex: order.indexOf(0),
+    };
+  });
+}
+
+function setupQuiz(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.quiz = {
+    stage: 'answering',
+    questions: pickQuizQuestions(),
+    round: 0,
+    questionAt: null,
+    answerStartsAt: null,
+    answerEndsAt: null,
+    correctAt: null,
+    nextRoundAt: null,
+    answers: new Map(),
+    history: [],
+    outcome: null,
+  };
+
+  startQuizRound(room, 1, specialRound.introEndsAt - Date.now());
+}
+
+function startQuizRound(room, round, extraMs = 0) {
+  const quiz = room.match?.specialRound?.quiz;
+
+  if (!quiz) {
+    return;
+  }
+
+  quiz.round = round;
+  quiz.stage = 'answering';
+  quiz.answers = new Map();
+  quiz.questionAt = Date.now() + Math.max(0, extraMs);
+  quiz.answerStartsAt = quiz.questionAt + QUIZ_LEAD_MS;
+  quiz.answerEndsAt = quiz.answerStartsAt + QUIZ_ANSWER_MS;
+  quiz.correctAt = null;
+  quiz.nextRoundAt = null;
+  setRoomTimer(room, 'quiz', quiz.answerEndsAt + 300, () => revealQuizVotes(room, round));
+  emitMatchState(room);
+}
+
+function maybeRevealQuiz(room) {
+  const quiz = room.match?.specialRound?.quiz;
+
+  if (quiz?.stage === 'answering' && getActiveParticipantIds(room, room.match.specialRound).every((playerId) => quiz.answers.has(playerId))) {
+    revealQuizVotes(room, quiz.round);
+  }
+}
+
+/** Primero se ve quien ha votado cada respuesta; 2 s despues, cual era la correcta. */
+function revealQuizVotes(room, round) {
+  const specialRound = room.match?.specialRound;
+  const quiz = specialRound?.quiz;
+
+  if (!quiz || quiz.round !== round || quiz.stage !== 'answering') {
+    return;
+  }
+
+  const question = quiz.questions[round - 1];
+  quiz.stage = 'votes';
+  quiz.correctAt = Date.now() + QUIZ_VOTES_MS;
+  quiz.history.push({
+    round,
+    answers: [...quiz.answers.entries()].map(([playerId, choice]) => ({ playerId, choice })),
+    correctIndex: question.correctIndex,
+    points: specialRound.participantIds.map((playerId) => ({ playerId, points: quiz.answers.get(playerId) === question.correctIndex ? QUIZ_POINTS : 0 })),
+  });
+  setRoomTimer(room, 'quiz', quiz.correctAt, () => {
+    quiz.stage = 'correct';
+    quiz.nextRoundAt = Date.now() + QUIZ_CORRECT_MS;
+    setRoomTimer(room, 'quiz', quiz.nextRoundAt, () => (round < QUIZ_ROUNDS ? startQuizRound(room, round + 1) : finishQuiz(room)));
+    emitMatchState(room);
+  });
+  emitMatchState(room);
+}
+
+function finishQuiz(room) {
+  const specialRound = room.match?.specialRound;
+  const quiz = specialRound?.quiz;
+
+  if (!quiz || quiz.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'quiz');
+  quiz.stage = 'finished';
+  const ranking = specialRound.participantIds
+    .map((playerId) => {
+      const hits = quiz.history.filter((entry) => entry.points.find((row) => row.playerId === playerId)?.points).length;
+      return { playerId, playerName: room.players.get(playerId)?.name || '', hits, points: hits * QUIZ_POINTS };
+    })
+    .sort((first, second) => second.points - first.points);
+  quiz.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.hits,
+    answeredCount: QUIZ_ROUNDS,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicQuiz(quiz) {
+  if (!quiz) {
+    return null;
+  }
+
+  const question = quiz.questions[Math.max(0, quiz.round - 1)];
+  const revealed = quiz.stage !== 'answering';
+  const current = quiz.history.find((entry) => entry.round === quiz.round);
+
+  return {
+    stage: quiz.stage,
+    round: quiz.round,
+    totalRounds: QUIZ_ROUNDS,
+    category: question.category,
+    difficulty: question.difficulty,
+    question: question.question,
+    options: question.options,
+    questionAt: quiz.questionAt,
+    answerStartsAt: quiz.answerStartsAt,
+    answerEndsAt: quiz.answerEndsAt,
+    correctAt: quiz.correctAt,
+    nextRoundAt: quiz.nextRoundAt,
+    // Mientras se contesta solo se sabe quien ha contestado; que ha votado cada uno, al revelar.
+    answeredPlayerIds: [...quiz.answers.keys()],
+    answers: revealed && current ? current.answers : [],
+    correctIndex: quiz.stage === 'correct' || quiz.stage === 'finished' ? question.correctIndex : null,
+    // Puntos de las rondas ya resueltas (la actual, solo cuando ya se ve la correcta).
+    history: quiz.history
+      .filter((entry) => entry.round < quiz.round || quiz.stage === 'correct' || quiz.stage === 'finished')
+      .map((entry) => ({ round: entry.round, points: entry.points })),
+    outcome: quiz.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Empujar                                                             */
+/* ------------------------------------------------------------------ */
+// - Discos (la foto de cada jugador) sobre una pista de hielo redonda rodeada de agua. 5 rondas seguidas sin
+//   recolocar a nadie: en cada una todos eligen a la vez direccion y fuerza (15 s, se puede rectificar hasta
+//   confirmar) y 2 s despues salen todos a la vez. Quien acaba con el disco entero fuera de la pista cae al agua.
+// - La fisica la calcula cada cliente con los impulsos de todos (es determinista); el primer cliente que termina
+//   envia el resultado y el servidor lo usa para la ronda siguiente.
+// - Puntos: los que siguen vivos al final 30; el resto, escalera segun cuando cayeron; el primero en caer 0.
+
+const PUSH_ROUNDS = 5;
+const PUSH_AIM_MS = 15000;
+const PUSH_LAUNCH_DELAY_MS = 2000;
+const PUSH_AFTER_MS = 1800;
+const PUSH_ARENA_RADIUS = 10;
+const PUSH_DISC_RADIUS = 1.1;
+const PUSH_MAX_SPEED = 16;
+const PUSH_MAX_STEPS = 120 * 12;
+// Si nadie enviara el resultado (todos desconectados), la ronda se da por terminada sin cambios.
+const PUSH_RESULT_FALLBACK_MS = PUSH_LAUNCH_DELAY_MS + 12000 + 4000;
+
+function setupPush(room) {
+  const specialRound = room.match.specialRound;
+  const ids = specialRound.participantIds;
+  // Repartidos en circulo a 6/10 del radio, empezando arriba.
+  const players = new Map(
+    ids.map((playerId, index) => {
+      const angle = (index / ids.length) * Math.PI * 2 - Math.PI / 2;
+      const radius = ids.length > 1 ? PUSH_ARENA_RADIUS * 0.6 : 0;
+      const round3 = (value) => Math.round(value * 1000) / 1000;
+      return [playerId, { x: round3(Math.cos(angle) * radius), y: round3(Math.sin(angle) * radius), alive: true, fell: null }];
+    }),
+  );
+
+  specialRound.push = {
+    stage: 'aiming',
+    round: 0,
+    players,
+    aims: new Map(),
+    impulses: [],
+    launchBodies: [],
+    aimStartsAt: null,
+    aimEndsAt: null,
+    launchAt: null,
+    nextRoundAt: null,
+    outcome: null,
+  };
+
+  startPushRound(room, 1, specialRound.introEndsAt - Date.now() + 1500);
+}
+
+function startPushRound(room, round, extraMs = 0) {
+  const push = room.match?.specialRound?.push;
+
+  if (!push) {
+    return;
+  }
+
+  push.round = round;
+  push.stage = 'aiming';
+  push.aims = new Map();
+  push.impulses = [];
+  push.aimStartsAt = Date.now() + Math.max(0, extraMs);
+  push.aimEndsAt = push.aimStartsAt + PUSH_AIM_MS;
+  push.launchAt = null;
+  push.nextRoundAt = null;
+  setRoomTimer(room, 'push', push.aimEndsAt + 300, () => launchPush(room, round));
+  emitMatchState(room);
+}
+
+function alivePushIds(push) {
+  return [...push.players.entries()].filter(([, player]) => player.alive).map(([playerId]) => playerId);
+}
+
+function maybeLaunchPush(room) {
+  const push = room.match?.specialRound?.push;
+
+  if (push?.stage !== 'aiming') {
+    return;
+  }
+
+  const active = new Set(getActiveParticipantIds(room, room.match.specialRound));
+
+  if (alivePushIds(push).filter((playerId) => active.has(playerId)).every((playerId) => push.aims.has(playerId))) {
+    launchPush(room, push.round);
+  }
+}
+
+/** Se cierran las direcciones: se reparten todos los impulsos (sin elegir = 0) y 2 s despues salen todos a la vez. */
+function launchPush(room, round) {
+  const push = room.match?.specialRound?.push;
+
+  if (!push || push.round !== round || push.stage !== 'aiming') {
+    return;
+  }
+
+  push.stage = 'launching';
+  push.launchAt = Date.now() + PUSH_LAUNCH_DELAY_MS;
+  push.impulses = alivePushIds(push).map((playerId) => ({ playerId, ...(push.aims.get(playerId) || { vx: 0, vy: 0 }) }));
+  // Posiciones de salida de la ronda: con ellas y los impulsos cada cliente anima la fisica, aunque el resultado
+  // (que manda el cliente mas rapido) llegue antes de que empiece su animacion.
+  push.launchBodies = alivePushIds(push).map((playerId) => ({ playerId, x: push.players.get(playerId).x, y: push.players.get(playerId).y }));
+  setRoomTimer(room, 'push', push.launchAt + PUSH_RESULT_FALLBACK_MS, () => applyPushResult(room, round, null));
+  emitMatchState(room);
+}
+
+/** Resultado de la simulacion (lo envia el primer cliente que la termina) o null si no llego ninguno. */
+function applyPushResult(room, round, result) {
+  const push = room.match?.specialRound?.push;
+
+  if (!push || push.round !== round || push.stage !== 'launching') {
+    return false;
+  }
+
+  const alive = alivePushIds(push);
+  let steps = 0;
+
+  if (result) {
+    for (const body of result.positions) {
+      Object.assign(push.players.get(body.playerId), { x: body.x, y: body.y });
+    }
+
+    for (const fall of result.falls) {
+      Object.assign(push.players.get(fall.playerId), { alive: false, fell: { round, step: fall.step } });
+    }
+
+    steps = result.steps;
+  }
+
+  push.stage = 'resolved';
+  const animationEnds = push.launchAt + Math.ceil((steps / 120) * 1000);
+  push.nextRoundAt = Math.max(Date.now(), animationEnds) + PUSH_AFTER_MS;
+  const remaining = alive.length - (result?.falls.length || 0);
+  setRoomTimer(room, 'push', push.nextRoundAt, () => (round < PUSH_ROUNDS && remaining > 1 ? startPushRound(room, round + 1) : finishPush(room)));
+  emitMatchState(room);
+  return true;
+}
+
+function finishPush(room) {
+  const specialRound = room.match?.specialRound;
+  const push = specialRound?.push;
+
+  if (!push || push.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'push');
+  push.stage = 'finished';
+  // Cuanto mas tarde se cae, mejor; los que siguen en pie empatan arriba.
+  const keyOf = (player) => (player.alive ? Infinity : player.fell.round * 100000 + player.fell.step);
+  const entries = specialRound.participantIds.map((playerId) => ({ playerId, player: push.players.get(playerId) }));
+  const levels = [...new Set(entries.map((entry) => keyOf(entry.player)))].sort((first, second) => second - first);
+  const ranking = entries
+    .map(({ playerId, player }) => {
+      const level = levels.indexOf(keyOf(player));
+      return {
+        playerId,
+        playerName: room.players.get(playerId)?.name || '',
+        survived: player.alive,
+        fellRound: player.fell?.round ?? null,
+        position: level + 1,
+        points: ladderPoints(level, levels.length),
+      };
+    })
+    .sort((first, second) => first.position - second.position);
+  push.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.survived ? PUSH_ROUNDS : (entry.fellRound || 1) - 1,
+    answeredCount: PUSH_ROUNDS,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicPush(push) {
+  if (!push) {
+    return null;
+  }
+
+  return {
+    stage: push.stage,
+    round: push.round,
+    totalRounds: PUSH_ROUNDS,
+    arenaRadius: PUSH_ARENA_RADIUS,
+    discRadius: PUSH_DISC_RADIUS,
+    maxSpeed: PUSH_MAX_SPEED,
+    players: [...push.players.entries()].map(([playerId, player]) => ({ playerId, x: player.x, y: player.y, alive: player.alive, fellRound: player.fell?.round ?? null })),
+    aimStartsAt: push.aimStartsAt,
+    aimEndsAt: push.aimEndsAt,
+    confirmedPlayerIds: [...push.aims.keys()],
+    // Las direcciones de los demas no se ven hasta que salen todos.
+    impulses: push.stage === 'aiming' ? [] : push.impulses,
+    launchBodies: push.stage === 'aiming' ? [] : push.launchBodies || [],
+    launchAt: push.launchAt,
+    nextRoundAt: push.nextRoundAt,
+    outcome: push.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Ruleta rusa                                                         */
+/* ------------------------------------------------------------------ */
+// - Por turnos (orden al azar, como el globo): cada jugador llega a la mesa, coge el revolver y se apunta. Elige
+//   "Disparar" (dispara la recamara que toca) o "Saltar bala" (gira una recamara y dispara la siguiente).
+// - El tambor tiene 6 recamaras. Se empieza con 1 bala; cada vez que alguien cae se recarga con una bala mas
+//   (maximo 3, siempre quedan 3 libres) en posiciones al azar. Tras un disparo en vacio el tambor avanza.
+// - Donde estan las balas solo lo sabe el servidor. Gana quien sobrevive; el resto, por orden de caida.
+
+const RUSSIAN_CHAMBERS = 6;
+const RUSSIAN_MAX_BULLETS = 3;
+const RUSSIAN_WALK_MS = 2400;
+const RUSSIAN_PICKUP_MS = 1400;
+const RUSSIAN_DECIDE_MS = 15000;
+const RUSSIAN_SKIP_MS = 800;
+const RUSSIAN_TRIGGER_MS = 900;
+const RUSSIAN_PUTDOWN_MS = 1000;
+const RUSSIAN_DEAD_MS = 4200;
+const RUSSIAN_RELOAD_MS = 2600;
+// Si el jugador en turno se ha desconectado, dispara solo pasado este tiempo.
+const RUSSIAN_AWAY_MS = 2500;
+
+function loadRussianCylinder(russian) {
+  russian.bullets = Math.min(RUSSIAN_MAX_BULLETS, russian.eliminated.length + 1);
+  const slots = secureShuffle([...Array(RUSSIAN_CHAMBERS).keys()]).slice(0, russian.bullets);
+  russian.chambers = Array.from({ length: RUSSIAN_CHAMBERS }, (_unused, index) => slots.includes(index));
+  russian.chamber = 0;
+  russian.load += 1;
+}
+
+function setupRussian(room) {
+  const specialRound = room.match.specialRound;
+
+  specialRound.russian = {
+    stage: 'walking',
+    order: secureShuffle(specialRound.participantIds),
+    alive: new Set(specialRound.participantIds),
+    eliminated: [],
+    chambers: [],
+    chamber: 0,
+    bullets: 1,
+    load: 0,
+    turnIndex: -1,
+    turnNumber: 0,
+    currentPlayerId: null,
+    turnStartsAt: null,
+    arriveAt: null,
+    decideStartsAt: null,
+    decideEndsAt: null,
+    lastShot: null,
+    nextAt: null,
+    outcome: null,
+  };
+
+  loadRussianCylinder(specialRound.russian);
+  beginRussianTurn(room, 0, specialRound.introEndsAt);
+}
+
+/** Siguiente jugador vivo y presente desde `fromIndex`; la ronda acaba si queda uno (o ninguno) presente. */
+function beginRussianTurn(room, fromIndex, startsAt) {
+  const russian = room.match?.specialRound?.russian;
+
+  if (!russian || russian.outcome) {
+    return;
+  }
+
+  const active = (playerId) => room.players.get(playerId)?.active;
+  const contenders = russian.order.filter((playerId) => russian.alive.has(playerId) && active(playerId));
+
+  if (contenders.length <= 1) {
+    finishRussian(room);
+    return;
+  }
+
+  let index = fromIndex % russian.order.length;
+
+  for (let step = 0; step < russian.order.length; step += 1) {
+    const playerId = russian.order[index];
+
+    if (russian.alive.has(playerId) && active(playerId)) {
+      break;
+    }
+
+    index = (index + 1) % russian.order.length;
+  }
+
+  russian.turnIndex = index;
+  russian.turnNumber += 1;
+  russian.currentPlayerId = russian.order[index];
+  russian.stage = 'walking';
+  russian.turnStartsAt = Math.max(Date.now(), startsAt);
+  russian.arriveAt = russian.turnStartsAt + RUSSIAN_WALK_MS;
+  russian.decideStartsAt = russian.arriveAt + RUSSIAN_PICKUP_MS;
+  russian.decideEndsAt = russian.decideStartsAt + RUSSIAN_DECIDE_MS;
+  russian.nextAt = null;
+  const turnNumber = russian.turnNumber;
+
+  // Llega a la mesa, coge el revolver y se apunta: entonces tiene 15 s para decidir (si no, dispara).
+  setRoomTimer(room, 'russian', russian.decideStartsAt, () => {
+    if (russian.turnNumber !== turnNumber || russian.outcome) {
+      return;
+    }
+
+    russian.stage = 'deciding';
+    const deadline = active(russian.currentPlayerId) ? russian.decideEndsAt : Date.now() + RUSSIAN_AWAY_MS;
+    setRoomTimer(room, 'russian', deadline, () => russianShoot(room, russian.currentPlayerId, 'shoot', turnNumber));
+    emitMatchState(room);
+  });
+  emitMatchState(room);
+}
+
+/** Disparo (o salto de bala y disparo). El resultado lo decide el servidor con la recamara que toca. */
+function russianShoot(room, playerId, action, turnNumber) {
+  const russian = room.match?.specialRound?.russian;
+
+  if (!russian || russian.outcome || russian.stage !== 'deciding' || russian.currentPlayerId !== playerId || russian.turnNumber !== turnNumber) {
+    return false;
+  }
+
+  const skipped = action === 'skip';
+
+  if (skipped) {
+    russian.chamber = (russian.chamber + 1) % RUSSIAN_CHAMBERS;
+  }
+
+  const bang = russian.chambers[russian.chamber];
+  const now = Date.now();
+  const firesAt = now + (skipped ? RUSSIAN_SKIP_MS : 0) + RUSSIAN_TRIGGER_MS;
+  russian.lastShot = { turnNumber, playerId, skipped, bang, at: now, firesAt };
+  russian.stage = 'firing';
+
+  if (bang) {
+    russian.alive.delete(playerId);
+    russian.eliminated.push({ playerId, turnNumber });
+    // Se recarga con una bala mas (al terminar la animacion de la caida).
+    russian.nextAt = firesAt + RUSSIAN_DEAD_MS + RUSSIAN_RELOAD_MS;
+    setRoomTimer(room, 'russian', firesAt + RUSSIAN_DEAD_MS, () => {
+      const contenders = russian.order.filter((id) => russian.alive.has(id) && room.players.get(id)?.active);
+
+      if (contenders.length <= 1) {
+        finishRussian(room);
+        return;
+      }
+
+      loadRussianCylinder(russian);
+      russian.stage = 'reload';
+      setRoomTimer(room, 'russian', russian.nextAt, () => beginRussianTurn(room, russian.turnIndex + 1, Date.now()));
+      emitMatchState(room);
+    });
+  } else {
+    // En vacio: el tambor avanza; deja el arma y se va mientras el siguiente ya camina hacia la mesa.
+    russian.chamber = (russian.chamber + 1) % RUSSIAN_CHAMBERS;
+    russian.nextAt = firesAt + RUSSIAN_PUTDOWN_MS;
+    setRoomTimer(room, 'russian', russian.nextAt, () => beginRussianTurn(room, russian.turnIndex + 1, Date.now()));
+  }
+
+  emitMatchState(room);
+  return true;
+}
+
+function finishRussian(room) {
+  const specialRound = room.match?.specialRound;
+  const russian = specialRound?.russian;
+
+  if (!russian || russian.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'russian');
+  russian.stage = 'finished';
+  russian.currentPlayerId = null;
+  // Primero quien sigue vivo (y presente); despues, cuanto mas tarde cayo, mejor.
+  const survivors = russian.order.filter((playerId) => russian.alive.has(playerId));
+  const ordered = [
+    ...survivors.filter((playerId) => room.players.get(playerId)?.active),
+    ...survivors.filter((playerId) => !room.players.get(playerId)?.active),
+    ...[...russian.eliminated].reverse().map((entry) => entry.playerId),
+  ];
+  const ranking = ordered.map((playerId, index) => ({
+    playerId,
+    playerName: room.players.get(playerId)?.name || '',
+    survived: russian.alive.has(playerId),
+    position: index + 1,
+    points: ladderPoints(index, ordered.length),
+  }));
+  russian.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.survived ? 1 : 0,
+    answeredCount: 1,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+/** Si el jugador en turno se va mientras decide, dispara solo enseguida. */
+function maybeRussianAway(room) {
+  const russian = room.match?.specialRound?.russian;
+
+  if (russian?.stage === 'deciding' && !room.players.get(russian.currentPlayerId)?.active) {
+    const turnNumber = russian.turnNumber;
+    setRoomTimer(room, 'russian', Date.now() + RUSSIAN_AWAY_MS, () => russianShoot(room, russian.currentPlayerId, 'shoot', turnNumber));
+  }
+}
+
+function toPublicRussian(russian) {
+  if (!russian) {
+    return null;
+  }
+
+  // Las recamaras cargadas nunca salen del servidor: solo cuantas balas hay en esta carga.
+  return {
+    stage: russian.stage,
+    order: russian.order,
+    alive: russian.order.filter((playerId) => russian.alive.has(playerId)),
+    eliminated: russian.eliminated,
+    bullets: russian.bullets,
+    chambers: RUSSIAN_CHAMBERS,
+    load: russian.load,
+    turnIndex: russian.turnIndex,
+    turnNumber: russian.turnNumber,
+    currentPlayerId: russian.currentPlayerId,
+    turnStartsAt: russian.turnStartsAt,
+    arriveAt: russian.arriveAt,
+    decideStartsAt: russian.decideStartsAt,
+    decideEndsAt: russian.decideEndsAt,
+    lastShot: russian.lastShot,
+    nextAt: russian.nextAt,
+    timings: { walkMs: RUSSIAN_WALK_MS, pickupMs: RUSSIAN_PICKUP_MS, skipMs: RUSSIAN_SKIP_MS, triggerMs: RUSSIAN_TRIGGER_MS, putdownMs: RUSSIAN_PUTDOWN_MS, deadMs: RUSSIAN_DEAD_MS },
+    outcome: russian.outcome,
+  };
+}
+
 // Revisa si una desconexion o salida desbloquea (o invalida) la fase actual de un minijuego.
 function reevaluateActiveMinigame(room) {
   const specialRound = room.match?.specialRound;
@@ -3140,6 +6031,20 @@ function reevaluateActiveMinigame(room) {
   skipInactiveBalloonPlayer(room);
   maybeCloseCupsVoting(room);
   maybeCloseCarsChoice(room);
+  maybeCloseDanceRound(room);
+  maybeFinishCount(room);
+  maybeRevealStopwatch(room);
+  maybeFinishTower(room);
+  maybeStartBeerSlide(room);
+  maybeRevealGolf(room);
+  maybeCloseOrderRound(room);
+  maybeStartBowlingRoll(room);
+  maybeRevealWho(room);
+  maybeFinishCrossy(room);
+  maybeEndJavelin(room);
+  maybeRevealQuiz(room);
+  maybeLaunchPush(room);
+  maybeRussianAway(room);
 }
 
 /* ------------------------------------------------------------------ */
@@ -3706,8 +6611,9 @@ io.on('connection', (socket) => {
       scoreboardRequest: null,
       lastScoreboard: null,
       finalStandings: null,
-      // Ultimos minijuegos jugados (no pueden volver a tocar hasta que se jueguen otros dos distintos).
-      recentMinigameIds: [],
+      // Minijuegos jugados en el ciclo actual (no se repiten hasta que se hayan jugado todos).
+      cycleMinigameIds: [],
+      playedMinigameIds: new Set(),
     };
 
     setRoomTimer(room, 'phase', room.match.countdownEndsAt, () => startRoulette(room));
@@ -4375,11 +7281,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (!blackjackGroup(bj).includes(player.id)) {
-      callback?.({ ok: false, reason: 'Todavia no le toca a tu mesa.' });
-      return;
-    }
-
     if (seat.confirmed) {
       callback?.({ ok: true, bet: seat.bet });
       return;
@@ -4489,6 +7390,688 @@ io.on('connection', (socket) => {
     emitMatchState(room);
     maybeCloseCarsChoice(room);
     callback?.({ ok: true, lane });
+  });
+
+  // Pista de baile: el cliente juega solo y aqui solo avisa de como le ha ido en la ronda.
+  const getDanceRequest = (payload, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const dance = room?.match?.specialRound?.dance;
+
+    if (!room || !player || !dance || room.match.phase !== 'special-round') {
+      callback?.({ ok: false, reason: 'No hay pista de baile en juego.' });
+      return null;
+    }
+
+    if (dance.stage !== 'playing' || Number(payload.round) !== dance.round) {
+      callback?.({ ok: false, reason: 'Esa ronda ya no esta en juego.' });
+      return null;
+    }
+
+    if (!dance.alive.has(player.id)) {
+      callback?.({ ok: false, reason: 'Ya estas fuera de la pista.' });
+      return null;
+    }
+
+    return { room, player, dance };
+  };
+
+  socket.on('match:dance-done', (payload = {}, callback) => {
+    const request = getDanceRequest(payload, callback);
+
+    if (!request) {
+      return;
+    }
+
+    const { room, player, dance } = request;
+    const now = Date.now();
+    const minimumMs = DANCE_LENGTHS[dance.round - 1] * DANCE_MIN_MS_PER_KEY;
+
+    if (now < dance.roundStartsAt + minimumMs || now > dance.roundEndsAt + DANCE_GRACE_MS) {
+      callback?.({ ok: false, reason: 'Secuencia fuera de tiempo.' });
+      return;
+    }
+
+    // Terminar no se reparte a nadie (no hace falta): solo se apunta para no eliminarle al cerrar la ronda.
+    dance.done.add(player.id);
+    callback?.({ ok: true });
+    maybeCloseDanceRound(room);
+  });
+
+  // ¿Cuantos hay?: una unica respuesta por jugador, solo cuando ya ha pasado todo el mundo.
+  socket.on('match:count-answer', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const count = room?.match?.specialRound?.count;
+    const value = Number(payload.value);
+
+    if (!room || !player || !count || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay nada que contar ahora.' });
+      return;
+    }
+
+    if (count.outcome || Date.now() < count.watchEndsAt || Date.now() > count.answerEndsAt + COUNT_GRACE_MS) {
+      callback?.({ ok: false, reason: 'Ahora no se puede responder.' });
+      return;
+    }
+
+    if (count.answers.has(player.id)) {
+      callback?.({ ok: true, ignored: true, value: count.answers.get(player.id) });
+      return;
+    }
+
+    if (!Number.isInteger(value) || value < 0 || value > 999) {
+      callback?.({ ok: false, reason: 'Escribe un número entre 0 y 999.' });
+      return;
+    }
+
+    count.stage = 'answering';
+    count.answers.set(player.id, value);
+    emitMatchState(room);
+    callback?.({ ok: true, value });
+    maybeFinishCount(room);
+  });
+
+  // Desenfundar: el cliente mide su reaccion desde que ve la senal y solo envia el resultado (o la falta).
+  socket.on('match:duel-shot', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const duel = room?.match?.specialRound?.duel;
+
+    if (!room || !player || !duel || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay duelo en juego.' });
+      return;
+    }
+
+    if (duel.stage !== 'waiting' || Number(payload.round) !== duel.round) {
+      callback?.({ ok: false, reason: 'Esa ronda ya ha terminado.' });
+      return;
+    }
+
+    if (duel.shots.has(player.id)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    const foul = Boolean(payload.foul);
+    const reactionMs = Math.round(Number(payload.reactionMs));
+
+    if (!foul && (!Number.isFinite(reactionMs) || reactionMs < DUEL_MIN_REACTION_MS || reactionMs > 10000)) {
+      callback?.({ ok: false, reason: 'Disparo no válido.' });
+      return;
+    }
+
+    // No se reparte a nadie: el resultado de todos sale junto al acabar la ronda.
+    duel.shots.set(player.id, foul ? { foul: true } : { reactionMs });
+    callback?.({ ok: true });
+  });
+
+  // Para el cronometro: el tiempo lo mide el cliente; aqui solo se apunta (una vez por ronda).
+  // Torre de cajas: cada caja colocada (o la caida) se apunta y se reparte para que el resto vea tu altura.
+  socket.on('match:tower-progress', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const tower = room?.match?.specialRound?.tower;
+    const level = Math.trunc(Number(payload.level));
+    const now = Date.now();
+
+    if (!room || !player || !tower || room.match.phase !== 'special-round' || !tower.levels.has(player.id)) {
+      callback?.({ ok: false, reason: 'No hay torre en juego.' });
+      return;
+    }
+
+    if (tower.stage !== 'playing' || tower.finished.has(player.id) || now > tower.endsAt + TOWER_GRACE_MS) {
+      callback?.({ ok: false, reason: 'La torre ya está cerrada.' });
+      return;
+    }
+
+    const maxPlausible = Math.floor(Math.max(0, now - tower.startsAt + 500) / TOWER_MIN_MS_PER_BOX);
+
+    if (!Number.isInteger(level) || level < (tower.levels.get(player.id) || 0) || level > maxPlausible) {
+      callback?.({ ok: false, reason: 'Altura no válida.' });
+      return;
+    }
+
+    tower.levels.set(player.id, level);
+
+    if (payload.lost) {
+      tower.lost.add(player.id);
+    }
+
+    if (payload.lost || payload.finished) {
+      tower.finished.add(player.id);
+    }
+
+    emitMatchState(room);
+    callback?.({ ok: true });
+    maybeFinishTower(room);
+  });
+
+  // Jarras: el medidor corre en el cliente; aqui solo llega la fuerza elegida (una vez).
+  // Corta verduras: cada cliente cuenta sus clics y al acabar envia cuantas verduras ha cortado (una vez).
+  // Mini golf: el cliente ya ha simulado su golpe; envia el tiro (para que los demas lo reproduzcan) y su resultado.
+  socket.on('match:golf-shot', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const golf = room?.match?.specialRound?.golf;
+    const angle = Number(payload.angle);
+    const power = Number(payload.power);
+    const distance = Number(payload.distance);
+
+    if (!room || !player || !golf || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay golf en juego.' });
+      return;
+    }
+
+    if (golf.stage !== 'aiming' || Number(payload.round) !== golf.round || Date.now() > golf.aimEndsAt + 1000) {
+      callback?.({ ok: false, reason: 'Ya no se puede tirar en esta ronda.' });
+      return;
+    }
+
+    if (golf.shots.has(player.id)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (![angle, power, distance].every(Number.isFinite) || power < 0 || power > 1 || distance < 0) {
+      callback?.({ ok: false, reason: 'Tiro no válido.' });
+      return;
+    }
+
+    const holed = Boolean(payload.holed);
+    golf.shots.set(player.id, {
+      angle: Math.round(angle * 100000) / 100000,
+      power: Math.round(power * 100000) / 100000,
+      holed,
+      distance: holed ? 0 : Math.min(GOLF_MISS_DISTANCE, Math.round(distance)),
+    });
+    emitMatchState(room);
+    callback?.({ ok: true });
+    maybeRevealGolf(room);
+  });
+
+  // Memoriza el pedido: resultado de la ronda en el cliente (completada o no y cuanto ha tardado).
+  socket.on('match:order-report', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const order = room?.match?.specialRound?.order;
+    const ms = Math.round(Number(payload.ms));
+
+    if (!room || !player || !order || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay pedidos en juego.' });
+      return;
+    }
+
+    if (order.stage !== 'showing' || Number(payload.round) !== order.round) {
+      callback?.({ ok: false, reason: 'Esa ronda ya ha terminado.' });
+      return;
+    }
+
+    if (order.reports.has(player.id)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    const minimumMs = ORDER_LAYERS[order.round - 1] * 120;
+    const success = Boolean(payload.success) && Number.isFinite(ms) && ms >= minimumMs && ms <= ORDER_BUILD_MS + 500;
+    order.reports.set(player.id, { success, ms: success ? ms : ORDER_BUILD_MS });
+    emitMatchState(room);
+    callback?.({ ok: true, success });
+    maybeCloseOrderRound(room);
+  });
+
+  // Bolos: el cliente ha simulado su tirada; solo llegan los bolos derribados (y la tirada, por si acaso).
+  socket.on('match:bowling-throw', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const bowling = room?.match?.specialRound?.bowling;
+    const pins = Math.trunc(Number(payload.pins));
+
+    if (!room || !player || !bowling || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay bolera en juego.' });
+      return;
+    }
+
+    if (bowling.stage !== 'aiming') {
+      callback?.({ ok: false, reason: 'Ya se han lanzado las bolas.' });
+      return;
+    }
+
+    if (bowling.throws.has(player.id)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (!Number.isInteger(pins) || pins < 0 || pins > 10) {
+      callback?.({ ok: false, reason: 'Número de bolos no válido.' });
+      return;
+    }
+
+    bowling.throws.set(player.id, { pins, aim: Number(payload.aim) || 0, spin: Number(payload.spin) || 0 });
+    emitMatchState(room);
+    callback?.({ ok: true });
+    maybeStartBowlingRoll(room);
+  });
+
+  // ¿Quien es quien?: voto secreto de la ronda (vale votarse a uno mismo; no se puede cambiar el voto).
+  socket.on('match:who-vote', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const who = room?.match?.specialRound?.who;
+    const targetId = String(payload.targetId || '');
+
+    if (!room || !player || !who || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay votación en juego.' });
+      return;
+    }
+
+    if (who.stage !== 'voting' || Number(payload.round) !== who.round) {
+      callback?.({ ok: false, reason: 'Ahora no se puede votar.' });
+      return;
+    }
+
+    if (who.votes.has(player.id)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    // Uno puede votarse a si mismo (si cree que la pregunta va por el).
+    if (!room.match.specialRound.participantIds.includes(targetId)) {
+      callback?.({ ok: false, reason: 'Voto no válido.' });
+      return;
+    }
+
+    who.votes.set(player.id, targetId);
+    emitMatchState(room);
+    callback?.({ ok: true });
+    maybeRevealWho(room);
+  });
+
+  // Cruza la carretera: el cliente manda su posicion (cada ~500 ms, o al morir / llegar a la meta). Los atropellos
+  // los detecta el propio cliente; aqui solo se descartan avances imposibles.
+  socket.on('match:crossy-move', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const crossy = room?.match?.specialRound?.crossy;
+    const row = Math.trunc(Number(payload.row));
+    const col = Math.trunc(Number(payload.col));
+    const now = Date.now();
+
+    if (!room || !player || !crossy || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay carretera en juego.' });
+      return;
+    }
+
+    const state = crossy.players.get(player.id);
+
+    if (crossy.stage !== 'playing' || !state || state.dead || state.finishedAt || now < crossy.startsAt - 500 || now > crossy.endsAt + 1000) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    const maxRow = Math.floor((now - crossy.startsAt + 500) / CROSSY_MIN_MS_PER_HOP);
+
+    if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || row > Math.min(CROSSY_FINISH_ROW, maxRow) || Math.abs(col) > 4) {
+      callback?.({ ok: false, reason: 'Posición no válida.' });
+      return;
+    }
+
+    state.row = row;
+    state.col = col;
+    state.best = Math.max(state.best, row);
+    const finished = row >= CROSSY_FINISH_ROW;
+    const dead = !finished && Boolean(payload.dead);
+
+    if (finished) {
+      state.finishedAt = now;
+    }
+
+    state.dead = dead;
+    io.to(room.code).emit('match:crossy-move', { lobbyId: room.code, playerId: player.id, row, col, best: state.best, dead, finished });
+    callback?.({ ok: true });
+
+    if (dead || finished) {
+      emitMatchState(room);
+      maybeFinishCrossy(room);
+    }
+  });
+
+  // Tiro de jabalina: el cliente ya ha simulado el tiro; llega el angulo y la fuerza (para que los demas lo repitan)
+  // y donde ha caido.
+  socket.on('match:javelin-throw', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const javelin = room?.match?.specialRound?.javelin;
+    const angle = Number(payload.angle);
+    const power = Number(payload.power);
+    const landX = Number(payload.landX);
+    const now = Date.now();
+
+    if (!room || !player || !javelin || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay jabalinas en juego.' });
+      return;
+    }
+
+    const throws = javelin.throws.get(player.id) || [];
+
+    if (javelin.stage !== 'throwing' || now < javelin.startsAt - 500 || now > javelin.endsAt + 1000) {
+      callback?.({ ok: false, reason: 'Ya no se puede lanzar.' });
+      return;
+    }
+
+    if (throws.length >= JAVELIN_THROWS) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (![angle, power, landX].every(Number.isFinite) || power < 0 || power > 1 || angle < 0 || angle > Math.PI / 2 || landX < 0 || landX > 120) {
+      callback?.({ ok: false, reason: 'Tiro no válido.' });
+      return;
+    }
+
+    throws.push({
+      angle: Math.round(angle * 100000) / 100000,
+      power: Math.round(power * 100000) / 100000,
+      landX: Math.round(landX * 100) / 100,
+      distance: Math.round(Math.abs(landX - javelin.flagX) * 100) / 100,
+      at: now,
+    });
+    javelin.throws.set(player.id, throws);
+    emitMatchState(room);
+    callback?.({ ok: true });
+    maybeEndJavelin(room);
+  });
+
+  // Ruleta rusa: el jugador en turno dispara ('shoot') o salta una bala y dispara la siguiente ('skip').
+  socket.on('match:russian-action', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const russian = room?.match?.specialRound?.russian;
+    const action = payload.action === 'skip' ? 'skip' : payload.action === 'shoot' ? 'shoot' : null;
+
+    if (!room || !player || !russian || room.match.phase !== 'special-round') {
+      callback?.({ ok: false, reason: 'No hay ruleta rusa en juego.' });
+      return;
+    }
+
+    if (!action) {
+      callback?.({ ok: false, reason: 'Acción no válida.' });
+      return;
+    }
+
+    if (russian.currentPlayerId !== player.id || Number(payload.turnNumber) !== russian.turnNumber) {
+      callback?.({ ok: false, reason: 'No es tu turno.' });
+      return;
+    }
+
+    if (russian.stage === 'firing' && russian.lastShot?.turnNumber === russian.turnNumber) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (!russianShoot(room, player.id, action, russian.turnNumber)) {
+      callback?.({ ok: false, reason: 'Todavía no puedes disparar.' });
+      return;
+    }
+
+    callback?.({ ok: true });
+  });
+
+  // Preguntas y respuestas: una respuesta por ronda (0-3), sin poder cambiarla.
+  socket.on('match:quiz-answer', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const quiz = room?.match?.specialRound?.quiz;
+    const choice = Math.trunc(Number(payload.choice));
+
+    if (!room || !player || !quiz || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay preguntas en juego.' });
+      return;
+    }
+
+    if (quiz.stage !== 'answering' || Number(payload.round) !== quiz.round || Date.now() < quiz.questionAt) {
+      callback?.({ ok: false, reason: 'Ahora no se puede contestar.' });
+      return;
+    }
+
+    if (quiz.answers.has(player.id)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (!Number.isInteger(choice) || choice < 0 || choice > 3) {
+      callback?.({ ok: false, reason: 'Respuesta no válida.' });
+      return;
+    }
+
+    quiz.answers.set(player.id, choice);
+    emitMatchState(room);
+    callback?.({ ok: true });
+    maybeRevealQuiz(room);
+  });
+
+  // Empujar: direccion y fuerza confirmadas (como velocidad inicial vx, vy). 0, 0 = no moverse.
+  socket.on('match:push-aim', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const push = room?.match?.specialRound?.push;
+    const vx = Number(payload.vx);
+    const vy = Number(payload.vy);
+
+    if (!room || !player || !push || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay pista en juego.' });
+      return;
+    }
+
+    if (push.stage !== 'aiming' || Number(payload.round) !== push.round || !push.players.get(player.id)?.alive) {
+      callback?.({ ok: false, reason: 'Ahora no se puede apuntar.' });
+      return;
+    }
+
+    if (push.aims.has(player.id)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (![vx, vy].every(Number.isFinite) || Math.hypot(vx, vy) > PUSH_MAX_SPEED * 1.001) {
+      callback?.({ ok: false, reason: 'Impulso no válido.' });
+      return;
+    }
+
+    const round4 = (value) => Math.round(value * 10000) / 10000;
+    push.aims.set(player.id, { vx: round4(vx), vy: round4(vy) });
+    emitMatchState(room);
+    callback?.({ ok: true });
+    maybeLaunchPush(room);
+  });
+
+  // Empujar: resultado de la simulacion de la ronda. Todos los clientes calculan lo mismo; vale el primero que llega.
+  socket.on('match:push-result', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const push = room?.match?.specialRound?.push;
+
+    if (!room || !player || !push || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay pista en juego.' });
+      return;
+    }
+
+    if (push.stage !== 'launching' || Number(payload.round) !== push.round) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    const alive = alivePushIds(push);
+    const positions = Array.isArray(payload.positions) ? payload.positions : [];
+    const falls = Array.isArray(payload.falls) ? payload.falls : [];
+    const steps = Math.trunc(Number(payload.steps));
+    const reported = [...positions.map((body) => body?.playerId), ...falls.map((fall) => fall?.playerId)];
+    const limit = PUSH_ARENA_RADIUS + PUSH_DISC_RADIUS + 0.01;
+    const valid =
+      Number.isInteger(steps) &&
+      steps >= 0 &&
+      steps <= PUSH_MAX_STEPS &&
+      reported.length === alive.length &&
+      new Set(reported).size === alive.length &&
+      reported.every((playerId) => alive.includes(playerId)) &&
+      positions.every((body) => [body.x, body.y].every(Number.isFinite) && Math.hypot(body.x, body.y) <= limit) &&
+      falls.every((fall) => Number.isInteger(fall.step) && fall.step >= 0 && fall.step <= steps);
+
+    if (!valid) {
+      callback?.({ ok: false, reason: 'Resultado no válido.' });
+      return;
+    }
+
+    const round4 = (value) => Math.round(value * 10000) / 10000;
+    applyPushResult(room, push.round, {
+      positions: positions.map((body) => ({ playerId: body.playerId, x: round4(body.x), y: round4(body.y) })),
+      falls: falls.map((fall) => ({ playerId: fall.playerId, step: fall.step })),
+      steps,
+    });
+    callback?.({ ok: true });
+  });
+
+  socket.on('match:chop-report', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const chop = room?.match?.specialRound?.chop;
+    const veggies = Math.trunc(Number(payload.veggies));
+    const now = Date.now();
+
+    if (!room || !player || !chop || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay cocina en juego.' });
+      return;
+    }
+
+    if (chop.outcome || now < chop.endsAt - 1000 || now > chop.resultsAt) {
+      callback?.({ ok: false, reason: 'Ahora no se pueden entregar las verduras.' });
+      return;
+    }
+
+    if (chop.veggies.has(player.id)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (!Number.isInteger(veggies) || veggies < 0 || veggies > CHOP_MAX_VEGGIES) {
+      callback?.({ ok: false, reason: 'Número de verduras no válido.' });
+      return;
+    }
+
+    chop.veggies.set(player.id, veggies);
+    callback?.({ ok: true });
+  });
+
+  // Salto con cuerda: el jugador en turno se suelta; llega el angulo y el sentido del balanceo en su pantalla.
+  socket.on('match:swing-release', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const swing = room?.match?.specialRound?.swing;
+    const angle = Number(payload.angle);
+    const dir = Number(payload.dir) >= 0 ? 1 : -1;
+
+    if (!room || !player || !swing || room.match.phase !== 'special-round') {
+      callback?.({ ok: false, reason: 'No hay cuerda en juego.' });
+      return;
+    }
+
+    if (swing.stage !== 'swinging' || swing.order[swing.turnIndex] !== player.id || Number(payload.turnIndex) !== swing.turnIndex) {
+      callback?.({ ok: false, reason: 'No es tu turno.' });
+      return;
+    }
+
+    if (!Number.isFinite(angle) || angle < -90 || angle > 90) {
+      callback?.({ ok: false, reason: 'Ángulo no válido.' });
+      return;
+    }
+
+    releaseSwing(room, swing.turnIndex, angle, dir);
+    callback?.({ ok: true, jump: swing.jumps[swing.jumps.length - 1] });
+  });
+
+  socket.on('match:beer-throw', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const beer = room?.match?.specialRound?.beer;
+    const power = Number(payload.power);
+
+    if (!room || !player || !beer || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay jarras en juego.' });
+      return;
+    }
+
+    if (beer.stage !== 'aiming') {
+      callback?.({ ok: false, reason: 'Las jarras ya se han lanzado.' });
+      return;
+    }
+
+    if (beer.powers.has(player.id)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (!Number.isFinite(power) || power < 0 || power > 1) {
+      callback?.({ ok: false, reason: 'Fuerza no válida.' });
+      return;
+    }
+
+    beer.powers.set(player.id, Math.round(power * 1000) / 1000);
+    emitMatchState(room);
+    callback?.({ ok: true });
+    maybeStartBeerSlide(room);
+  });
+
+  socket.on('match:stopwatch-stop', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const stopwatch = room?.match?.specialRound?.stopwatch;
+    const elapsedMs = Math.round(Number(payload.elapsedMs));
+
+    if (!room || !player || !stopwatch || room.match.phase !== 'special-round' || !room.match.specialRound.participantIds.includes(player.id)) {
+      callback?.({ ok: false, reason: 'No hay cronómetro en juego.' });
+      return;
+    }
+
+    if (stopwatch.stage !== 'running' || Number(payload.round) !== stopwatch.round) {
+      callback?.({ ok: false, reason: 'Esa ronda ya ha terminado.' });
+      return;
+    }
+
+    if (stopwatch.stops.has(player.id)) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (!Number.isFinite(elapsedMs) || elapsedMs < 0 || elapsedMs > stopwatch.targetMs + STOPWATCH_MAX_ERROR_MS + 1000) {
+      callback?.({ ok: false, reason: 'Tiempo no válido.' });
+      return;
+    }
+
+    stopwatch.stops.set(player.id, elapsedMs);
+    emitMatchState(room);
+    callback?.({ ok: true });
+    maybeRevealStopwatch(room);
+  });
+
+  socket.on('match:dance-fail', (payload = {}, callback) => {
+    const request = getDanceRequest(payload, callback);
+
+    if (!request) {
+      return;
+    }
+
+    const { room, player, dance } = request;
+
+    if (dance.done.has(player.id)) {
+      callback?.({ ok: false, reason: 'Ya habias terminado la secuencia.' });
+      return;
+    }
+
+    // Lo unico que se reparte durante la ronda: quien ha caido, para que todos le vean derrumbarse.
+    eliminateDancer(dance, player.id);
+    emitMatchState(room);
+    callback?.({ ok: true });
+    maybeCloseDanceRound(room);
   });
 
   socket.on('match:balloon-pump', (payload = {}, callback) => {

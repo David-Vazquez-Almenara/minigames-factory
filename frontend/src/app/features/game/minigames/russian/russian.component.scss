@@ -1,0 +1,520 @@
+// Pantalla completa: ocupa toda la capa del minijuego y nada se sale de ella (sin barras de scroll).
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: #000;
+}
+
+.russian {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-weight: 900;
+  background-color: #2a1a10;
+  user-select: none;
+}
+
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 120px;
+  padding: 2px 9px;
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background-color: rgba(255, 247, 236, 0.94);
+  border: 2px solid #000;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  will-change: transform;
+
+  &.mine {
+    background-color: #a8e8ff;
+  }
+
+  &.current {
+    background-color: #ffe891;
+  }
+}
+
+// Destello rojo con el disparo (mas intenso para quien cae).
+.blood-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(170, 0, 10, 0.75) 100%);
+  opacity: 0;
+  transition: opacity 0.6s ease-out;
+
+  &[data-level='soft'] {
+    opacity: 0.55;
+    transition: none;
+  }
+
+  &[data-level='strong'] {
+    opacity: 1;
+    background: radial-gradient(ellipse at center, rgba(150, 0, 8, 0.35) 10%, rgba(150, 0, 8, 0.9) 100%);
+    transition: none;
+  }
+}
+
+/* --------------------------------- HUD ---------------------------------- */
+
+.top-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 232px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pill {
+  padding: 6px 14px;
+  font-size: clamp(0.82rem, 1.6vw, 1.02rem);
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  &.title {
+    background-color: #ffd0c4;
+  }
+
+  &.timer {
+    min-width: 58px;
+    text-align: center;
+  }
+
+  &.timer.hurry {
+    color: #9a0000;
+    background-color: #ffc0c0;
+    animation: throb 700ms ease-in-out infinite;
+  }
+}
+
+// Indicador del tambor: circulo con 6 recamaras.
+.cylinder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px 3px 4px;
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  svg {
+    width: 44px;
+    height: 44px;
+
+    &.away {
+      opacity: 0;
+    }
+  }
+
+  .drum {
+    fill: #5d636e;
+    stroke: #000;
+    stroke-width: 5;
+  }
+
+  .axle {
+    fill: #2b2f36;
+  }
+
+  .chamber {
+    fill: #a3a8b0;
+    stroke: #000;
+    stroke-width: 3;
+
+    &.loaded {
+      fill: #ffcf33;
+    }
+  }
+}
+
+// Tambor que viaja al centro en la recarga (mismo dibujo que el de la esquina, pero grande).
+.reload-cylinder {
+  position: absolute;
+  z-index: 5;
+  width: 44px;
+  height: 44px;
+  pointer-events: none;
+  transform-origin: center;
+  animation: reload-flight 2.5s cubic-bezier(0.45, 0, 0.25, 1) both;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.45));
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    // Gira un sexto de vuelta al entrar la bala, como un tambor de verdad.
+    animation: reload-spin 2.5s ease-in-out both;
+  }
+
+  .drum {
+    fill: #5d636e;
+    stroke: #000;
+    stroke-width: 5;
+  }
+
+  .axle {
+    fill: #2b2f36;
+  }
+
+  .chamber {
+    fill: #a3a8b0;
+    stroke: #000;
+    stroke-width: 3;
+    transform-box: fill-box;
+    transform-origin: center;
+
+    &.loaded {
+      fill: #ffcf33;
+    }
+
+    &.fresh {
+      animation: bullet-in 0.45s cubic-bezier(0.2, 1.8, 0.4, 1);
+    }
+  }
+}
+
+.reload-caption {
+  position: absolute;
+  top: calc(42% + 118px);
+  left: 50%;
+  z-index: 5;
+  padding: 8px 18px;
+  font-size: clamp(1rem, 2.6vw, 1.35rem);
+  white-space: nowrap;
+  pointer-events: none;
+  background-color: #ffe891;
+  border: 3px solid #000;
+  border-radius: 999px;
+  box-shadow: 0 4px 0 #000;
+  transform: translateX(-50%);
+  animation: caption-in 2.5s ease both;
+}
+
+.queue-strip {
+  position: absolute;
+  top: 74px;
+  right: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 5px 8px;
+  overflow: hidden;
+  list-style: none;
+  background-color: rgba(255, 247, 236, 0.9);
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  li {
+    display: grid;
+    flex-shrink: 0;
+    border-radius: 12px;
+
+    &.current {
+      outline: 3px solid #ffb800;
+    }
+
+    &.mine:not(.current) {
+      outline: 3px solid #7fd1ff;
+    }
+  }
+}
+
+.dock {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(600px, calc(100% - 24px));
+  transform: translateX(-50%);
+
+  &.hidden {
+    visibility: hidden;
+  }
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.shoot-button,
+.skip-button {
+  display: grid;
+  place-content: center;
+  gap: 2px;
+  min-height: 78px;
+  padding: 10px 14px;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  border: 4px solid #000;
+  border-radius: 18px;
+  box-shadow: 0 6px 0 #000;
+  touch-action: manipulation;
+
+  span {
+    font-size: clamp(1.15rem, 3vw, 1.5rem);
+    -webkit-text-stroke: 1.2px #000;
+  }
+
+  small {
+    font-size: 0.72rem;
+    color: #000;
+  }
+
+  &:active {
+    box-shadow: 0 2px 0 #000;
+    transform: translateY(4px);
+  }
+}
+
+.shoot-button {
+  background-color: #e8262b;
+}
+
+.skip-button {
+  background-color: #ff9a1f;
+}
+
+.status,
+.error {
+  margin: 0;
+  padding: 6px 14px;
+  text-align: center;
+  border: 3px solid #000;
+  border-radius: 14px;
+}
+
+.status {
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  background-color: rgba(255, 247, 236, 0.94);
+
+  &.mine {
+    background-color: #ffe891;
+  }
+}
+
+.error {
+  color: #9a0000;
+  font-size: 0.85rem;
+  background-color: #ffd4d4;
+}
+
+/* ------------------------------ Resultados ------------------------------- */
+
+.results-overlay {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  padding: 0 12px 84px;
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+}
+
+.results-card {
+  display: grid;
+  gap: 6px;
+  width: min(480px, 100%);
+  max-height: 52vh;
+  padding: 12px 14px;
+  overflow-y: auto;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+  box-shadow: 0 6px 0 #000;
+  animation: pop-in 460ms cubic-bezier(0.18, 0.88, 0.3, 1.3) 600ms both;
+
+  h2,
+  .hint {
+    margin: 0;
+    text-align: center;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+  }
+
+  ol {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 30px auto 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background-color: #fff;
+    border: 2px solid #000;
+    border-radius: 12px;
+
+    &.mine {
+      background-color: #dff6ff;
+    }
+
+    &.dead .what {
+      color: #b00020;
+    }
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .what {
+    font-size: 0.75rem;
+  }
+
+  .points {
+    color: #10752c;
+  }
+}
+
+.no-webgl {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  width: min(420px, calc(100% - 24px));
+  margin: 0;
+  padding: 14px;
+  text-align: center;
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 16px;
+  transform: translate(-50%, -50%);
+}
+
+@media (max-width: 640px) {
+  .top-bar {
+    top: 96px;
+    left: 12px;
+    justify-content: center;
+  }
+
+  .queue-strip {
+    top: 158px;
+  }
+
+  .shoot-button,
+  .skip-button {
+    min-height: 70px;
+  }
+}
+
+@keyframes throb {
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes reload-flight {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  28%,
+  70% {
+    transform: translate(var(--dx), var(--dy)) scale(4.2);
+  }
+
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes reload-spin {
+  0%,
+  40% {
+    transform: rotate(0deg);
+  }
+
+  52%,
+  100% {
+    transform: rotate(60deg);
+  }
+}
+
+@keyframes bullet-in {
+  from {
+    transform: scale(0.2);
+  }
+}
+
+@keyframes caption-in {
+  0%,
+  25% {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+
+  35%,
+  68% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  80%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92);
+  }
+}

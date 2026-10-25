@@ -1,0 +1,70 @@
+<section class="beer" #root aria-label="Minijuego Jarras en la barra">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <!-- Cara de cada jugador encima de su jarra. -->
+  <div class="labels" #labels aria-hidden="true">
+    @for (jug of jugTags(); track jug.playerId) {
+    <span class="jug-tag" [attr.data-beer-label]="jug.playerId" [class.mine]="jug.mine" [class.fell]="jug.fell">
+      <app-player-avatar [avatarUrl]="jug.avatarUrl" [name]="jug.name" [color]="jug.colorId" [size]="26" />
+      @if (jug.detail) {<small>{{ jug.detail }}</small>}
+    </span>
+    }
+  </div>
+
+  <header class="top-bar">
+    <span class="pill title">Jarras en la barra</span>
+    <span class="pill">Barra de <b>{{ lengthText() }} m</b></span>
+    @if (state()?.stage === 'aiming' && aiming()) {
+    <span class="pill timer" [class.hurry]="aimTimer.seconds() <= 3">{{ aimTimer.seconds() }}s</span>
+    }
+  </header>
+
+  @if (state()?.stage === 'aiming' && startTimer.remainingMs() > 0 && startTimer.remainingMs() <= 3000) {
+  <div class="countdown" aria-live="assertive">
+    @for (second of [startTimer.seconds()]; track second) {
+    <span>{{ second }}</span>
+    }
+  </div>
+  }
+
+  <footer class="dock" [class.hidden]="!!state()?.outcome">
+    @if (isPlayer() && state()?.stage === 'aiming') {
+    <div class="aim">
+      <!-- Medidor de fuerza: sube y baja muy rapido hasta que lo paras; la linea roja deja la jarra justo en el borde. -->
+      <div class="meter" [class.locked]="myPower() !== null" aria-label="Fuerza">
+        <i [style.transform]="'scaleY(' + (myPower() ?? meter()) + ')'"></i>
+        <b class="perfect" [style.bottom.%]="perfectLine()"></b>
+      </div>
+      <button type="button" class="throw-button" data-sfx="off" [disabled]="!canThrow()" (pointerdown)="throw(); $event.preventDefault()">
+        <span>¡LANZA!</span>
+        <small>o pulsa Espacio</small>
+      </button>
+    </div>
+    }
+    <p class="status">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de las jarras">
+      <h2>Resultados</h2>
+      <p class="hint">La barra medía {{ lengthText() }} m. Gana la jarra más cerca del borde.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.fell]="row.fell">
+          <span class="pos">{{ row.fell ? '✖' : row.position + 'º' }}</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.detail }}</span>
+          <span class="points" [class.lose]="row.points < 0">{{ row.pointsText }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar el bar en 3D, pero puedes lanzar con el botón.</p>
+  }
+</section>

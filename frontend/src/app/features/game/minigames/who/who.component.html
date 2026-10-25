@@ -1,0 +1,83 @@
+<section class="who" aria-label="Minijuego ¿Quién es quién?">
+  <header class="top-bar">
+    <span class="pill title">¿Quién es quién?</span>
+    @if (state(); as who) {
+    <span class="pill">Pregunta <b>{{ who.round || 1 }}</b> de {{ who.totalRounds }}</span>
+    @if (isPlayer()) {
+    <span class="pill">Tus puntos: <b>{{ myTotal() }}</b></span>
+    }
+    @if (who.stage === 'voting') {
+    <span class="pill timer" [class.hurry]="voteTimer.seconds() <= 5">{{ voteTimer.seconds() }}s</span>
+    }
+    }
+  </header>
+
+  @if (state(); as who) {
+  <div class="stage">
+    <div class="question" [class.pop]="who.stage === 'question'">
+      <small>Pregunta {{ who.round }}</small>
+      <h2>{{ who.question }}</h2>
+      @if (who.stage === 'voting') {
+      <div class="vote-meter" aria-hidden="true"><span [style.width.%]="(1 - voteTimer.progress()) * 100"></span></div>
+      }
+    </div>
+
+    <div class="cards" [class.revealed]="!!reveal()" [class.locked]="!canVote()">
+      @for (card of cards(); track card.playerId) {
+      <button
+        type="button"
+        class="card"
+        [class.mine]="card.mine"
+        [class.picked]="card.picked"
+        [class.chosen]="card.chosen"
+        [class.has-voted]="card.voted && !reveal()"
+        [disabled]="!canVote()"
+        (click)="vote(card.playerId)"
+        [attr.aria-label]="card.mine ? 'Votarte a ti' : 'Votar a ' + card.name"
+      >
+        @if (card.chosen) {
+        <span class="crown" aria-hidden="true">👑</span>
+        }
+        <app-player-avatar [avatarUrl]="card.avatarUrl" [name]="card.name" [color]="card.colorId" [size]="78" />
+        <b class="name">{{ card.mine ? 'Tú' : card.name }}</b>
+        @if (reveal()) {
+        <span class="count">{{ card.count }} {{ card.count === 1 ? 'voto' : 'votos' }}</span>
+        <span class="bar" aria-hidden="true"><span [style.width.%]="card.bar * 100"></span></span>
+        <span class="voters">
+          @for (voter of card.voters; track voter.playerId) {
+          <app-player-avatar [avatarUrl]="voter.avatarUrl" [name]="voter.name" [color]="voter.colorId" [size]="20" />
+          }
+        </span>
+        } @else if (card.voted) {
+        <span class="voted-tag">✔ ha votado</span>
+        }
+      </button>
+      }
+    </div>
+  </div>
+  }
+
+  <footer class="dock" [class.hidden]="!!state()?.outcome">
+    <p class="status" [class.good]="state()?.stage === 'reveal'">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de ¿Quién es quién?">
+      <h2>Resultados</h2>
+      <p class="hint">10 puntos por acertar al más votado (5 si hubo empate) en cada pregunta.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.hits }} de 3 aciertos</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+</section>

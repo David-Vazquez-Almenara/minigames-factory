@@ -1,0 +1,73 @@
+<section class="stopwatch" #root aria-label="Minijuego Para el cronómetro">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <!-- Pantallas de los atriles y nombres, situadas por la escena. -->
+  <div class="labels" #labels aria-hidden="true">
+    @for (screen of screens(); track screen.slot) {
+    <span class="screen" [attr.data-sw-label]="'screen:' + screen.slot" [attr.data-tone]="screen.tone">{{ screen.text }}</span>
+    @if (screen.playerId) {
+    <span class="name-tag" [attr.data-sw-label]="'name:' + screen.slot" [class.mine]="screen.mine">{{ screen.name }}</span>
+    }
+    }
+  </div>
+
+  <header class="top-bar">
+    <span class="pill title">Para el cronómetro</span>
+    @if (state(); as game) {
+    @if (game.totalRounds > 1) {
+    <span class="pill">Ronda <b>{{ game.round || 1 }}</b> de {{ game.totalRounds }}</span>
+    }
+    }
+  </header>
+
+  <!-- Marcador grande del plato. -->
+  <div class="board" [attr.data-phase]="clockPhase()">
+    <small>{{ clockPhase() === 'countdown' || clockPhase() === 'over' ? 'Para en' : 'Cronómetro' }}</small>
+    <strong>{{ clockText() }}</strong>
+    @if (clockPhase() !== 'countdown' && clockPhase() !== 'over') {
+    <small class="goal">Objetivo: {{ targetText() }} s</small>
+    }
+  </div>
+
+  @if (clockPhase() === 'countdown' && countdownSecond() <= 3 && countdownSecond() > 0) {
+  <div class="countdown" aria-live="assertive">
+    @for (second of [countdownSecond()]; track second) {
+    <span>{{ second }}</span>
+    }
+  </div>
+  }
+
+  <footer class="dock" [class.hidden]="!!state()?.outcome">
+    @if (isPlayer()) {
+    <button type="button" class="stop-button" data-sfx="off" [disabled]="!canStop()" (pointerdown)="stop($event.timeStamp); $event.preventDefault()">
+      <span>¡PARA!</span>
+      <small>o pulsa Espacio</small>
+    </button>
+    }
+    <p class="status">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado del cronómetro">
+      <h2>Resultados</h2>
+      <p class="hint">Gana quien más se acerque al tiempo objetivo.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">A {{ row.errorText }} s del objetivo</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar el plató en 3D, pero puedes jugar con el botón.</p>
+  }
+</section>

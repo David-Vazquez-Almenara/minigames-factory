@@ -13,14 +13,13 @@
     >
       <strong>{{ seat.isLocal ? 'Tú' : seat.name }}</strong>
       <span class="tag-chips"><i class="chip-dot" [style.background-color]="seat.tierColor"></i>{{ seat.chips }}</span>
-      <span class="tag-status" [attr.data-tone]="seat.result || seat.status">{{ seat.statusLabel }}</span>
+      <span class="tag-status" [attr.data-tone]="seat.result || seat.status">{{ seat.boardLabel }}</span>
     </div>
     @if (seat.cards.length) {
     <div
       class="tag sum-tag"
       [attr.data-bj-label]="'sum:' + seat.playerId"
       [class.bust]="seat.value.total > 21"
-      [class.blackjack]="seat.status === 'blackjack'"
       [class.active]="seat.isActive"
     >
       {{ seat.sumLabel }}
@@ -77,8 +76,8 @@
         </span>
         <span class="money">
           <span class="chips" [title]="seat.tierLabel"><i class="chip-dot" [style.background-color]="seat.tierColor"></i>{{ seat.chips }}</span>
-          <small>{{ seat.bet > 0 ? 'Apuesta ' + seat.bet : '—' }}</small>
         </span>
+        <span class="round-bet">Apostado en esta ronda: <b>{{ seat.bet }}</b></span>
       </li>
       }
     </ul>

@@ -53,6 +53,7 @@
     <button
       class="stop-button"
       type="button"
+      data-sfx="off"
       [disabled]="!canStop()"
       [class.armed]="canStop()"
       (pointerdown)="stop()"
@@ -78,7 +79,7 @@
           <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="30" />
           <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
           <span class="height">{{ row.heightText }}</span>
-          <span class="points">+{{ row.points }}</span>
+          <span class="points" [class.lose]="row.points < 0">{{ row.points < 0 ? '−' + -row.points : '+' + row.points }}</span>
         </li>
         }
       </ol>

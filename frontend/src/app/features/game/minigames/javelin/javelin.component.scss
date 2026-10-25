@@ -1,0 +1,277 @@
+// Pantalla completa: ocupa toda la capa del minijuego y nada se sale de ella (sin barras de scroll).
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: #000;
+}
+
+.javelin {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-weight: 900;
+  background-color: #8fd3ff;
+  user-select: none;
+}
+
+.playfield {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.top-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 232px;
+  z-index: 3;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pill {
+  padding: 6px 14px;
+  font-size: clamp(0.82rem, 1.6vw, 1.02rem);
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  &.title {
+    background-color: #ffe7c2;
+  }
+
+  &.timer {
+    min-width: 58px;
+    text-align: center;
+  }
+
+  &.timer.hurry {
+    color: #9a0000;
+    background-color: #ffc0c0;
+  }
+
+  &.javelins {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+
+    i {
+      display: block;
+      width: 26px;
+      height: 6px;
+      background: linear-gradient(90deg, #e2a03a 0 75%, #c9ced6 75%);
+      border: 2px solid #000;
+      border-radius: 4px;
+      transform: rotate(-20deg);
+
+      &.used {
+        opacity: 0.25;
+      }
+    }
+  }
+}
+
+// Barra de distancias (de 0 a 75 m).
+.track {
+  position: relative;
+  width: 100%;
+  height: 30px;
+  background: linear-gradient(180deg, #8fd16c, #5fae45);
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  .mark {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: rgba(0, 0, 0, 0.25);
+
+    small {
+      position: absolute;
+      bottom: 1px;
+      left: 3px;
+      font-size: 0.6rem;
+      color: rgba(0, 0, 0, 0.55);
+    }
+  }
+
+  .start {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 0.5%;
+    width: 4px;
+    background-color: #fff;
+    border-radius: 2px;
+  }
+
+  .line {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    width: 4px;
+    border-radius: 2px;
+    transform: translateX(-50%);
+
+    &.other {
+      opacity: 0.45;
+    }
+
+    &.mine {
+      z-index: 1;
+      background-color: #fff;
+      box-shadow: 0 0 0 1.5px #000;
+    }
+  }
+
+  .flag {
+    position: absolute;
+    bottom: 2px;
+    z-index: 2;
+    font-size: 1.25rem;
+    line-height: 1;
+    // El mastil del emoji queda justo en su metro.
+    transform: translateX(-20%);
+
+    &::after {
+      position: absolute;
+      top: 4px;
+      bottom: -2px;
+      left: 20%;
+      width: 2px;
+      content: '';
+      background-color: #e8262b;
+    }
+  }
+}
+
+.dock {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  width: min(560px, calc(100% - 24px));
+  pointer-events: none;
+  transform: translateX(-50%);
+
+  &.hidden {
+    visibility: hidden;
+  }
+}
+
+.status {
+  margin: 0;
+  padding: 6px 14px;
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  text-align: center;
+  background-color: rgba(255, 247, 236, 0.94);
+  border: 3px solid #000;
+  border-radius: 14px;
+}
+
+.results-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: 120px 12px 92px;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.results-card {
+  display: grid;
+  gap: 8px;
+  width: min(500px, 100%);
+  max-height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+  box-shadow: 0 6px 0 #000;
+
+  h2,
+  .hint {
+    margin: 0;
+    text-align: center;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+  }
+
+  ol {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 30px auto 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background-color: #fff;
+    border: 2px solid #000;
+    border-radius: 12px;
+
+    &.mine {
+      background-color: #dff6ff;
+    }
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .what {
+    font-size: 0.75rem;
+  }
+
+  .points {
+    color: #10752c;
+  }
+}
+
+@media (max-width: 640px) {
+  .top-bar {
+    top: 96px;
+    left: 12px;
+    justify-items: center;
+  }
+
+  .pills {
+    justify-content: center;
+  }
+
+  .results-overlay {
+    padding-top: 190px;
+  }
+}

@@ -1,0 +1,412 @@
+// Pantalla completa: ocupa toda la capa del minijuego y nada se sale de ella (sin barras de scroll).
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: #000;
+}
+
+.quiz {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-weight: 900;
+  // Plato de concurso de television: azul oscuro con focos.
+  background:
+    radial-gradient(ellipse at 50% -20%, rgba(120, 190, 255, 0.55), transparent 55%),
+    radial-gradient(circle at 10% 110%, rgba(255, 200, 80, 0.25), transparent 40%),
+    radial-gradient(circle at 90% 110%, rgba(255, 90, 160, 0.25), transparent 40%),
+    linear-gradient(180deg, #13306b 0%, #0b1d45 70%, #071233 100%);
+  user-select: none;
+}
+
+.top-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 232px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pill {
+  padding: 6px 14px;
+  font-size: clamp(0.82rem, 1.6vw, 1.02rem);
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  &.title {
+    background-color: #cfe3ff;
+  }
+
+  &.timer {
+    min-width: 58px;
+    text-align: center;
+  }
+
+  &.timer.hurry {
+    color: #9a0000;
+    background-color: #ffc0c0;
+  }
+}
+
+.stage {
+  position: absolute;
+  inset: 72px 16px 72px;
+  display: grid;
+  grid-template-rows: auto auto;
+  align-content: center;
+  justify-items: center;
+  gap: 26px;
+  // Hueco para las caras que asoman por encima de las respuestas.
+  padding-top: 14px;
+  overflow-y: auto;
+}
+
+.question-box {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(900px, 100%);
+  padding: 18px 24px 16px;
+  text-align: center;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 24px;
+  box-shadow: 0 7px 0 #000;
+
+  .meta {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+  }
+
+  .category {
+    padding: 2px 10px;
+    color: #fff;
+    background-color: #2f6fd6;
+    border-radius: 999px;
+  }
+
+  .stars {
+    color: #e2a400;
+    letter-spacing: 2px;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: clamp(1.25rem, 3.4vw, 2.2rem);
+    line-height: 1.2;
+  }
+
+  &.pop {
+    animation: pop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+}
+
+.time-bar {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  background-color: #dfe7f5;
+  border: 2px solid #000;
+  border-radius: 999px;
+
+  span {
+    display: block;
+    height: 100%;
+    background-color: #2f6fd6;
+  }
+}
+
+.answers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 16px;
+  width: min(900px, 100%);
+
+  // Mientras se lee la pregunta, las respuestas entran una a una.
+  &.waiting .answer {
+    animation: slide-in 0.4s ease-out both;
+
+    &:nth-child(2) {
+      animation-delay: 0.12s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.24s;
+    }
+
+    &:nth-child(4) {
+      animation-delay: 0.36s;
+    }
+  }
+}
+
+.answer {
+  --tone: #ff5c5c;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+  min-height: clamp(70px, 14vh, 110px);
+  padding: 14px 18px;
+  font: inherit;
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
+  color: #000;
+  text-align: left;
+  cursor: pointer;
+  background-color: #fff;
+  border: 4px solid #000;
+  border-radius: 18px;
+  box-shadow: 0 6px 0 #000;
+  transition:
+    transform 0.12s ease,
+    background-color 0.3s ease,
+    filter 0.3s ease,
+    opacity 0.3s ease;
+
+  &[data-letter='B'] {
+    --tone: #3f8cff;
+  }
+
+  &[data-letter='C'] {
+    --tone: #ffc53d;
+  }
+
+  &[data-letter='D'] {
+    --tone: #3ccf7a;
+  }
+
+  .letter {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+    color: #000;
+    background-color: var(--tone);
+    border: 3px solid #000;
+    border-radius: 12px;
+  }
+
+  .text {
+    line-height: 1.2;
+  }
+
+  &:not(:disabled):hover {
+    transform: translateY(-3px);
+    background-color: #f3f8ff;
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(3px);
+    box-shadow: 0 3px 0 #000;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &.picked {
+    background-color: #ffe891;
+    box-shadow:
+      0 6px 0 #000,
+      0 0 0 5px #ffcf33;
+  }
+
+  // Al revelar: la correcta en verde y las demas un poco oscurecidas.
+  &.correct {
+    color: #fff;
+    background-color: #2fbf55;
+    animation: correct-pulse 0.6s ease-out;
+  }
+
+  &.dimmed {
+    filter: brightness(0.62) saturate(0.7);
+  }
+
+  .voters {
+    position: absolute;
+    top: -14px;
+    right: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 2px;
+    max-width: 60%;
+    animation: voters-in 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+
+  .tick {
+    position: absolute;
+    bottom: -12px;
+    left: -10px;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    color: #fff;
+    background-color: #10752c;
+    border: 3px solid #000;
+    border-radius: 50%;
+  }
+}
+
+.dock {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  width: min(620px, calc(100% - 24px));
+  pointer-events: none;
+  transform: translateX(-50%);
+
+  &.hidden {
+    visibility: hidden;
+  }
+}
+
+.status {
+  margin: 0;
+  padding: 6px 14px;
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  text-align: center;
+  background-color: rgba(255, 247, 236, 0.96);
+  border: 3px solid #000;
+  border-radius: 14px;
+
+  &.good {
+    background-color: #b8f0c8;
+  }
+}
+
+.results-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: 72px 12px 92px;
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.results-card {
+  display: grid;
+  gap: 8px;
+  width: min(500px, 100%);
+  max-height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+  box-shadow: 0 6px 0 #000;
+
+  h2,
+  .hint {
+    margin: 0;
+    text-align: center;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+  }
+
+  ol {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 30px auto 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background-color: #fff;
+    border: 2px solid #000;
+    border-radius: 12px;
+
+    &.mine {
+      background-color: #dff6ff;
+    }
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .what {
+    font-size: 0.75rem;
+  }
+
+  .points {
+    color: #10752c;
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+}
+
+@keyframes voters-in {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes correct-pulse {
+  40% {
+    transform: scale(1.04);
+  }
+}
+
+@media (max-width: 640px) {
+  .top-bar {
+    top: 96px;
+    left: 12px;
+    justify-content: center;
+  }
+
+  .stage {
+    top: 150px;
+    gap: 16px;
+  }
+
+  .answers {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .answer {
+    min-height: 60px;
+  }
+}

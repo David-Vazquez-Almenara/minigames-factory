@@ -1,0 +1,70 @@
+<section class="bowling" #root aria-label="Minijuego Bolos">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <div class="labels" #labels aria-hidden="true">
+    @for (tag of tags(); track tag.playerId) {
+    <span class="lane-tag" [attr.data-bw-label]="tag.playerId" [class.mine]="tag.isLocal" [class.strike]="tag.detail === '¡STRIKE!'">
+      <b>{{ tag.isLocal ? 'Tú' : tag.name }}</b>
+      @if (tag.detail) {<small>{{ tag.detail }}</small>}
+    </span>
+    }
+  </div>
+
+  <header class="top-bar">
+    <span class="pill title">Bolos</span>
+    @if (aiming()) {
+    <span class="pill timer" [class.hurry]="aimTimer.seconds() <= 5">{{ aimTimer.seconds() }}s</span>
+    }
+  </header>
+
+  <footer class="dock" [class.hidden]="!!state()?.outcome">
+    @if (aiming()) {
+    <div class="meters">
+      <!-- Direccion: la marca central apunta al centro de la pista. -->
+      <div class="meter" [class.active]="step() === 'direction'" [class.locked]="step() !== 'direction'">
+        <small>Dirección</small>
+        <div class="track">
+          <i class="center"></i>
+          <b class="marker" [style.left.%]="((lockedDirection() ?? directionValue()) + 1) * 50"></b>
+        </div>
+      </div>
+      <div class="meter" [class.active]="step() === 'spin'" [class.idle]="step() === 'direction'">
+        <small>Efecto ← →</small>
+        <div class="track spin">
+          <i class="center"></i>
+          <b class="marker" [style.left.%]="(spinValue() + 1) * 50"></b>
+        </div>
+      </div>
+      <button type="button" class="throw-button" data-sfx="off" (pointerdown)="press(); $event.preventDefault()">
+        <span>{{ step() === 'direction' ? '¡PARA!' : '¡LANZA!' }}</span>
+        <small>o pulsa Espacio</small>
+      </button>
+    </div>
+    }
+    <p class="status">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de los bolos">
+      <h2>Resultados</h2>
+      <p class="hint">Gana quien más bolos derriba en su tirada.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.strike]="row.pins === 10">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.pins === 10 ? '¡Strike!' : row.pins + ' bolos' }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la bolera en 3D, pero puedes tirar con el botón.</p>
+  }
+</section>

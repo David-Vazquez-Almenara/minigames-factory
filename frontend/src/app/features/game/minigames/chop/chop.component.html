@@ -1,0 +1,73 @@
+<section class="chop" #root aria-label="Minijuego Corta verduras" (pointerdown)="chop()">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <div class="labels" #labels aria-hidden="true">
+    @for (cook of cooks(); track cook.playerId) {
+    <span class="name-tag" [attr.data-chop-label]="cook.playerId" [class.mine]="cook.isLocal">{{ cook.isLocal ? 'Tú' : cook.name }}</span>
+    }
+  </div>
+
+  <header class="top-bar" #topBar>
+    <span class="pill title">Corta verduras</span>
+    @if (playing()) {
+    <span class="pill timer" [class.hurry]="playTimer.seconds() <= 3">{{ playTimer.seconds() }}s</span>
+    }
+  </header>
+
+  @if (state()?.stage === 'playing' && startTimer.remainingMs() > 0 && startTimer.remainingMs() <= 3000) {
+  <div class="countdown" aria-live="assertive">
+    @for (second of [startTimer.seconds()]; track second) {
+    <span>{{ second }}</span>
+    }
+  </div>
+  } @else if (showGo()) {
+  <div class="countdown go" aria-live="assertive"><span>¡YA!</span></div>
+  } @else if (over() && !state()?.outcome) {
+  <div class="countdown time" aria-live="assertive"><span>¡TIEMPO!</span></div>
+  }
+
+  <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
+    @if (isPlayer()) {
+    <div class="score">
+      <div class="veggies">
+        <small>Verduras</small>
+        <strong>{{ veggies() }}</strong>
+      </div>
+      <div class="next" aria-label="Cortes para la siguiente verdura">
+        @for (segment of segments; track segment) {
+        <i [class.on]="segment < progress()"></i>
+        }
+      </div>
+      <button type="button" class="chop-button" data-sfx="off" [disabled]="!playing()" (pointerdown)="$event.stopPropagation(); $event.preventDefault(); chop()">
+        <span>¡CORTA!</span>
+        <small>{{ clicks() }} cortes</small>
+      </button>
+    </div>
+    }
+    <p class="status">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de la cocina">
+      <h2>Resultados</h2>
+      <p class="hint">Cada 10 cortes, una verdura. Mismas verduras, mismos puntos.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.veggies }} {{ row.veggies === 1 ? 'verdura' : 'verduras' }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la cocina en 3D, pero puedes cortar con el botón.</p>
+  }
+</section>

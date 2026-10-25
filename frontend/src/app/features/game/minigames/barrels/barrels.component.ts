@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
-import { AudioService } from '../../../../core/services/audio.service';
+import { AudioService, SfxHandle } from '../../../../core/services/audio.service';
 import { GameTimerService } from '../../../../core/services/game-timer.service';
 import { MatchService } from '../../../../core/services/match.service';
 import { BarrelsPublicState } from '../../../../core/services/socket.service';
@@ -12,6 +12,8 @@ import { BarrelColumnState, BarrelColumnView, BarrelsScene } from './barrels-sce
 // a subir un barril que ya se veia mas abajo.
 const REMOTE_DELAY_MS = 120;
 const MAX_VISIBLE_RIVALS = 4;
+// Duracion del archivo del silbido de caida (efectos/barril-cayendo.wav).
+const FALL_SOUND_MS = 1600;
 
 /** Altura del barril (m) a los `elapsed` ms de caida: identica en cliente y servidor. */
 function heightAt(state: Pick<BarrelsPublicState, 'startHeight' | 'fallMs' | 'exponent'>, elapsed: number): number {
@@ -40,6 +42,7 @@ export class BarrelsComponent implements AfterViewInit, OnDestroy {
   private roundId = '';
   private lastCountdownSecond = -1;
   private resultsAnnounced = false;
+  private fallSound?: SfxHandle;
 
   readonly currentPlayerId = this.matchService.currentPlayerId;
   readonly state = computed(() => this.matchService.match()?.specialRound?.barrels || null);
@@ -161,7 +164,7 @@ export class BarrelsComponent implements AfterViewInit, OnDestroy {
         if (seconds > 0) {
           this.audioService.playEffect('tick');
         } else if (!first || this.goTimer.remainingMs() > 0) {
-          this.audioService.playEffect('spin-start');
+          this.startFallSound();
         }
       });
     });
@@ -230,6 +233,7 @@ export class BarrelsComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    this.fallSound?.stop();
     this.insetObserver?.disconnect();
     this.scene?.dispose();
     this.scene = undefined;
@@ -266,9 +270,18 @@ export class BarrelsComponent implements AfterViewInit, OnDestroy {
     }
 
     this.localStop.set({ elapsedMs, height: heightAt(state, elapsedMs) });
-    this.audioService.playEffect('confirm');
+    // Se corta el silbido de caida y suena la cuerda frenando en seco.
+    this.fallSound?.stop(40);
+    this.audioService.playSfx('cuerda-freno');
     // La respuesta no cambia lo que ve el jugador: el servidor solo la valida para la clasificacion.
     void this.matchService.stopBarrel(lobbyId, state.roundId, Math.round(elapsedMs));
+  }
+
+  /** Silbido mientras cae el barril: se ajusta para que acabe justo al llegar a la cabeza. */
+  private startFallSound(): void {
+    const fallMs = this.state()?.fallMs || 1400;
+    this.fallSound?.stop();
+    this.fallSound = this.audioService.playSfx('barril-cayendo', { rate: Math.min(2, Math.max(0.6, FALL_SOUND_MS / fallMs)) });
   }
 
   private crushLocally(state: BarrelsPublicState, lobbyId: string): void {
@@ -277,7 +290,8 @@ export class BarrelsComponent implements AfterViewInit, OnDestroy {
     }
 
     this.localCrushed.set(true);
-    this.audioService.playEffect('defeat');
+    this.fallSound?.stop(30);
+    this.audioService.playSfx('aplastar');
     // Avisar acelera la clasificacion: el servidor no tiene que esperar al margen de cortesia.
     void this.matchService.stopBarrel(lobbyId, state.roundId, state.fallMs);
   }

@@ -12,24 +12,164 @@
   </section>
   }
 
+  <!-- Cada minijuego se descarga aparte (@defer) cuando le toca: asi la carga inicial de la web no crece con cada uno. -->
   @if (stage() === 'game' && isFullscreen()) {
   <!-- Minijuegos a pantalla completa: ocupan toda la ventana, sin el ancho maximo ni el titulo del contenedor. -->
   <main class="minigame-fullscreen">
     @switch (specialRound()?.minigameId) {
       @case ('blackjack') {
+      @defer (on immediate) {
       <app-blackjack />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
       @case ('barrels') {
+      @defer (on immediate) {
       <app-barrels />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
       @case ('balloon') {
+      @defer (on immediate) {
       <app-balloon />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
       @case ('cups') {
+      @defer (on immediate) {
       <app-cups />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
       @case ('cars') {
+      @defer (on immediate) {
       <app-cars />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('dance') {
+      @defer (on immediate) {
+      <app-dance />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('count') {
+      @defer (on immediate) {
+      <app-count />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('duel') {
+      @defer (on immediate) {
+      <app-duel />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('stopwatch') {
+      @defer (on immediate) {
+      <app-stopwatch />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('tower') {
+      @defer (on immediate) {
+      <app-tower />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('beer') {
+      @defer (on immediate) {
+      <app-beer />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('chop') {
+      @defer (on immediate) {
+      <app-chop />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('golf') {
+      @defer (on immediate) {
+      <app-golf />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('order') {
+      @defer (on immediate) {
+      <app-order />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('bowling') {
+      @defer (on immediate) {
+      <app-bowling />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('swing') {
+      @defer (on immediate) {
+      <app-swing />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('who') {
+      @defer (on immediate) {
+      <app-who />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('crossy') {
+      @defer (on immediate) {
+      <app-crossy />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('javelin') {
+      @defer (on immediate) {
+      <app-javelin />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('quiz') {
+      @defer (on immediate) {
+      <app-quiz />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('push') {
+      @defer (on immediate) {
+      <app-push />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('russian') {
+      @defer (on immediate) {
+      <app-russian />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
     }
   </main>
@@ -37,22 +177,46 @@
   <main class="minigame-container">
     @switch (specialRound()?.minigameId) {
       @case ('math-operations') {
+      @defer (on immediate) {
       <app-math-operations />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
       @case ('paint') {
+      @defer (on immediate) {
       <app-paint />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
       @case ('impostor') {
+      @defer (on immediate) {
       <app-impostor />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
       @case ('ten-but') {
+      @defer (on immediate) {
       <app-ten-but />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
       @case ('pinturillo') {
+      @defer (on immediate) {
       <app-pinturillo />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
       @case ('pogo') {
+      @defer (on immediate) {
       <app-pogo />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
       }
       @default {
       <section class="minigame-placeholder">

@@ -1,0 +1,68 @@
+<section class="duel" #root aria-label="Minijuego Desenfundar">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <div class="labels" #labels aria-hidden="true">
+    @for (tag of tags(); track tag.playerId) {
+    <span class="name-tag" [attr.data-du-label]="tag.playerId" [class.mine]="tag.isLocal" [class.hit]="tag.hit && !!tag.detail" [class.lost]="tag.lost">
+      <b>{{ tag.isLocal ? 'Tú' : tag.name }}</b>
+      @if (tag.detail) {<small>{{ tag.detail }}</small>}
+    </span>
+    }
+  </div>
+
+  <header class="top-bar">
+    <span class="pill title">Desenfundar</span>
+    @if (state(); as duel) {
+    @if (duel.totalRounds > 1) {
+    <span class="pill">Ronda <b>{{ duel.round || 1 }}</b> de {{ duel.totalRounds }}</span>
+    }
+    <span class="pill">El crupier tarda <b>{{ duel.dealerMs }} ms</b></span>
+    }
+  </header>
+
+  @switch (phase()) {
+    @case ('fire') {
+    <div class="signal fire" aria-live="assertive">¡YA!</div>
+    }
+    @case ('time') {
+    <div class="signal time" aria-live="assertive">¡TIEMPO!</div>
+    }
+    @case ('steady') {
+    <div class="signal steady">Preparados…</div>
+    }
+  }
+
+  <footer class="dock" [class.hidden]="!!state()?.outcome">
+    @if (isPlayer()) {
+    <button type="button" class="shoot-button" data-sfx="off" [disabled]="!canShoot()" (pointerdown)="shoot($event.timeStamp); $event.preventDefault()">
+      <span>¡DISPARA!</span>
+      <small>o pulsa Espacio</small>
+    </button>
+    }
+    <p class="status" [class.bad]="!!myShot() && !myHit() && phase() !== 'fire'">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado del duelo">
+      <h2>Resultados</h2>
+      <p class="hint">Gana quien dispara antes que el crupier; entre ellos, el más rápido.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.wins ? row.averageMs + ' ms' : 'Abatido' }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la calle en 3D, pero puedes disparar con el botón.</p>
+  }
+</section>

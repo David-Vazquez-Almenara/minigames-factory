@@ -1,0 +1,126 @@
+<section class="dance" #root aria-label="Minijuego Pista de baile">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <div class="labels" #labels aria-hidden="true">
+    @for (player of visiblePlayers(); track player.playerId) {
+    <span class="name-tag" [attr.data-dn-label]="player.playerId" [class.mine]="player.isLocal" [class.out]="isOut(player.playerId)">{{ player.isLocal ? 'Tú' : player.name }}</span>
+    }
+  </div>
+
+  <header class="top-bar" #topBar>
+    <div class="pills">
+      <span class="pill title">Pista de baile</span>
+      @if (state(); as game) {
+      <span class="pill">Ronda <b>{{ game.round }}</b> de {{ game.totalRounds }}</span>
+      <span class="pill">Quedan <b>{{ game.alive.length }}</b></span>
+      }
+      @if (isDancer()) {
+      <button type="button" class="pill mode-toggle" (click)="toggleMode()">{{ mode() === 'colors' ? 'Modo colores' : 'Modo teclado' }}</button>
+      }
+    </div>
+
+    <!-- Modo por colores: panel de colores para pulsar (arriba, cerca del borde). -->
+    @if (mode() === 'colors' && isDancer() && alive() && state()?.stage !== 'finished') {
+    <div class="palette" [class.disabled]="!canPlay()" aria-label="Colores">
+      @for (color of palette; track color.name; let index = $index) {
+      <button
+        type="button"
+        class="swatch"
+        data-sfx="off"
+        [style.background-color]="color.hex"
+        [attr.aria-label]="color.name"
+        [title]="color.name"
+        [disabled]="!canPlay()"
+        (pointerdown)="pressColor(index); $event.preventDefault()"
+      ></button>
+      }
+    </div>
+    }
+  </header>
+
+  @if (showCountdown()) {
+  <div class="countdown" aria-live="assertive">
+    @for (second of [startTimer.seconds()]; track second) {
+    <span>{{ second }}</span>
+    }
+    <small>Ronda {{ state()?.round }} · {{ sequence().length }} {{ mode() === 'colors' ? 'colores' : 'letras' }}</small>
+  </div>
+  } @else if (showGo()) {
+  <div class="countdown go" aria-live="assertive"><span>¡A bailar!</span></div>
+  }
+
+  <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
+    @if (isDancer() && alive() && state()?.stage === 'playing') {
+    <!-- Tiempo restante justo encima de la secuencia. -->
+    <div class="timer" [class.hurry]="started() && roundTimer.seconds() <= 5" [class.idle]="!started()">
+      <span>{{ started() ? roundTimer.seconds() : roundSeconds() }}s</span>
+      <i [style.transform]="'scaleX(' + (started() ? 1 - roundTimer.progress() : 1) + ')'"></i>
+    </div>
+
+    @if (localResult() === 'done') {
+    <div class="complete" aria-live="polite">✔ ¡Secuencia completa!</div>
+    } @else {
+    @for (shake of [shakeSeq()]; track shake) {
+    <div class="strip" [class.shake]="shake > 0" [class.done]="localResult() === 'done'" [class.waiting]="!started()">
+      <div class="track" [style.transform]="stripOffset()">
+        @for (step of steps(); track step.index) {
+        <div class="step" [attr.data-state]="step.state" [style.width.px]="stepPx">
+          @if (step.color) {
+          <span class="tile color" [style.background-color]="step.color.hex" [attr.aria-label]="step.color.name"></span>
+          } @else {
+          <span class="tile">{{ step.value }}</span>
+          }
+          <span class="sep" aria-hidden="true">›</span>
+        </div>
+        }
+      </div>
+    </div>
+    }
+    }
+    }
+    <p class="status">{{ statusText() }}</p>
+  </footer>
+
+  @if (showPopup()) {
+  <div class="popup-overlay">
+    <section class="popup" role="dialog" aria-label="Cómo se juega a Pista de baile">
+      <h2>¡A la pista!</h2>
+      <p>Este minijuego necesita el <b>teclado</b>: pulsa las letras en el orden en que aparecen abajo.</p>
+      <label class="switch-row">
+        <input type="checkbox" [checked]="mode() === 'colors'" (change)="setMode($any($event.target).checked ? 'colors' : 'keys')" />
+        <span class="switch" aria-hidden="true"></span>
+        <span>
+          <b>Modo por colores</b>
+          <small>Para móvil o si el teclado te da problemas: en vez de letras pulsarás colores en un panel arriba.</small>
+        </span>
+      </label>
+      <button type="button" class="ready" (click)="dismissPopup()">¡Listo!</button>
+      <small class="starts">Empieza en {{ startTimer.seconds() }}s</small>
+    </section>
+  </div>
+  }
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de la pista de baile">
+      <h2>Resultados</h2>
+      <p class="hint">{{ state()?.outcome?.rounds }} {{ state()?.outcome?.rounds === 1 ? 'ronda' : 'rondas' }} de baile.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.survived]="row.survived">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.survived ? 'Aguanta hasta el final' : 'Cae en la ronda ' + row.eliminatedRound }}</span>
+          <span class="points" [class.lose]="row.points < 0">{{ row.pointsText }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar el escenario en 3D, pero puedes jugar igualmente.</p>
+  }
+</section>

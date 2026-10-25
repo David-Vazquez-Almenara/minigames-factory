@@ -127,6 +127,16 @@
   background-color: #fff;
 }
 
+// Mientras se descarga el minijuego (normalmente un instante).
+.minigame-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  font-weight: 900;
+  transform: translate(-50%, -50%);
+}
+
 .skip-button {
   position: fixed;
   right: 24px;

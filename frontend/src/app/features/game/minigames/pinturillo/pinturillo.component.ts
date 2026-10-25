@@ -154,7 +154,12 @@ export class PinturilloComponent implements OnDestroy {
 
       for (const message of fresh) {
         if (message.kind === 'correct') {
-          this.audioService.playEffect(message.mine ? 'victory' : 'points');
+          // Acertar tu mismo suena a victoria; que acierte otro, campanita.
+          if (message.mine) {
+            this.audioService.playFileEffect('win');
+          } else {
+            this.audioService.playSfx('acierto', { gain: 0.7 });
+          }
         } else if (message.kind === 'chat' && !message.mine) {
           this.audioService.playEffect('tick');
         }

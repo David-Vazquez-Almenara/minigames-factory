@@ -1,0 +1,82 @@
+<section class="count" #root aria-label="Minijuego ¿Cuántos hay?">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <header class="top-bar">
+    <span class="pill title">¿Cuántos hay?</span>
+    @if (watching()) {
+    <span class="pill live">● Cuenta a la gente que pasa</span>
+    }
+  </header>
+
+  @if (showIntro()) {
+  <div class="banner intro">
+    <strong>¿Cuántos hay?</strong>
+    <span>Cuenta a todas las personas que pasen por la calle (andando, corriendo o en vehículo).</span>
+  </div>
+  }
+
+  @if (showCountdown()) {
+  <div class="countdown" aria-live="assertive">
+    @for (second of [startTimer.seconds()]; track second) {
+    <span>{{ second }}</span>
+    }
+  </div>
+  }
+
+  @if (showTimeBanner()) {
+  <div class="banner time" aria-live="assertive"><strong>¡TIEMPO!</strong></div>
+  }
+
+  @if (answering()) {
+  <div class="answer-overlay">
+    <section class="answer-card" aria-label="Tu respuesta">
+      @if (!isPlayer()) {
+      <h2>Están respondiendo…</h2>
+      <p class="hint">Han respondido {{ answeredCount() }} de {{ playerCount() }}.</p>
+      } @else if (myAnswer() === null) {
+      <h2>¿Cuántas personas han pasado?</h2>
+      <div class="display" [class.empty]="!digits()">{{ digits() || '0' }}</div>
+      <div class="keypad">
+        @for (key of keypad; track key) {
+        <button type="button" class="key" data-sfx="off" [class.ok]="key === 'ok'" [class.del]="key === 'del'" [disabled]="key === 'ok' && (!digits() || sending())" (click)="press(key)">
+          {{ key === 'del' ? '⌫' : key === 'ok' ? 'OK' : key }}
+        </button>
+        }
+      </div>
+      <p class="hint">Escribe el número y pulsa OK (también con el teclado). Quedan <b>{{ answerTimer.seconds() }}s</b>.</p>
+      @if (errorMessage()) {
+      <p class="error" role="alert">{{ errorMessage() }}</p>
+      }
+      } @else {
+      <h2>Has dicho <span class="big">{{ myAnswer() }}</span></h2>
+      <p class="hint">Esperando al resto: {{ answeredCount() }} de {{ playerCount() }} · {{ answerTimer.seconds() }}s</p>
+      }
+    </section>
+  </div>
+  }
+
+  @if (state()?.outcome; as outcome) {
+  <div class="answer-overlay">
+    <section class="answer-card results" aria-label="Resultado">
+      <p class="hint">Han pasado</p>
+      <div class="total">{{ outcome.total }}</div>
+      <p class="hint">personas</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.exact]="row.distance === 0">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="26" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.answer === null ? 'Sin respuesta' : row.distance === 0 ? '¡' + row.answer + ', exacto!' : row.answer + ' (a ' + row.distance + ')' }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la calle en 3D.</p>
+  }
+</section>

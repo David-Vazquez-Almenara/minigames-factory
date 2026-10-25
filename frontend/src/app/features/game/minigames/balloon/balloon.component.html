@@ -35,7 +35,7 @@
   <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
     @if (isMyTurn() && state()?.stage === 'pumping') {
     <div class="pump-panel">
-      <button class="pump-button" type="button" [disabled]="!canPump()" (pointerdown)="pump()" (click)="pumpFromKeyboard($event)">
+      <button class="pump-button" type="button" data-sfx="off" [disabled]="!canPump()" (pointerdown)="pump()" (click)="pumpFromKeyboard($event)">
         <span>¡HINCHAR!</span>
         <small>o pulsa Espacio</small>
       </button>

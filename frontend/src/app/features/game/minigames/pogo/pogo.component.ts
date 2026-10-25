@@ -141,7 +141,14 @@ export class PogoComponent implements OnDestroy {
 
     effect(() => {
       if (this.state()?.stage === 'results' || this.myFinished()) {
-        untracked(() => this.stopChecks(this.myFinished() ? 'finished' : 'waiting'));
+        untracked(() => {
+          // Llegar a la meta suena a victoria (una sola vez).
+          if (this.myFinished() && this.isRacer() && this.checkState() !== 'finished') {
+            this.audioService.playFileEffect('win');
+          }
+
+          this.stopChecks(this.myFinished() ? 'finished' : 'waiting');
+        });
       }
     });
 
@@ -247,7 +254,12 @@ export class PogoComponent implements OnDestroy {
     this.lastResult.set(result);
     this.localJumpKind.set(result);
     this.localJumpSeq.update((seq) => seq + 1);
-    this.audioService.playEffect(result === 'perfect' ? 'reveal' : result === 'good' ? 'confirm' : 'spin-stop');
+    // Salto con muelle (mas agudo en la zona blanca); el fallo solo hace un clic seco.
+    if (gain) {
+      this.audioService.playSfx('muelle', { rate: result === 'perfect' ? 1.3 : 1 });
+    } else {
+      this.audioService.playEffect('spin-stop');
+    }
 
     if (gain) {
       this.localProgress.update((progress) => Math.min(this.state()?.goal || progress + gain, Math.max(progress, this.myRacer()?.progress || 0) + gain));

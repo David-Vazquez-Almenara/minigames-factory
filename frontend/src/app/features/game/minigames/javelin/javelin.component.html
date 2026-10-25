@@ -1,0 +1,63 @@
+<section class="javelin" aria-label="Minijuego Tiro de jabalina">
+  <div class="playfield" #playfield>
+    <canvas #canvas aria-hidden="true"></canvas>
+  </div>
+
+  <header class="top-bar" #topBar>
+    <div class="pills">
+      <span class="pill title">Tiro de jabalina</span>
+      @if (state(); as javelin) {
+      <span class="pill">{{ map().name }}</span>
+      @if (isPlayer()) {
+      <span class="pill javelins" [attr.aria-label]="throwsLeft() + ' jabalinas'">
+        @for (slot of [0, 1, 2]; track slot) {
+        <i [class.used]="slot >= throwsLeft()"></i>
+        }
+      </span>
+      }
+      @if (javelin.stage === 'throwing' && startTimer.remainingMs() <= 0) {
+      <span class="pill timer" [class.hurry]="playTimer.seconds() <= 10">{{ playTimer.seconds() }}s</span>
+      }
+      }
+    </div>
+
+    <!-- Mini mapa: la bandera, las jabalinas de los demas (semitransparentes) y las mias (blancas). -->
+    <div class="track" aria-hidden="true">
+      @for (mark of track().marks; track mark.meters) {
+      <span class="mark" [style.left.%]="mark.left"><small>{{ mark.meters }}</small></span>
+      }
+      <span class="start"></span>
+      @for (line of track().others; track line.key) {
+      <span class="line other" [style.left.%]="line.left" [style.background-color]="line.color"></span>
+      }
+      @for (line of track().mine; track line.key) {
+      <span class="line mine" [style.left.%]="line.left"></span>
+      }
+      <span class="flag" [style.left.%]="track().flag">🚩</span>
+    </div>
+  </header>
+
+  <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
+    <p class="status">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado del tiro de jabalina">
+      <h2>Resultados</h2>
+      <p class="hint">Cuenta la jabalina que más cerca ha quedado de la bandera ({{ state()?.flagX }} m).</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.text }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+</section>

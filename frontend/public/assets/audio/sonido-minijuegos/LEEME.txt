@@ -1,0 +1,33 @@
+Música propia de cada minijuego
+================================
+
+Deja aquí un archivo .mp3 con el identificador del minijuego y sonará durante ese minijuego
+en lugar de la música de minijuego normal (musica-minijuego.mp3). Si no hay archivo, suena la normal.
+
+Nombres de archivo:
+  beer.mp3             Jarras en la barra
+  chop.mp3             Corta verduras
+  swing.mp3            Salto con cuerda
+  golf.mp3             Mini golf
+  order.mp3            Memoriza el pedido
+  bowling.mp3          Bolos
+  who.mp3              ¿Quién es quién?
+  crossy.mp3           Cruza la carretera
+  javelin.mp3          Tiro de jabalina
+  quiz.mp3             Preguntas y respuestas
+  push.mp3             Empujar
+  russian.mp3          Ruleta rusa
+  blackjack.mp3        Blackjack
+  barrels.mp3          Barriles
+  balloon.mp3          Cuidado que explota
+  cups.mp3             Cubiletes
+  cars.mp3             Esquiva los coches
+  pogo.mp3             Carrera en pogo
+  paint.mp3            A Pintar
+  pinturillo.mp3       Pinturillo
+  impostor.mp3         El Impostor
+  ten-but.mp3          Es un 10, pero...
+  math-operations.mp3  Operaciones matemáticas
+
+La música va siempre con el volumen de música (no con el de efectos).
+

@@ -1,0 +1,240 @@
+// Pantalla completa: ocupa toda la capa del minijuego y nada se sale de ella (sin barras de scroll).
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: #000;
+}
+
+.golf {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-weight: 900;
+  background-color: #6fbf73;
+  user-select: none;
+}
+
+.playfield {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.top-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 232px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pill {
+  padding: 6px 14px;
+  font-size: clamp(0.82rem, 1.6vw, 1.02rem);
+  background-color: #fff7ec;
+  border: 3px solid #000;
+  border-radius: 999px;
+
+  &.title {
+    background-color: #c8f0c0;
+  }
+
+  &.timer {
+    min-width: 58px;
+    text-align: center;
+  }
+
+  &.timer.hurry {
+    color: #9a0000;
+    background-color: #ffc0c0;
+  }
+}
+
+.banner {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  padding: 12px 26px;
+  pointer-events: none;
+  background-color: rgba(255, 247, 236, 0.95);
+  border: 4px solid #000;
+  border-radius: 20px;
+  box-shadow: 0 6px 0 #000;
+  transform: translate(-50%, -50%);
+
+  small {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+  }
+
+  strong {
+    font-size: clamp(1.8rem, 6vw, 2.6rem);
+  }
+}
+
+.hole-results {
+  position: absolute;
+  top: 64px;
+  right: 12px;
+  z-index: 3;
+  display: grid;
+  gap: 3px;
+  width: 210px;
+  max-height: calc(100% - 64px - 110px);
+  padding: 8px;
+  overflow-y: auto;
+  pointer-events: none;
+  background-color: rgba(255, 247, 236, 0.94);
+  border: 3px solid #000;
+  border-radius: 16px;
+
+  .row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px;
+    font-size: 0.78rem;
+    border-radius: 10px;
+
+    b {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &.mine {
+      background-color: #ffe891;
+    }
+
+    &.holed span {
+      color: #10752c;
+    }
+  }
+}
+
+.dock {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  width: min(520px, calc(100% - 24px));
+  pointer-events: none;
+  transform: translateX(-50%);
+
+  &.hidden {
+    visibility: hidden;
+  }
+}
+
+.status {
+  margin: 0;
+  padding: 6px 14px;
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  text-align: center;
+  background-color: rgba(255, 247, 236, 0.94);
+  border: 3px solid #000;
+  border-radius: 14px;
+}
+
+.results-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: 72px 12px 92px;
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+.results-card {
+  display: grid;
+  gap: 8px;
+  width: min(500px, 100%);
+  max-height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 22px;
+  box-shadow: 0 6px 0 #000;
+
+  h2,
+  .hint {
+    margin: 0;
+    text-align: center;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+  }
+
+  ol {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 30px auto 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background-color: #fff;
+    border: 2px solid #000;
+    border-radius: 12px;
+
+    &.mine {
+      background-color: #dff6ff;
+    }
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .what {
+    font-size: 0.75rem;
+  }
+
+  .points {
+    color: #10752c;
+  }
+}
+
+@media (max-width: 640px) {
+  .top-bar {
+    top: 96px;
+    left: 12px;
+    justify-content: center;
+  }
+
+  .hole-results {
+    top: auto;
+    bottom: 70px;
+    width: 160px;
+  }
+}

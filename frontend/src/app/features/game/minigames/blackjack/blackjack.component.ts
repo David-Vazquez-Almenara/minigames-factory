@@ -72,8 +72,8 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
   readonly myGroup = computed(() => this.state()?.groups.findIndex((group) => group.includes(this.currentPlayerId)) ?? -1);
   readonly groupCount = computed(() => this.state()?.groups.length || 1);
   /**
-   * Grupo sentado a la mesa en pantalla: el que esta jugando y, cuando juega el crupier y se ven los resultados,
-   * el grupo de este jugador (cada uno ve su propia mesa cuando se destapan las cartas).
+   * Grupo sentado a la mesa en pantalla: mientras se apuesta (todos a la vez) y cuando juega el crupier y se ven
+   * los resultados, el grupo de este jugador; mientras se juega, el grupo al que le toca.
    */
   readonly displayedGroup = computed(() => {
     const state = this.state();
@@ -82,9 +82,14 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
       return 0;
     }
 
+    const own = this.myGroup() >= 0 ? this.myGroup() : state.groupIndex;
+
     switch (state.stage) {
       case 'group-change':
-        return this.groupSwapTimer.remainingMs() > 0 ? (state.previousGroupIndex ?? state.groupIndex) : state.groupIndex;
+        // Sin grupo anterior es el primer cambio tras las apuestas: cada uno se levanta de su propia mesa.
+        return this.groupSwapTimer.remainingMs() > 0 ? (state.previousGroupIndex ?? own) : state.groupIndex;
+      case 'betting':
+        return own;
       case 'dealer-turn':
       case 'hand-summary':
       case 'final':
@@ -145,6 +150,8 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
         result: result?.outcome || null,
         delta: result?.delta || 0,
         statusLabel: this.statusLabel(player, state, result),
+        // En la mesa 3D no se anuncia el blackjack: solo se ve el 21 (el panel de jugadores si lo dice).
+        boardLabel: this.statusLabel(player, state, result, true),
         sumLabel: this.sumLabel(player),
         mood: this.moodFor(player, state, result, isActive),
       };
@@ -253,9 +260,9 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
       return `Cambio de mesa: se sienta el grupo ${state.groupIndex + 1}.${myTable === state.groupIndex + 1 ? ' ¡Es tu grupo!' : ''}`;
     }
 
-    // Su grupo aun no ha jugado esta mano: espera fuera de la mesa.
+    // Su grupo aun no ha jugado esta mano: espera fuera de la mesa (con la apuesta ya hecha).
     if (me.status === 'queued') {
-      return `Ahora juega el grupo ${state.groupIndex + 1}. Tú juegas con el grupo ${myTable}.`;
+      return `Ahora juega el grupo ${state.groupIndex + 1}. Tú juegas con el grupo ${myTable} (apuesta: ${me.bet} fichas).`;
     }
 
     if (state.stage === 'betting') {
@@ -263,11 +270,9 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
         return 'Te has quedado sin fichas: miras la partida desde tu asiento.';
       }
 
-      if (this.myGroup() !== state.groupIndex) {
-        return `Ya has jugado tu mano. Ahora apuesta el grupo ${state.groupIndex + 1}.`;
-      }
-
-      return me.status === 'sitting-out' ? 'No juegas esta mano. Esperando al resto…' : `Apuesta confirmada: ${me.bet} fichas. Esperando al resto…`;
+      return me.status === 'sitting-out'
+        ? 'No juegas esta mano. Esperando a que apuesten todos los grupos…'
+        : `Apuesta confirmada: ${me.bet} fichas. Esperando a que apuesten todos los grupos…`;
     }
 
     if (state.stage === 'dealing') {
@@ -433,8 +438,8 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    this.scene.onCardDealt = () => this.audioService.playEffect('pop');
-    this.scene.onCardFlipped = () => this.audioService.playEffect('reveal');
+    this.scene.onCardDealt = () => this.audioService.playSfx('carta-repartir', { rate: 0.94 + Math.random() * 0.12 });
+    this.scene.onCardFlipped = () => this.audioService.playSfx('carta-voltear');
     this.insetObserver = new ResizeObserver(() => this.updateInsets());
 
     for (const element of [this.rootRef(), this.topBarRef(), this.dockRef(), this.panelRef()]) {
@@ -460,7 +465,7 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
 
   addBet(amount: number): void {
     this.betAmount.set(this.clampBet(this.betAmount() + amount));
-    this.audioService.playEffect('select');
+    this.audioService.playSfx('fichas', { gain: 0.7, rate: 1.1 });
   }
 
   setBetFromSlider(event: Event): void {
@@ -469,7 +474,7 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
 
   allIn(): void {
     this.betAmount.set(this.maxBet());
-    this.audioService.playEffect('select');
+    this.audioService.playSfx('fichas', { rate: 0.9 });
   }
 
   resetBet(): void {
@@ -521,7 +526,11 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    this.audioService.playEffect(amount > 0 ? 'confirm' : 'select');
+    if (amount > 0) {
+      this.audioService.playSfx('fichas');
+    } else {
+      this.audioService.playEffect('select');
+    }
   }
 
   /** Semilla de la cara del crupier: la misma para todos los jugadores de esta ronda. */
@@ -597,25 +606,22 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
     } else if (state.stage === 'hand-summary') {
       const mine = state.lastSummary?.results.find((result) => result.playerId === this.currentPlayerId);
 
-      if (mine?.outcome === 'blackjack') {
-        this.audioService.playEffect('points');
-      } else if (mine?.outcome === 'win') {
-        this.audioService.playEffect('victory');
-      } else if (mine?.outcome === 'lose') {
-        this.audioService.playEffect('defeat');
+      // Solo suena al ganar la mano: al perder no hay sonido de derrota.
+      if (mine?.outcome === 'blackjack' || mine?.outcome === 'win') {
+        this.audioService.playFileEffect('win');
       }
     } else if (state.stage === 'final') {
       this.audioService.playEffect('points');
     }
   }
 
-  private statusLabel(player: BlackjackSeat, state: BlackjackPublicState, result: SummaryResult | null): string {
+  private statusLabel(player: BlackjackSeat, state: BlackjackPublicState, result: SummaryResult | null, board = false): string {
     if (result) {
       switch (result.outcome) {
         case 'win':
           return `Gana +${result.delta}`;
         case 'blackjack':
-          return `Blackjack +${result.delta}`;
+          return board ? `Gana +${result.delta}` : `Blackjack +${result.delta}`;
         case 'push':
           return 'Empate';
         case 'lose':
@@ -639,7 +645,7 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
       case 'playing':
         return state.currentPlayerId === player.playerId ? 'Su turno' : 'Esperando';
       case 'blackjack':
-        return '¡Blackjack!';
+        return board ? 'Se planta' : '¡Blackjack!';
       case 'stood':
         return 'Se planta';
       case 'bust':
@@ -658,10 +664,6 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
 
     if (total > 21) {
       return `${total} · Se pasa`;
-    }
-
-    if (player.status === 'blackjack') {
-      return '21 · Blackjack';
     }
 
     // Con un as que aun puede valer 1 u 11 se muestran los dos valores mientras se juega.

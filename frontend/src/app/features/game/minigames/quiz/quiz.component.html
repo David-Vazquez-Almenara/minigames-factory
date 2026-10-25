@@ -1,0 +1,83 @@
+<section class="quiz" aria-label="Minijuego Preguntas y respuestas">
+  <header class="top-bar">
+    <span class="pill title">Preguntas y respuestas</span>
+    @if (state(); as quiz) {
+    <span class="pill">Pregunta <b>{{ quiz.round || 1 }}</b> de {{ quiz.totalRounds }}</span>
+    @if (isPlayer()) {
+    <span class="pill">Tus puntos: <b>{{ myTotal() }}</b></span>
+    }
+    @if (answering()) {
+    <span class="pill timer" [class.hurry]="answerTimer.seconds() <= 5">{{ answerTimer.seconds() }}s</span>
+    }
+    }
+  </header>
+
+  @if (state(); as quiz) {
+  <div class="stage">
+    <!-- Contenedor de arriba: la pregunta. -->
+    <div class="question-box" [class.pop]="leadTimer.remainingMs() > 0">
+      <div class="meta">
+        <span class="category">{{ quiz.category }}</span>
+        <span class="stars" [attr.aria-label]="'Dificultad ' + quiz.difficulty + ' de 5'">{{ difficultyStars() }}</span>
+      </div>
+      <h2>{{ quiz.question }}</h2>
+      @if (quiz.stage === 'answering') {
+      <div class="time-bar" aria-hidden="true"><span [style.width.%]="(1 - answerTimer.progress()) * 100"></span></div>
+      }
+    </div>
+
+    <!-- Contenedor de abajo: las cuatro respuestas. -->
+    <div class="answers" [class.locked]="!canAnswer()" [class.waiting]="leadTimer.remainingMs() > 0 && quiz.stage === 'answering'">
+      @for (option of options(); track option.index) {
+      <button
+        type="button"
+        class="answer"
+        [attr.data-letter]="option.letter"
+        [class.picked]="option.picked"
+        [class.correct]="option.correct"
+        [class.dimmed]="option.dimmed"
+        [disabled]="!canAnswer()"
+        (click)="answer(option.index)"
+      >
+        <span class="letter">{{ option.letter }}</span>
+        <span class="text">{{ option.text }}</span>
+        @if (option.voters.length) {
+        <span class="voters">
+          @for (voter of option.voters; track voter.playerId) {
+          <app-player-avatar [avatarUrl]="voter.avatarUrl" [name]="voter.name" [color]="voter.colorId" [size]="26" />
+          }
+        </span>
+        }
+        @if (option.correct) {
+        <span class="tick" aria-label="Respuesta correcta">✔</span>
+        }
+      </button>
+      }
+    </div>
+  </div>
+  }
+
+  <footer class="dock" [class.hidden]="!!state()?.outcome">
+    <p class="status" [class.good]="state()?.stage === 'correct' && myChoice() === state()?.correctIndex">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de Preguntas y respuestas">
+      <h2>Resultados</h2>
+      <p class="hint">10 puntos por cada respuesta acertada.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.hits }} de 3 aciertos</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+</section>

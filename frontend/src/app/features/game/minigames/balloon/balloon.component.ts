@@ -7,6 +7,9 @@ import { PlayerAvatarComponent } from '../../../../shared/components/player-avat
 import { getPlayerColor } from '../../../../shared/player-colors';
 import { BalloonPlayerView, BalloonScene, BalloonSceneState } from './balloon-scene';
 
+// Aire con el que el "piu" del inflado llega a su tono mas agudo.
+const PUMP_PITCH_FULL_AIR = 40;
+
 @Component({
   selector: 'app-balloon',
   imports: [PlayerAvatarComponent],
@@ -28,6 +31,8 @@ export class BalloonComponent implements AfterViewInit, OnDestroy {
   private localTurn = 0;
   private lastTurnSound = 0;
   private resultsAnnounced = false;
+  private lastHeardPumpAt = 0;
+  private lastWalkSound = 0;
 
   readonly currentPlayerId = this.matchService.currentPlayerId;
   readonly state = computed(() => this.matchService.match()?.specialRound?.balloon || null);
@@ -142,13 +147,35 @@ export class BalloonComponent implements AfterViewInit, OnDestroy {
     });
 
     effect(() => {
+      // Todos oyen los palancazos de los demas (los propios ya sonaron al pulsar) y los pasos al subir al escenario.
+      const state = this.state();
+      const pump = state?.lastPump;
+
+      if (pump && pump.at !== this.lastHeardPumpAt) {
+        this.lastHeardPumpAt = pump.at;
+
+        if (pump.playerId !== this.currentPlayerId && !state.outcome) {
+          untracked(() => this.playPumpSound(pump.air));
+        }
+      }
+
+      if (state?.stage === 'walking' && !state.outcome && state.turnNumber !== this.lastWalkSound) {
+        this.lastWalkSound = state.turnNumber;
+        untracked(() => this.audioService.playSfx('pasos'));
+      }
+    });
+
+    effect(() => {
       const outcome = this.state()?.outcome;
 
       if (outcome && !this.resultsAnnounced) {
         this.resultsAnnounced = true;
         untracked(() => {
-          this.audioService.playEffect('burst');
-          setTimeout(() => this.audioService.playEffect(outcome.explodedBy === this.currentPlayerId ? 'defeat' : 'points'), 650);
+          this.audioService.playSfx('globo-explotar');
+          // A quien le explota no le suena nada mas; el resto oye que suma puntos.
+          if (outcome.explodedBy !== this.currentPlayerId) {
+            setTimeout(() => this.audioService.playEffect('points'), 650);
+          }
           // Cuando aparece el resultado (abajo), la camara encuadra en el hueco que queda arriba.
           setTimeout(() => this.updateInsets(), 1500);
         });
@@ -241,12 +268,20 @@ export class BalloonComponent implements AfterViewInit, OnDestroy {
     const token = `${state.turnNumber}:${this.pumpsDone()}`;
     this.localPumps.set(this.pumpsDone() + 1);
     this.scene?.pullLeverNow();
-    this.audioService.playEffect('pump');
+    // Aire contando los palancazos propios que el servidor aun no ha confirmado.
+    this.playPumpSound(state.air + Math.max(1, this.pumpsDone() - state.pumpsThisTurn));
     void this.matchService.pumpBalloon(lobbyId, token).then((response) => {
       if (!response.ok && !this.destroyed) {
         this.errorMessage.set(response.reason || 'No se pudo dar a la palanca.');
       }
     });
+  }
+
+  /** Palanca + "piu" de inflado, cada vez mas agudo segun se llena el globo (tension creciente). */
+  private playPumpSound(air: number): void {
+    const fill = Math.min(1, air / PUMP_PITCH_FULL_AIR);
+    this.audioService.playSfx('palanca');
+    this.audioService.playSfx('globo-inflar', { rate: 0.85 + fill * 1.05, gain: 0.85 + fill * 0.35 });
   }
 
   async passTurn(): Promise<void> {

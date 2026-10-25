@@ -1,0 +1,59 @@
+<section class="golf" aria-label="Minijuego Mini golf">
+  <div class="playfield" #playfield>
+    <canvas #canvas aria-hidden="true"></canvas>
+  </div>
+
+  <header class="top-bar" #topBar>
+    <span class="pill title">Mini golf</span>
+    @if (state(); as golf) {
+    <span class="pill">Hoyo <b>{{ golf.round || 1 }}</b> de {{ golf.totalRounds }} · {{ map().name }}</span>
+    @if (aimingOpen()) {
+    <span class="pill timer" [class.hurry]="aimTimer.seconds() <= 5">{{ aimTimer.seconds() }}s</span>
+    }
+    }
+  </header>
+
+  @if (showPreview()) {
+  <div class="banner">
+    <small>Hoyo {{ state()?.round }}</small>
+    <strong>{{ map().name }}</strong>
+  </div>
+  }
+
+  <!-- Resultados del hoyo cuando se revelan los golpes. -->
+  @if (state()?.stage === 'rolling' && results().length) {
+  <aside class="hole-results" aria-label="Resultados del hoyo">
+    @for (row of results(); track row.playerId) {
+    <div class="row" [class.mine]="row.mine" [class.holed]="row.holed">
+      <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.name" [color]="row.colorId" [size]="22" />
+      <b>{{ row.mine ? 'Tú' : row.name }}</b>
+      <span>{{ row.text }}</span>
+    </div>
+    }
+  </aside>
+  }
+
+  <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
+    <p class="status">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado del mini golf">
+      <h2>Resultados</h2>
+      <p class="hint">Distancia total al hoyo en los 3 hoyos (meterla cuenta 0).</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.total }} cm · {{ row.holes }} {{ row.holes === 1 ? 'hoyo' : 'hoyos' }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+</section>

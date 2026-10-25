@@ -174,7 +174,7 @@ export class CarsComponent implements AfterViewInit, OnDestroy {
     }
 
     this.scene.onLanePicked = (lane) => this.choose(lane);
-    this.scene.onHit = () => this.audioService.playEffect('pop');
+    this.scene.onHit = () => this.audioService.playSfx('atropello');
     this.insetObserver = new ResizeObserver(() => this.updateInsets());
 
     for (const element of [this.rootRef(), this.topBarRef(), this.dockRef()]) {
@@ -210,7 +210,8 @@ export class CarsComponent implements AfterViewInit, OnDestroy {
     }
 
     this.localPick.set({ round: state.round, lane });
-    this.audioService.playEffect('select');
+    // Saltito al cambiar de carril (un poco distinto en cada carril).
+    this.audioService.playSfx('salto-carril', { rate: 0.9 + lane * 0.07 });
     void this.matchService.chooseLane(lobbyId, state.round, lane);
   }
 
@@ -239,8 +240,13 @@ export class CarsComponent implements AfterViewInit, OnDestroy {
       this.audioService.playEffect('horn');
       const delay = passStartsAt ? Math.max(0, passStartsAt - this.matchService.serverNow()) : 600;
       this.engineTimer = setTimeout(() => this.audioService.playEngine(driveMs), delay);
-    } else if (stage === 'aftermath' && this.state()?.hits.includes(this.currentPlayerId)) {
-      this.audioService.playEffect('defeat');
+    } else if (stage === 'aftermath') {
+      // Superar la ronda suena a victoria; si te atropellan ya suena el golpe (sin sonido de derrota).
+      const state = this.state();
+
+      if (state && !state.hits.includes(this.currentPlayerId) && state.alive.includes(this.currentPlayerId)) {
+        this.audioService.playFileEffect('win');
+      }
     } else if (stage === 'finished') {
       this.audioService.playEffect('points');
     }
