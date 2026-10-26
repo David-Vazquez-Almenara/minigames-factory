@@ -1,0 +1,427 @@
+// Pantalla completa: el mundo se mueve con el coche (vista desde arriba) y el HUD va por encima.
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: #fff;
+}
+
+.race {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-weight: 800;
+  background-color: #6cbf4a;
+  user-select: none;
+  touch-action: none;
+}
+
+.world {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+// Minimapa arriba a la izquierda (debajo de los controles de volumen).
+.minimap {
+  position: absolute;
+  top: 84px;
+  left: 12px;
+  z-index: 3;
+  width: clamp(160px, 22vw, 240px);
+  aspect-ratio: 2 / 1.25;
+  padding: 4px;
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0.32);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.top-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 232px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pill {
+  padding: 6px 14px;
+  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+  background-color: rgba(20, 24, 30, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+
+  b {
+    color: #ffd23f;
+  }
+
+  &.title {
+    color: #000;
+    background-color: #ffd9a8;
+    border-color: #000;
+  }
+
+  &.time {
+    min-width: 76px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  &.checkpoint {
+    font-variant-numeric: tabular-nums;
+
+    // Todos pasados: ya puede cruzar la meta.
+    &.done b {
+      color: #6ee36e;
+    }
+  }
+}
+
+// Semaforo de salida.
+.lights {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  gap: 14px;
+  padding: 12px 18px;
+  pointer-events: none;
+  background-color: #1d1f24;
+  border: 4px solid #000;
+  border-radius: 18px;
+  transform: translateX(-50%);
+
+  span {
+    width: 46px;
+    height: 46px;
+    background-color: #3a1212;
+    border: 3px solid #000;
+    border-radius: 50%;
+
+    &.on {
+      background-color: #ff2a2a;
+      box-shadow: 0 0 18px #ff2a2a;
+    }
+  }
+
+  &.go span.on {
+    background-color: #2bd94a;
+    box-shadow: 0 0 18px #2bd94a;
+  }
+}
+
+.go-text,
+.flash {
+  position: absolute;
+  top: 36%;
+  left: 50%;
+  z-index: 4;
+  font-size: clamp(2.6rem, 9vw, 5rem);
+  color: #ffd23f;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow:
+    0 5px 0 #000,
+    0 0 12px rgba(0, 0, 0, 0.6);
+  transform: translateX(-50%);
+}
+
+.flash {
+  font-size: clamp(1.8rem, 6vw, 3rem);
+  color: #fff;
+  animation: flash-in 1.8s ease both;
+}
+
+.warning {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  z-index: 4;
+  width: max-content;
+  // En pantallas estrechas, el aviso largo (control saltado) pasa a dos lineas.
+  max-width: calc(100% - 24px);
+  padding: 8px 18px;
+  font-size: clamp(1rem, 3vw, 1.4rem);
+  text-align: center;
+  pointer-events: none;
+  background-color: rgba(198, 40, 40, 0.92);
+  border-radius: 22px;
+  transform: translateX(-50%);
+  animation: blink 0.7s steps(2) infinite;
+
+  &.soft {
+    background-color: rgba(0, 0, 0, 0.6);
+    animation: none;
+  }
+}
+
+.banner {
+  position: absolute;
+  top: 26%;
+  left: 50%;
+  z-index: 4;
+  padding: 10px 22px;
+  font-size: clamp(1.2rem, 4vw, 2rem);
+  color: #000;
+  white-space: nowrap;
+  pointer-events: none;
+  background-color: #ffd23f;
+  border: 3px solid #000;
+  border-radius: 999px;
+  transform: translateX(-50%);
+}
+
+.speed {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  z-index: 3;
+  padding: 4px 14px;
+  font-size: 0.85rem;
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0.45);
+  border-radius: 999px;
+  transform: translateX(-50%);
+
+  b {
+    font-size: 1.3rem;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* --------------------------------- Mandos -------------------------------- */
+
+.pad {
+  position: absolute;
+  bottom: 16px;
+  z-index: 3;
+  display: flex;
+  gap: 10px;
+
+  &.disabled {
+    opacity: 0.45;
+  }
+
+  button {
+    width: 70px;
+    height: 70px;
+    font: inherit;
+    font-size: 1.5rem;
+    color: #fff;
+    cursor: pointer;
+    background-color: rgba(20, 24, 30, 0.7);
+    border: 3px solid rgba(255, 255, 255, 0.55);
+    border-radius: 18px;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+      background-color: rgba(255, 255, 255, 0.35);
+    }
+  }
+}
+
+.steer {
+  left: 16px;
+}
+
+.pedals {
+  right: 16px;
+  align-items: flex-end;
+
+  .gas {
+    width: 86px;
+    height: 96px;
+    background-color: rgba(46, 160, 67, 0.85);
+  }
+
+  .brake {
+    background-color: rgba(198, 40, 40, 0.8);
+  }
+}
+
+.spectator {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateX(-50%);
+
+  span {
+    display: grid;
+    min-width: 150px;
+    padding: 4px 16px;
+    text-align: center;
+    background-color: rgba(20, 24, 30, 0.85);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 14px;
+
+    small {
+      font-size: 0.7rem;
+      opacity: 0.75;
+    }
+  }
+
+  button {
+    width: 52px;
+    height: 52px;
+    font: inherit;
+    font-size: 1.3rem;
+    color: #fff;
+    cursor: pointer;
+    background-color: #2e7d32;
+    border: 3px solid #000;
+    border-radius: 14px;
+  }
+}
+
+.results-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 72px 12px 24px;
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.results-card {
+  display: grid;
+  gap: 8px;
+  width: min(500px, 100%);
+  max-height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  color: #1b1b1b;
+  background-color: #fff7ec;
+  border: 4px solid #000;
+  border-radius: 20px;
+  box-shadow: 0 6px 0 #000;
+
+  h2,
+  .hint {
+    margin: 0;
+    text-align: center;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+  }
+
+  ol {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 30px auto 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background-color: #fff;
+    border: 2px solid #000;
+    border-radius: 12px;
+
+    &.mine {
+      background-color: #ffe9c7;
+    }
+
+    &.dnf .what,
+    &.dnf .points {
+      color: #b00020;
+    }
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .what {
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .points {
+    color: #2e7d32;
+  }
+}
+
+@media (max-width: 640px) {
+  .top-bar {
+    top: 96px;
+    left: 12px;
+    justify-content: center;
+  }
+
+  .minimap {
+    top: 150px;
+    width: 150px;
+  }
+
+  .pad button {
+    width: 62px;
+    height: 62px;
+  }
+
+  // Sin taparse con el minimapa ni con los pedales.
+  .lights {
+    top: 34%;
+  }
+
+  .go-text,
+  .flash {
+    top: 46%;
+  }
+
+  .speed {
+    bottom: 104px;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes flash-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.7);
+  }
+
+  15%,
+  75% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+  }
+}

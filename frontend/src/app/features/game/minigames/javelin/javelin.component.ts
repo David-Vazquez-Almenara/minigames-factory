@@ -42,6 +42,7 @@ export class JavelinComponent implements AfterViewInit, OnDestroy {
 
   readonly startTimer = this.timerService.countdown(() => this.state()?.startsAt);
   readonly playTimer = this.timerService.countdown(() => (this.state()?.stage === 'throwing' ? this.state()?.endsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 40000,
   });
@@ -66,6 +67,11 @@ export class JavelinComponent implements AfterViewInit, OnDestroy {
       this.playTimer.remainingMs() > 0 &&
       this.throwsLeft() > 0 &&
       !this.myFlying(),
+  );
+
+  /** Ya no me quedan jabalinas (y la ultima ha caido): la camara se abre para ver lanzar al resto. */
+  readonly spectating = computed(
+    () => this.state()?.stage === 'throwing' && this.startTimer.remainingMs() <= 0 && (!this.isPlayer() || (this.throwsLeft() === 0 && !this.myFlying())),
   );
 
   /** Distancias a la bandera de mis jabalinas (las que ya han caido). */
@@ -174,6 +180,11 @@ export class JavelinComponent implements AfterViewInit, OnDestroy {
     });
 
     effect(() => {
+      const spectate = this.spectating();
+      untracked(() => this.board?.setSpectate(spectate));
+    });
+
+    effect(() => {
       const outcome = this.state()?.outcome;
 
       if (outcome && !this.announcedFinal) {
@@ -199,6 +210,7 @@ export class JavelinComponent implements AfterViewInit, OnDestroy {
     this.board.setShots(this.shots());
     this.board.setAiming(this.canThrow());
     this.board.setZoomOut(state?.stage === 'zoom' || state?.stage === 'finished');
+    this.board.setSpectate(this.spectating());
     this.insetObserver = new ResizeObserver(() => this.updateInsets());
 
     for (const element of [this.hostRef(), this.topBarRef(), this.dockRef()]) {

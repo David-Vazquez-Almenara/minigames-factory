@@ -37,6 +37,7 @@ export class GolfComponent implements AfterViewInit, OnDestroy {
 
   readonly startTimer = this.timerService.countdown(() => this.state()?.aimStartsAt);
   readonly aimTimer = this.timerService.countdown(() => (this.state()?.stage === 'aiming' ? this.state()?.aimEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 15000,
   });
@@ -84,7 +85,7 @@ export class GolfComponent implements AfterViewInit, OnDestroy {
     }
 
     if (state.stage === 'aiming' && this.isPlayer()) {
-      return this.aimingOpen() ? 'Arrastra hacia atrás desde tu bola blanca y suelta para golpear.' : '¡Tiempo! Este hoyo cuenta como fallado.';
+      return this.aimingOpen() ? 'Arrastra hacia atrás desde cualquier sitio (como un tirachinas) y suelta para golpear.' : '¡Tiempo! Este hoyo cuenta como fallado.';
     }
 
     return 'Mira cómo golpean los demás.';
@@ -169,6 +170,7 @@ export class GolfComponent implements AfterViewInit, OnDestroy {
     const startedAt = performance.now();
     this.myShot.set({ round: state.round, simulation, startedAt });
     this.audioService.playSfx('palanca', { rate: 1.3 });
+    const rollMs = simulation.path.length * simulation.stepMs;
     // Sonido al acabar: hoyo (campanita) o agua.
     setTimeout(() => {
       if (simulation.holed) {
@@ -176,8 +178,9 @@ export class GolfComponent implements AfterViewInit, OnDestroy {
       } else if (simulation.water) {
         this.audioService.playEffect('pop');
       }
-    }, simulation.path.length * simulation.stepMs);
-    void this.matchService.golfShot(lobbyId, state.round, { angle, power, holed: simulation.holed, distance: simulation.distance });
+    }, rollMs);
+    // rollMs: el servidor solo espera a que pare la bola mas lenta para pasar de hoyo.
+    void this.matchService.golfShot(lobbyId, state.round, { angle, power, holed: simulation.holed, distance: simulation.distance, rollMs });
   }
 
   /** Bolas que se ven: la propia (blanca) y las de los demas (en el tee hasta que se conocen sus golpes). */

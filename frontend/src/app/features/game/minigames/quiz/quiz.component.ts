@@ -27,6 +27,7 @@ export class QuizComponent {
 
   readonly leadTimer = this.timerService.countdown(() => (this.state()?.stage === 'answering' ? this.state()?.answerStartsAt : null));
   readonly answerTimer = this.timerService.countdown(() => (this.state()?.stage === 'answering' ? this.state()?.answerEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 15000,
   });

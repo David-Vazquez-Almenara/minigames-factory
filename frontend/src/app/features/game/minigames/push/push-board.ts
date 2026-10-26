@@ -2,6 +2,8 @@ import { ARENA_RADIUS, DISC_RADIUS, MAX_SPEED, PushResult, STEP, isOut, predictS
 
 /** Lo que dura la caida al agua (el disco se encoge hasta desaparecer). */
 const FALL_MS = 750;
+/** Lo que tarda en hundirse el anillo de pista que se pierde al empezar una ronda. */
+const SHRINK_MS = 1200;
 
 export interface PushDisc {
   playerId: string;
@@ -42,6 +44,12 @@ export class PushBoard {
   private playback: Playback | null = null;
   private insets = { top: 70, bottom: 120 };
   private readonly splashes: Array<{ x: number; y: number; at: number }> = [];
+  /** Radio actual de la pista y el que tendra en la ronda siguiente (el anillo entre ambos va en rojo). */
+  private arenaRadius = ARENA_RADIUS;
+  private nextRadius = ARENA_RADIUS;
+  /** Anillo que se esta hundiendo (al empezar la ronda) y fichas que se hunden con el. */
+  private shrink: { from: number; to: number; startAt: number } | null = null;
+  private sinking: Array<{ disc: PushDisc; startAt: number; splashed: boolean }> = [];
 
   /** Nueva direccion y fuerza elegidas al soltar el arrastre. */
   onAim?: (vx: number, vy: number) => void;
@@ -65,6 +73,18 @@ export class PushBoard {
 
   setDiscs(discs: PushDisc[]): void {
     this.discs = discs;
+  }
+
+  /** Tamano de la pista (y de la siguiente ronda). Si se pasa `shrink`, el anillo perdido se hunde animado. */
+  setArena(radius: number, nextRadius: number, shrink: { from: number; to: number; startAt: number } | null): void {
+    this.arenaRadius = radius;
+    this.nextRadius = Math.min(radius, nextRadius);
+    this.shrink = shrink;
+  }
+
+  /** Fichas que estaban en la zona roja: se hunden con el anillo (una sola vez por ronda). */
+  sink(discs: PushDisc[], startAt: number): void {
+    this.sinking = discs.map((disc) => ({ disc, startAt: startAt + SHRINK_MS * 0.35, splashed: false }));
   }
 
   setAiming(aiming: boolean): void {
@@ -170,7 +190,8 @@ export class PushBoard {
     const ratio = window.devicePixelRatio || 1;
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     this.drawWater(context, now);
-    this.drawArena(context);
+    this.drawArena(context, now);
+    this.drawSinking(context, now);
 
     const positions = this.currentPositions(now);
 
@@ -279,8 +300,35 @@ export class PushBoard {
     }
   }
 
-  private drawArena(context: CanvasRenderingContext2D): void {
-    const radius = ARENA_RADIUS * this.scale;
+  private drawArena(context: CanvasRenderingContext2D, now: number): void {
+    const shrink = this.shrink;
+    const shrinking = shrink && now < shrink.startAt + SHRINK_MS ? Math.max(0, (now - shrink.startAt) / SHRINK_MS) : null;
+    const radius = (shrinking !== null && shrink ? shrink.to : this.arenaRadius) * this.scale;
+
+    // Anillo que se hunde: se oscurece, se agrieta y se desvanece en el agua.
+    if (shrinking !== null && shrink) {
+      const outer = shrink.from * this.scale;
+      context.save();
+      context.globalAlpha = 1 - shrinking;
+      context.fillStyle = '#e9a3a3';
+      context.beginPath();
+      context.arc(this.centerX, this.centerY, outer * (1 - shrinking * 0.04), 0, Math.PI * 2);
+      context.arc(this.centerX, this.centerY, radius, 0, Math.PI * 2, true);
+      context.fill('evenodd');
+      context.strokeStyle = 'rgba(90, 20, 20, 0.6)';
+      context.lineWidth = 2;
+
+      for (let index = 0; index < 18; index += 1) {
+        const angle = (index / 18) * Math.PI * 2 + 0.2;
+        context.beginPath();
+        context.moveTo(this.centerX + Math.cos(angle) * radius, this.centerY + Math.sin(angle) * radius);
+        context.lineTo(this.centerX + Math.cos(angle + 0.05) * outer, this.centerY + Math.sin(angle + 0.05) * outer);
+        context.stroke();
+      }
+
+      context.restore();
+    }
+
     // Sombra bajo la pista y borde de nieve.
     context.fillStyle = 'rgba(0, 60, 90, 0.3)';
     context.beginPath();
@@ -303,17 +351,22 @@ export class PushBoard {
     context.arc(this.centerX, this.centerY, radius + Math.max(2, this.scale * 0.17), 0, Math.PI * 2);
     context.stroke();
 
-    // Rayas de patines en el hielo (siempre las mismas).
+    // Rayas de patines en el hielo (siempre las mismas, del tamano de la pista entera; recortadas a la que queda).
+    const full = ARENA_RADIUS * this.scale;
+    context.save();
+    context.beginPath();
+    context.arc(this.centerX, this.centerY, radius, 0, Math.PI * 2);
+    context.clip();
     context.strokeStyle = 'rgba(120, 170, 200, 0.25)';
     context.lineWidth = 1.5;
 
     for (let index = 0; index < 9; index += 1) {
       const angle = index * 2.39;
-      const distance = (0.2 + ((index * 0.37) % 0.6)) * radius;
+      const distance = (0.2 + ((index * 0.37) % 0.6)) * full;
       const x = this.centerX + Math.cos(angle) * distance;
       const y = this.centerY + Math.sin(angle) * distance;
       context.beginPath();
-      context.arc(x, y, radius * (0.25 + (index % 3) * 0.1), angle, angle + 0.9);
+      context.arc(x, y, full * (0.25 + (index % 3) * 0.1), angle, angle + 0.9);
       context.stroke();
     }
 
@@ -321,8 +374,50 @@ export class PushBoard {
     context.strokeStyle = 'rgba(232, 38, 43, 0.35)';
     context.lineWidth = 3;
     context.beginPath();
-    context.arc(this.centerX, this.centerY, radius * 0.18, 0, Math.PI * 2);
+    context.arc(this.centerX, this.centerY, full * 0.18, 0, Math.PI * 2);
     context.stroke();
+
+    // Zona que se hundira al empezar la ronda siguiente: anillo rojo palido con borde discontinuo.
+    if (shrinking === null && this.nextRadius < this.arenaRadius) {
+      const inner = this.nextRadius * this.scale;
+      const pulse = 0.26 + Math.sin(now / 260) * 0.06;
+      context.fillStyle = `rgba(255, 70, 70, ${pulse})`;
+      context.beginPath();
+      context.arc(this.centerX, this.centerY, radius, 0, Math.PI * 2);
+      context.arc(this.centerX, this.centerY, inner, 0, Math.PI * 2, true);
+      context.fill('evenodd');
+      context.setLineDash([10, 8]);
+      context.strokeStyle = 'rgba(200, 30, 30, 0.85)';
+      context.lineWidth = 3;
+      context.beginPath();
+      context.arc(this.centerX, this.centerY, inner, 0, Math.PI * 2);
+      context.stroke();
+      context.setLineDash([]);
+    }
+
+    context.restore();
+  }
+
+  /** Fichas que se hunden con el anillo perdido (se encogen hasta desaparecer). */
+  private drawSinking(context: CanvasRenderingContext2D, now: number): void {
+    for (const entry of this.sinking) {
+      const progress = (now - entry.startAt) / FALL_MS;
+
+      if (progress < 0) {
+        this.drawDisc(context, entry.disc, entry.disc.x, entry.disc.y, 1);
+        continue;
+      }
+
+      if (!entry.splashed) {
+        entry.splashed = true;
+        this.splashes.push({ x: entry.disc.x, y: entry.disc.y, at: now });
+        this.onFall?.(entry.disc.playerId);
+      }
+
+      if (progress < 1) {
+        this.drawDisc(context, entry.disc, entry.disc.x, entry.disc.y, 1 - progress);
+      }
+    }
   }
 
   private drawDisc(context: CanvasRenderingContext2D, disc: PushDisc, x: number, y: number, scale: number): void {
@@ -402,11 +497,12 @@ export class PushBoard {
   /** Flecha de la direccion y circulo donde acabaria la ficha (si no choca con nadie). */
   private drawAim(context: CanvasRenderingContext2D, disc: PushDisc, position: { x: number; y: number }): void {
     const aim = this.aim!;
-    const stop = predictStop({ playerId: disc.playerId, x: position.x, y: position.y }, aim.vx, aim.vy);
+    const stop = predictStop({ playerId: disc.playerId, x: position.x, y: position.y }, aim.vx, aim.vy, this.arenaRadius);
     const [fromX, fromY] = this.toScreen(position.x, position.y);
     const [toX, toY] = this.toScreen(stop.x, stop.y);
     const radius = DISC_RADIUS * this.scale;
-    const falls = isOut(stop.x, stop.y);
+    // En rojo si se caeria (o si se quedaria en la zona que se hunde la ronda siguiente).
+    const falls = isOut(stop.x, stop.y, this.arenaRadius) || Math.hypot(stop.x, stop.y) > this.nextRadius;
 
     context.setLineDash([8, 7]);
     context.lineWidth = 3;

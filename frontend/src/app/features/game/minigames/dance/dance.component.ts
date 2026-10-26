@@ -84,6 +84,7 @@ export class DanceComponent implements AfterViewInit, OnDestroy {
 
   readonly startTimer = this.timerService.countdown(() => this.state()?.roundStartsAt, { paused: () => this.matchService.hostPaused() });
   readonly roundTimer = this.timerService.countdown(() => (this.state()?.stage === 'playing' ? this.state()?.roundEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: () => this.state()?.timesMs[(this.state()?.round || 1) - 1] || 15000,
     onExpire: () => this.timeUp(),

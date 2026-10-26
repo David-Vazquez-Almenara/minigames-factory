@@ -43,6 +43,7 @@ export class OrderComponent {
   readonly readyTimer = this.timerService.countdown(() => this.state()?.showStartsAt);
   readonly showTimer = this.timerService.countdown(() => this.state()?.buildStartsAt);
   readonly buildTimer = this.timerService.countdown(() => (this.state()?.stage === 'showing' ? this.state()?.buildEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 20000,
     onExpire: () => this.finishRound(false),

@@ -34,11 +34,21 @@
     }
   </aside>
 
-  <footer class="dock" [class.hidden]="!!state()?.outcome">
+  <footer class="dock" [class.hidden]="!!state()?.outcome" [class.spectating]="spectateOut()">
     <p class="status" [class.bad]="!!dead()">{{ statusText() }}</p>
+    @if (spectateOut() && spectatable().length) {
+    <div class="spectator" role="group" aria-label="Modo espectador">
+      <button type="button" aria-label="Jugador anterior" (click)="cycleSpectate(-1)">◀</button>
+      <span>
+        <small>Viendo a</small>
+        <b>{{ spectateId() ? spectateName() : '…' }}</b>
+      </span>
+      <button type="button" aria-label="Jugador siguiente" (click)="cycleSpectate(1)">▶</button>
+    </div>
+    }
   </footer>
 
-  @if (isPlayer() && !state()?.outcome) {
+  @if (isPlayer() && !state()?.outcome && !spectateOut()) {
   <div class="dpad" [class.disabled]="!canMove()" role="group" aria-label="Controles">
     <button type="button" class="up" data-sfx="off" aria-label="Adelante" (pointerdown)="press('up'); $event.preventDefault()">▲</button>
     <button type="button" class="left" data-sfx="off" aria-label="Izquierda" (pointerdown)="press('left'); $event.preventDefault()">◀</button>

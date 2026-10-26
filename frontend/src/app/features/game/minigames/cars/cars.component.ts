@@ -36,6 +36,7 @@ export class CarsComponent implements AfterViewInit, OnDestroy {
   readonly laneNumbers = [0, 1, 2, 3];
 
   readonly chooseTimer = this.timerService.countdown(() => (this.state()?.stage === 'choosing' ? this.state()?.chooseEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 15000,
   });

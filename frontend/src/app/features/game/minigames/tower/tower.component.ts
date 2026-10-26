@@ -30,6 +30,7 @@ export class TowerComponent implements AfterViewInit, OnDestroy {
 
   readonly startTimer = this.timerService.countdown(() => this.state()?.startsAt);
   readonly playTimer = this.timerService.countdown(() => (this.state()?.stage === 'playing' ? this.state()?.endsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 45000,
     onExpire: () => this.timeUp(),

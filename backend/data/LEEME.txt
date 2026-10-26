@@ -1,0 +1,12 @@
+palabras-es.txt.gz
+==================
+
+Lista de palabras en español que usa Patata caliente para comprobar que una palabra existe
+(unas 590.000 formas: plurales, femeninos, conjugaciones...). Sin tildes y en minúsculas (la ñ se
+mantiene), una por línea y ordenadas. Los nombres propios no están.
+
+Se genera con backend/scripts/generate-dictionary.cjs a partir del diccionario de español de
+LibreOffice (proyecto RLA-ES, https://github.com/LibreOffice/dictionaries/tree/master/es), con
+licencia GPL v3 / LGPL v3 / MPL 1.1. Para regenerarla, descarga es_ES.aff y es_ES.dic y ejecuta:
+
+  node scripts/generate-dictionary.cjs es_ES.aff es_ES.dic

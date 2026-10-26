@@ -29,7 +29,7 @@ export class BeerComponent implements AfterViewInit, OnDestroy {
   private scene?: BeerScene;
   private destroyed = false;
   private frameHandle = 0;
-  private slideAnnounced = false;
+  private slideAnnounced = 0;
   private finalAnnounced = false;
 
   readonly currentPlayerId = this.matchService.currentPlayerId;
@@ -37,9 +37,15 @@ export class BeerComponent implements AfterViewInit, OnDestroy {
   readonly unsupported = signal(false);
   /** Valor del medidor (0-1) en esta pantalla; corre solo aqui. */
   readonly meter = signal(0);
-  readonly myPower = signal<number | null>(null);
+  /** Fuerza elegida en la ronda (cada ronda se vuelve a lanzar). */
+  private readonly myThrow = signal<{ round: number; power: number } | null>(null);
+  readonly myPower = computed(() => {
+    const mine = this.myThrow();
+    return mine && mine.round === this.state()?.round ? mine.power : null;
+  });
 
   readonly aimTimer = this.timerService.countdown(() => (this.state()?.stage === 'aiming' ? this.state()?.aimEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 12000,
     onExpire: () => this.autoThrow(),
@@ -67,12 +73,31 @@ export class BeerComponent implements AfterViewInit, OnDestroy {
     }));
   });
 
+  /** Cara sobre cada jarra y, al acabar el deslizamiento, a cuanto se ha quedado del borde en esta ronda. */
   readonly jugTags = computed(() => {
-    const outcome = this.state()?.outcome;
+    const state = this.state();
+    const shown = state?.stage === 'result' || state?.stage === 'finished' ? state.history.find((entry) => entry.round === state.round)?.throws || [] : [];
     return this.jugs().map((jug) => {
-      const row = outcome?.ranking.find((entry) => entry.playerId === jug.playerId);
+      const row = shown.find((entry) => entry.playerId === jug.playerId);
       return { ...jug, detail: row ? (row.fell ? '¡Al suelo!' : `a ${meters(row.gap)} m`) : '', fell: Boolean(row?.fell) };
     });
+  });
+
+  /** Clasificacion acumulada de las rondas ya jugadas (suma de lo que se quedo del borde; tirarla = 12 m). */
+  readonly standings = computed(() => {
+    const state = this.state();
+
+    if (!state?.history.length) {
+      return [];
+    }
+
+    return this.jugs()
+      .map((jug) => {
+        const rounds = state.history.map((entry) => entry.throws.find((row) => row.playerId === jug.playerId)).filter((row) => !!row);
+        const total = rounds.reduce((sum, row) => sum + (row.fell ? state.length : row.gap), 0);
+        return { ...jug, total: meters(total), sortKey: total, falls: rounds.filter((row) => row.fell).length };
+      })
+      .sort((first, second) => first.sortKey - second.sortKey);
   });
 
   readonly statusText = computed(() => {
@@ -100,7 +125,11 @@ export class BeerComponent implements AfterViewInit, OnDestroy {
       return '¡Allá van todas las jarras!';
     }
 
-    return 'Así han quedado las jarras.';
+    if (state.stage === 'result') {
+      return state.round < state.totalRounds ? `Así han quedado las jarras. Ahora la ronda ${state.round + 1}…` : 'Así han quedado las jarras.';
+    }
+
+    return 'Fin de las jarras.';
   });
 
   readonly ranking = computed(() =>
@@ -109,7 +138,7 @@ export class BeerComponent implements AfterViewInit, OnDestroy {
       avatarUrl: this.matchService.playerAvatar(row.playerId),
       colorId: this.matchService.playerColor(row.playerId),
       mine: row.playerId === this.currentPlayerId,
-      detail: row.fell ? `Se pasó (${meters(row.distance, 1)} m) y la tiró` : `A ${meters(row.gap)} m del borde`,
+      detail: `${meters(row.total)} m del borde en total${row.falls ? ` · tiró ${row.falls} (−${row.falls * (this.state()?.fallPenalty ?? 5)})` : ''}`,
       pointsText: row.points < 0 ? `−${-row.points}` : `+${row.points}`,
     })),
   );
@@ -126,8 +155,8 @@ export class BeerComponent implements AfterViewInit, OnDestroy {
     effect(() => {
       const state = this.state();
 
-      if (state?.stage === 'sliding' && !this.slideAnnounced) {
-        this.slideAnnounced = true;
+      if (state?.stage === 'sliding' && this.slideAnnounced !== state.round) {
+        this.slideAnnounced = state.round;
         const delay = Math.max(0, (state.slideStartsAt || 0) - this.matchService.serverNow());
         untracked(() => setTimeout(() => !this.destroyed && this.audioService.playSfx('deslizar'), delay));
       }
@@ -136,7 +165,7 @@ export class BeerComponent implements AfterViewInit, OnDestroy {
         this.finalAnnounced = true;
         const mine = state.outcome.ranking.find((row) => row.playerId === this.currentPlayerId);
 
-        if (mine?.position === 1 && !mine.fell) {
+        if (mine?.position === 1 && mine.points > 0) {
           untracked(() => this.audioService.playFileEffect('win'));
         }
       }
@@ -204,15 +233,16 @@ export class BeerComponent implements AfterViewInit, OnDestroy {
 
   private commit(power: number): void {
     const lobbyId = this.matchService.match()?.lobbyId;
+    const round = this.state()?.round;
 
-    if (!lobbyId) {
+    if (!lobbyId || !round) {
       return;
     }
 
     const rounded = Math.round(power * 1000) / 1000;
-    this.myPower.set(rounded);
+    this.myThrow.set({ round, power: rounded });
     this.audioService.playSfx('voto');
-    void this.matchService.throwBeer(lobbyId, rounded);
+    void this.matchService.throwBeer(lobbyId, rounded, round);
   }
 
   /** Medidor que sube y baja (onda triangular). Se queda quieto en cuanto se elige la fuerza. */
@@ -244,6 +274,7 @@ export class BeerComponent implements AfterViewInit, OnDestroy {
 
     const throws = new Map(state.throws.map((entry) => [entry.playerId, entry]));
     return {
+      round: state.round,
       jugs: this.jugs().map((jug) => ({
         playerId: jug.playerId,
         distance: throws.get(jug.playerId)?.distance ?? null,

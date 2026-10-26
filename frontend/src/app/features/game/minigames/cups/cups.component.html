@@ -20,7 +20,7 @@
   <header class="top-bar" #topBar>
     <span class="pill title">Cubiletes</span>
     @if (state(); as game) {
-    <span class="pill" [class.bonus]="game.round === game.totalRounds">Ronda <b>{{ game.round }}</b> de {{ game.totalRounds }}{{ game.round === game.totalRounds ? ' · ¡BONUS!' : '' }}</span>
+    <span class="pill">Ronda <b>{{ game.round }}</b> de {{ game.totalRounds }}</span>
     <!-- El contador solo esta mientras se vota; al cerrar la votacion se desvanece. -->
     <span class="pill timer" [class.gone]="game.stage !== 'voting'" [class.hurry]="game.stage === 'voting' && voteTimer.seconds() <= 5">
       {{ game.stage === 'voting' ? voteTimer.seconds() : 0 }}s

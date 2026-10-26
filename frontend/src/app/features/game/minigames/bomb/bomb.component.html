@@ -1,0 +1,117 @@
+<section class="bomb" #root aria-label="Minijuego Patata caliente">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <!-- Nombre bajo los pies de cada Mii. -->
+  <div class="labels" #nameTags aria-hidden="true">
+    @for (tag of tags(); track tag.playerId) {
+    <div class="tag" [attr.data-bb-label]="tag.playerId" [class.mine]="tag.mine" [class.holder]="tag.holder" [class.picking]="tag.picking">
+      {{ tag.mine ? 'Tú' : tag.name }}
+    </div>
+    }
+  </div>
+
+  <div class="blood-flash" [attr.data-level]="bloodFlash()" aria-hidden="true"></div>
+
+  <!-- Arriba: la palabra de la que hay que encadenar (las tres ultimas letras en verde) y, debajo, donde se escribe. -->
+  <header class="panel" #panel>
+    <div class="pills">
+      <span class="pill title">Patata caliente</span>
+      @if (state(); as game) {
+      @if (game.round) {
+      <span class="pill">Ronda <b>{{ game.round }}</b></span>
+      }
+      <span class="pill">Vivos: <b>{{ game.alive.length }}</b></span>
+      }
+    </div>
+
+    @if (state(); as game) {
+    @if (game.round && !game.outcome) {
+    <div class="word-card" [class.mine]="isHolder()">
+      <small>{{ wordParts().seed ? 'Palabra inicial' : 'Última palabra' }}</small>
+      <p class="word" aria-live="polite">
+        <span>{{ wordParts().head }}</span><span class="tail">{{ wordParts().tail }}</span>
+      </p>
+
+      @if (recentWords().length > 1) {
+      <ol class="chain" aria-label="Palabras de la ronda">
+        @for (entry of recentWords().slice(0, -1); track $index) {
+        <li>{{ entry.word }}</li>
+        }
+      </ol>
+      }
+
+      @if (isHolder()) {
+      <form class="word-form" (submit)="submit($event)" autocomplete="off">
+        @for (pulse of [errorPulse()]; track pulse) {
+        <label class="input-box" [class.error]="!!errorText()" [class.waiting]="!canType()">
+          <span class="sr-only">Tu palabra</span>
+          <input
+            #wordInput
+            type="text"
+            inputmode="text"
+            enterkeyhint="send"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            [attr.maxlength]="game.timings.maxWord"
+            [disabled]="!canType()"
+            [value]="typed()"
+            (input)="onInput($any($event.target).value)"
+            [placeholder]="canType() ? 'Escribe aquí…' : 'Espera a tener la bomba…'"
+          />
+          <button type="submit" class="send" data-sfx="off" [disabled]="!canType() || !typed().trim()" aria-label="Enviar palabra">⏎</button>
+        </label>
+        }
+        @if (errorText()) {
+        <p class="error" role="alert">{{ errorText() }}</p>
+        }
+      </form>
+      } @else if (game.stage === 'typing') {
+      <p class="watching">✍️ {{ holderName() }} está escribiendo…</p>
+      }
+    </div>
+    }
+    }
+  </header>
+
+  @if (!state()?.outcome) {
+  <ol class="circle-strip" aria-label="Orden del círculo">
+    @for (entry of circle(); track entry.playerId) {
+    <li [class.holder]="entry.holder" [class.dead]="entry.dead" [class.mine]="entry.mine" [title]="entry.name">
+      <app-player-avatar [avatarUrl]="entry.avatarUrl" [name]="entry.name" [color]="entry.colorId" [size]="entry.holder ? 34 : 26" />
+      @if (entry.holder) {
+      <span class="bomb-icon" aria-hidden="true">💣</span>
+      }
+    </li>
+    }
+  </ol>
+  }
+
+  <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
+    <p class="status" [class.mine]="isHolder()" [class.boom]="state()?.stage === 'boom'">{{ statusText() }}</p>
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de Patata caliente">
+      <h2>Resultados</h2>
+      <p class="hint">Gana el último en pie; el resto, por orden de explosión.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.dead]="!row.survived">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.survived ? '¡Sobrevive!' : '💥 Explotó' }} · {{ row.words }} {{ row.words === 1 ? 'palabra' : 'palabras' }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar el círculo en 3D, pero puedes jugar escribiendo las palabras.</p>
+  }
+</section>

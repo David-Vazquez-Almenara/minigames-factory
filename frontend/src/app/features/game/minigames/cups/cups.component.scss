@@ -101,13 +101,6 @@
     background-color: #fff0a8;
   }
 
-  // Ronda bonus final.
-  &.bonus {
-    color: #fff;
-    background-color: #ff5d8f;
-    animation: bonus-throb 900ms ease-in-out infinite;
-  }
-
   &.timer {
     min-width: 58px;
     text-align: center;
@@ -314,11 +307,5 @@
   from {
     opacity: 0;
     transform: scale(0.6);
-  }
-}
-
-@keyframes bonus-throb {
-  50% {
-    transform: scale(1.07);
   }
 }

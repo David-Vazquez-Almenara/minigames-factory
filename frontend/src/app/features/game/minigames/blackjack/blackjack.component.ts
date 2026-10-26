@@ -51,10 +51,12 @@ export class BlackjackComponent implements AfterViewInit, OnDestroy {
   readonly quickAmounts = [10, 25, 50, 100];
 
   readonly betTimer = this.timerService.countdown(() => (this.state()?.stage === 'betting' ? this.state()?.betEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 30000,
   });
   readonly turnTimer = this.timerService.countdown(() => (this.state()?.stage === 'player-turns' ? this.state()?.turnEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 30000,
   });

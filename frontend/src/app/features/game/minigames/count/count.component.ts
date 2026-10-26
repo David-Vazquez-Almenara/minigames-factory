@@ -38,6 +38,7 @@ export class CountComponent implements AfterViewInit, OnDestroy {
   readonly startTimer = this.timerService.countdown(() => this.state()?.watchStartsAt);
   readonly watchTimer = this.timerService.countdown(() => this.state()?.watchEndsAt);
   readonly answerTimer = this.timerService.countdown(() => (this.state()?.outcome ? null : this.state()?.answerEndsAt), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 15000,
   });

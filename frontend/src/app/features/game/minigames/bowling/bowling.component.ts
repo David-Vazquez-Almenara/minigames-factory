@@ -8,9 +8,9 @@ import { getPlayerColor } from '../../../../shared/player-colors';
 import { BOWLING_MAX_LANES, BowlingLaneView, BowlingScene } from './bowling-scene';
 import { BowlingSimulation, simulateBowling } from './bowling-sim';
 
-// Ida y vuelta completa de cada medidor: rapidisimos, para que acertar direccion y efecto sea muy dificil.
-const DIRECTION_PERIOD_MS = 360;
-const SPIN_PERIOD_MS = 300;
+// Ida y vuelta completa de cada medidor: muy rapidos, para que acertar direccion y efecto sea dificil.
+const DIRECTION_PERIOD_MS = 470;
+const SPIN_PERIOD_MS = 400;
 
 type AimStep = 'direction' | 'spin' | 'thrown';
 
@@ -53,6 +53,7 @@ export class BowlingComponent implements AfterViewInit, OnDestroy {
 
   readonly startTimer = this.timerService.countdown(() => this.state()?.aimStartsAt);
   readonly aimTimer = this.timerService.countdown(() => (this.state()?.stage === 'aiming' ? this.state()?.aimEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 15000,
     onExpire: () => this.autoThrow(),

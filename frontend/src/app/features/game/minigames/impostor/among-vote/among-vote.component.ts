@@ -31,7 +31,7 @@ export class AmongVoteComponent {
   readonly vote = output<string>();
 
   readonly selectedTarget = signal<string | null>(null);
-  readonly timer = inject(GameTimerService).countdown(() => this.voteEndsAt(), { paused: () => this.paused() });
+  readonly timer = inject(GameTimerService).countdown(() => this.voteEndsAt(), { paused: () => this.paused(), beep: true });
   readonly hasVoted = computed(() => this.votedPlayerIds().includes(this.currentPlayerId()));
   readonly locked = computed(() => !this.canVote() || this.hasVoted() || this.sending() || Boolean(this.revealedResult()));
   readonly votersByTarget = computed(() => {

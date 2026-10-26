@@ -6,7 +6,8 @@
   <header class="top-bar" #topBar>
     <span class="pill title">Empujar</span>
     @if (state(); as push) {
-    <span class="pill">Ronda <b>{{ push.round || 1 }}</b> de {{ push.totalRounds }}</span>
+    <span class="pill">Ronda <b>{{ push.round || 1 }}</b></span>
+    <span class="pill">Pista <b>{{ arenaPercent() }}%</b></span>
     <span class="pill">Quedan <b>{{ aliveIds().length }}</b></span>
     @if (push.stage === 'aiming' && startTimer.remainingMs() <= 0) {
     <span class="pill timer" [class.hurry]="aimTimer.seconds() <= 5">{{ aimTimer.seconds() }}s</span>
@@ -18,17 +19,15 @@
   <div class="countdown">{{ launchCountdown() }}</div>
   }
 
+  <!-- Solo la fuerza y el boton de confirmar. El hueco se reserva siempre para que la pista no se mueva. -->
   <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
-    @if (canAim()) {
-    <div class="controls">
+    <div class="controls" [class.idle]="!canAim()" [attr.aria-hidden]="!canAim()">
       <span class="power" [class.zero]="!aim()">{{ aim() ? 'Fuerza ' + powerPercent() + '%' : 'Sin moverte' }}</span>
       @if (aim()) {
-      <button type="button" class="clear-button" (click)="clearAim()">Quitar</button>
+      <button type="button" class="clear-button" [disabled]="!canAim()" (click)="clearAim()">Quitar</button>
       }
-      <button type="button" class="confirm-button" data-sfx="off" (click)="confirm()">Confirmar</button>
+      <button type="button" class="confirm-button" data-sfx="off" [disabled]="!canAim()" (click)="confirm()">Confirmar</button>
     </div>
-    }
-    <p class="status">{{ statusText() }}</p>
   </footer>
 
   @if (ranking().length) {

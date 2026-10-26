@@ -23,6 +23,7 @@ export class WhoComponent {
   readonly myVote = signal<{ round: number; targetId: string } | null>(null);
 
   readonly voteTimer = this.timerService.countdown(() => (this.state()?.stage === 'voting' ? this.state()?.voteEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 15000,
   });

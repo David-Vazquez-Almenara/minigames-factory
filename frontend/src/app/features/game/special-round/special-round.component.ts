@@ -24,6 +24,11 @@ import { PogoComponent } from '../minigames/pogo/pogo.component';
 import { PushComponent } from '../minigames/push/push.component';
 import { QuizComponent } from '../minigames/quiz/quiz.component';
 import { RussianComponent } from '../minigames/russian/russian.component';
+import { BombComponent } from '../minigames/bomb/bomb.component';
+import { CannonComponent } from '../minigames/cannon/cannon.component';
+import { BombermanComponent } from '../minigames/bomberman/bomberman.component';
+import { SnakeComponent } from '../minigames/snake/snake.component';
+import { RaceComponent } from '../minigames/race/race.component';
 import { StopwatchComponent } from '../minigames/stopwatch/stopwatch.component';
 import { SwingComponent } from '../minigames/swing/swing.component';
 import { TenButComponent } from '../minigames/ten-but/ten-but.component';
@@ -33,7 +38,7 @@ import { WhoComponent } from '../minigames/who/who.component';
 type SpecialStage = 'intro' | 'explanation' | 'game';
 
 // Minijuegos que se juegan a pantalla completa (escena 3D que ocupa toda la ventana).
-const FULLSCREEN_MINIGAMES = new Set(['blackjack', 'barrels', 'balloon', 'cups', 'cars', 'dance', 'count', 'duel', 'stopwatch', 'tower', 'beer', 'chop', 'swing', 'golf', 'order', 'bowling', 'who', 'crossy', 'javelin', 'quiz', 'push', 'russian']);
+const FULLSCREEN_MINIGAMES = new Set(['blackjack', 'barrels', 'balloon', 'cups', 'cars', 'dance', 'count', 'duel', 'stopwatch', 'tower', 'beer', 'chop', 'swing', 'golf', 'order', 'bowling', 'who', 'crossy', 'javelin', 'quiz', 'push', 'russian', 'bomb', 'cannon', 'bomberman', 'snake', 'race']);
 // Respaldo si el servidor no enviara los tiempos de la intro.
 const INTRO_MS = 1750;
 const EXPLANATION_MS = 5000;
@@ -64,6 +69,11 @@ const EXPLANATION_MS = 5000;
     PushComponent,
     QuizComponent,
     RussianComponent,
+    BombComponent,
+    CannonComponent,
+    BombermanComponent,
+    SnakeComponent,
+    RaceComponent,
     StopwatchComponent,
     SwingComponent,
     TenButComponent,

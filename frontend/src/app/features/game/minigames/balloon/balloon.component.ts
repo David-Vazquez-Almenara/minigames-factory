@@ -43,6 +43,7 @@ export class BalloonComponent implements AfterViewInit, OnDestroy {
   readonly errorMessage = signal('');
 
   readonly turnTimer = this.timerService.countdown(() => (this.state()?.stage === 'pumping' ? this.state()?.turnEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 15000,
   });

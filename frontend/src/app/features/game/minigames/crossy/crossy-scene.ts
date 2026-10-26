@@ -66,6 +66,7 @@ export class CrossyScene {
   private readonly boxes = new Map<string, ThreeModule.BoxGeometry>();
   private frameHandle = 0;
   private lastFrame = performance.now();
+  private followId: string | null = null;
 
   /** Reloj comun en ms desde el inicio de la partida (lo da el componente). */
   clock: () => number = () => 0;
@@ -565,11 +566,17 @@ export class CrossyScene {
     chicken.body.scale.set(1 / Math.sqrt(stretch), stretch, 1 / Math.sqrt(stretch));
   }
 
-  /** La camara sigue a la gallina propia (hacia delante con margen para ver lo que viene). */
+  /** Modo espectador: la camara sigue a esta gallina en vez de a la propia (null = la propia). */
+  setFollow(playerId: string | null): void {
+    this.followId = playerId;
+  }
+
+  /** La camara sigue a la gallina propia (o a la espectada), hacia delante con margen para ver lo que viene. */
   private updateCamera(delta: number): void {
-    const local = [...this.chickens.values()].find((chicken) => chicken.view.isLocal);
-    const x = local ? local.group.position.x * 0.45 : 0;
-    const z = local ? local.group.position.z - 2.2 : -2.2;
+    const target =
+      (this.followId && this.chickens.get(this.followId)) || [...this.chickens.values()].find((chicken) => chicken.view.isLocal);
+    const x = target ? target.group.position.x * 0.45 : 0;
+    const z = target ? target.group.position.z - 2.2 : -2.2;
     this.cameraTarget.lerp(this.scratch.set(x, 0, z), Math.min(1, delta * 5));
     this.camera.position.set(this.cameraTarget.x + CAMERA_OFFSET.x, CAMERA_OFFSET.y, this.cameraTarget.z + CAMERA_OFFSET.z);
     this.camera.lookAt(this.cameraTarget);

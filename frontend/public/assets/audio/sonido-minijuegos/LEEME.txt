@@ -17,6 +17,11 @@ Nombres de archivo:
   quiz.mp3             Preguntas y respuestas
   push.mp3             Empujar
   russian.mp3          Ruleta rusa
+  bomb.mp3             Patata caliente
+  cannon.mp3           Cañón
+  bomberman.mp3        Bomberman
+  snake.mp3            Snake
+  race.mp3             Carrera
   blackjack.mp3        Blackjack
   barrels.mp3          Barriles
   balloon.mp3          Cuidado que explota

@@ -40,6 +40,7 @@ export class SwingComponent implements AfterViewInit, OnDestroy {
   readonly myJump = signal<{ turnIndex: number; angle: number; dir: 1 | -1; distance: number } | null>(null);
 
   readonly turnTimer = this.timerService.countdown(() => (this.state()?.stage === 'swinging' ? this.state()?.swingEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 10000,
     onExpire: () => this.release(),

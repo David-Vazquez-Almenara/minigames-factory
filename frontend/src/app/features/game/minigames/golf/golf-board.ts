@@ -2,8 +2,6 @@ import { BALL_RADIUS, GOLF_HEIGHT, GOLF_WIDTH, GolfMap, GolfSimulation, HOLE_RAD
 
 // Arrastre maximo (unidades del campo) que equivale a la fuerza maxima.
 const MAX_DRAG = 170;
-// Se puede empezar a apuntar tocando cerca de la bola.
-const GRAB_RADIUS = 70;
 
 export interface GolfBall {
   playerId: string;
@@ -28,7 +26,8 @@ export class GolfBoard {
   private offsetY = 0;
   private map: GolfMap;
   private balls: GolfBall[] = [];
-  private drag: { x: number; y: number } | null = null;
+  /** Arrastre (en coordenadas del campo): donde se pulso y donde esta ahora el dedo. */
+  private drag: { startX: number; startY: number; x: number; y: number } | null = null;
   private aiming = false;
   /** Margenes (px) que tapa el HUD arriba y abajo. */
   private insets = { top: 70, bottom: 120 };
@@ -93,17 +92,17 @@ export class GolfBoard {
       return;
     }
 
+    // Se puede pulsar en cualquier sitio (como en la jabalina): cuenta lo que se arrastra desde ahi.
     const point = this.toWorld(event);
-
-    if (Math.hypot(point.x - this.map.tee.x, point.y - this.map.tee.y) <= GRAB_RADIUS) {
-      this.drag = point;
-      event.preventDefault();
-    }
+    this.drag = { startX: point.x, startY: point.y, x: point.x, y: point.y };
+    event.preventDefault();
   };
 
   private readonly pointerMove = (event: PointerEvent) => {
     if (this.drag) {
-      this.drag = this.toWorld(event);
+      const point = this.toWorld(event);
+      this.drag.x = point.x;
+      this.drag.y = point.y;
     }
   };
 
@@ -116,14 +115,14 @@ export class GolfBoard {
     }
   };
 
-  /** Tiro segun el arrastre: hacia el lado contrario y con fuerza proporcional a la distancia. */
+  /** Tiro segun el arrastre (como un tirachinas): hacia el lado contrario y con fuerza segun lo largo que sea. */
   private currentShot(): { angle: number; power: number } | null {
     if (!this.drag) {
       return null;
     }
 
-    const dx = this.map.tee.x - this.drag.x;
-    const dy = this.map.tee.y - this.drag.y;
+    const dx = this.drag.startX - this.drag.x;
+    const dy = this.drag.startY - this.drag.y;
     return { angle: Math.atan2(dy, dx), power: Math.min(1, Math.hypot(dx, dy) / MAX_DRAG) };
   }
 
@@ -215,13 +214,14 @@ export class GolfBoard {
     const length = 40 + shot.power * 150;
     const endX = this.map.tee.x + Math.cos(shot.angle) * length;
     const endY = this.map.tee.y + Math.sin(shot.angle) * length;
-    // Flecha de direccion (de blanco a rojo segun la fuerza) y la goma hasta el dedo.
+    // Flecha de direccion (de blanco a rojo segun la fuerza) y la goma del arrastre (donde se pulso -> el dedo).
+    const drag = this.drag!;
     context.setLineDash([8, 6]);
     context.lineWidth = 2;
     context.strokeStyle = 'rgba(0,0,0,0.45)';
     context.beginPath();
-    context.moveTo(this.map.tee.x, this.map.tee.y);
-    context.lineTo(this.drag!.x, this.drag!.y);
+    context.moveTo(drag.startX, drag.startY);
+    context.lineTo(drag.x, drag.y);
     context.stroke();
     context.setLineDash([]);
     context.lineWidth = 6;

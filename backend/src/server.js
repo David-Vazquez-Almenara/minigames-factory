@@ -3,7 +3,10 @@ const cors = require('cors');
 const http = require('http');
 const crypto = require('crypto');
 const dns = require('dns').promises;
+const fs = require('fs');
 const net = require('net');
+const path = require('path');
+const zlib = require('zlib');
 const { Server } = require('socket.io');
 
 /* ------------------------------------------------------------------ */
@@ -72,6 +75,8 @@ const TEN_BUT_ANSWER_MS = 75000;
 // Intro del minijuego en los clientes ("Minijuego" + explicacion) antes de que empiece a correr el tiempo.
 // La explicacion dura como minimo lo de siempre y se alarga con textos largos para que de tiempo a leerlos.
 const MINIGAME_TITLE_MS = 1750;
+// Sin descripciones: el nombre del minijuego se ve este rato tras el titulo y se empieza a jugar.
+const MINIGAME_NAME_ONLY_MS = 1300;
 const MINIGAME_INTRO_MS = 4000;
 const MINIGAME_READING_MS_PER_CHAR = 60;
 const MINIGAME_INTRO_MAX_MS = 20000;
@@ -265,7 +270,7 @@ const MINIGAMES = [
     id: 'beer',
     title: 'Jarras en la barra',
     description:
-      'El medidor de fuerza sube y baja muy rápido: páralo lo más cerca posible de la línea roja, que deja la jarra justo en el borde. Si te pasas, la tiras.',
+      '3 rondas. Para el medidor lo más cerca posible de la línea roja, que deja la jarra justo en el borde. Gana quien menos se quede del borde en total; cada jarra que tires resta 5 puntos.',
     image: 'assets/minigames/beer.png',
     accent: '#ffe2a8',
     minPlayers: 2,
@@ -292,7 +297,7 @@ const MINIGAMES = [
     id: 'golf',
     title: 'Mini golf',
     description:
-      'Tres hoyos, un único golpe en cada uno. Arrastra hacia atrás desde tu bola (la blanca) para apuntar y elegir la fuerza, y suelta. Gana quien menos se aleje del hoyo en total.',
+      'Tres hoyos, un único golpe en cada uno. Arrastra hacia atrás desde cualquier sitio, como un tirachinas, para apuntar y elegir la fuerza, y suelta. Gana quien menos se aleje del hoyo en total.',
     image: 'assets/minigames/golf.png',
     accent: '#c8f0c0',
     minPlayers: 2,
@@ -355,7 +360,7 @@ const MINIGAMES = [
     id: 'push',
     title: 'Empujar',
     description:
-      'Arrastra desde tu ficha para elegir dirección y fuerza (puedes rectificar) y confirma. Todos salen a la vez: echa a los demás al agua y no te caigas tú. 5 rondas seguidas.',
+      'Arrastra para elegir dirección y fuerza (puedes rectificar) y confirma. Todos salen a la vez: echa a los demás al agua. Desde la ronda 3 la pista se encoge: lo marcado en rojo se hunde en la ronda siguiente.',
     image: 'assets/minigames/push.png',
     accent: '#c6f1ff',
     minPlayers: 2,
@@ -367,6 +372,51 @@ const MINIGAMES = [
       'Por turnos, coge el revólver: dispara o salta una bala y dispara la siguiente. Empieza con 1 bala y cada vez que alguien cae se recarga con una más (máximo 3). Gana quien sobreviva.',
     image: 'assets/minigames/russian.png',
     accent: '#ffd0c4',
+    minPlayers: 2,
+  },
+  {
+    id: 'bomb',
+    title: 'Patata caliente',
+    description:
+      'Palabras encadenadas con una bomba: escribe una palabra que exista y empiece por la última, las dos o las tres últimas letras de la anterior (sin repetir) y pulsa Intro para pasarla. La mecha es secreta: ¡que no te explote en las manos!',
+    image: 'assets/minigames/bomb.png',
+    accent: '#ffe0a8',
+    minPlayers: 2,
+  },
+  {
+    id: 'cannon',
+    title: 'Cañón',
+    description:
+      'Uno lleva el cañón desde la muralla y el resto elige en secreto una de las 4 zonas de abajo. Después el cañonero elige dónde disparar sin ver a nadie. 3 rondas: 10 puntos por ronda sobrevivida y el cañonero suma por cada uno que derriba.',
+    image: 'assets/minigames/cannon.png',
+    accent: '#d6e4ff',
+    minPlayers: 2,
+  },
+  {
+    id: 'bomberman',
+    title: 'Bomberman',
+    description:
+      'Muévete con WASD o las flechas (o la cruceta) y pon bombas con Espacio o Intro. Explotan a los 5 s en cruz, rompen piedras y pueden soltar mejoras de alcance y de bombas. ¡Que no te pille ninguna! Gana el último en pie.',
+    image: 'assets/minigames/bomberman.png',
+    accent: '#c9f2c9',
+    minPlayers: 2,
+  },
+  {
+    id: 'snake',
+    title: 'Snake',
+    description:
+      'Gira tu serpiente con las flechas, WASD o deslizando el dedo y come manzanas para crecer. Si chocas con la pared, con otra serpiente o contigo, quedas fuera. Gana quien aguante más; entre los que siguen, la más larga.',
+    image: 'assets/minigames/snake.png',
+    accent: '#aad751',
+    minPlayers: 2,
+  },
+  {
+    id: 'race',
+    title: 'Carrera',
+    description:
+      'Carrera de coches a 2 vueltas. Acelera con ↑ o W, frena con ↓ o S y gira con ← → o A D (o con los botones). Por el césped vas más lento. Pasa por todos los puntos de control en orden en cada vuelta (si te saltas uno, la vuelta no cuenta). Gana quien llega primero; si no terminas a tiempo, -15.',
+    image: 'assets/minigames/race.png',
+    accent: '#ffd9a8',
     minPlayers: 2,
   },
 ];
@@ -429,6 +479,8 @@ function normalizeRoomSettings(settings = {}) {
   return {
     rounds,
     enabledMinigames: enabledMinigames.length ? enabledMinigames : [...MINIGAME_IDS],
+    // Sin explicaciones: tras el titulo del minijuego se empieza a jugar directamente.
+    skipDescriptions: Boolean(settings.skipDescriptions),
   };
 }
 
@@ -635,6 +687,13 @@ function shiftMatchDeadlines(room, shiftMs) {
     [specialRound.quiz, ['questionAt', 'answerStartsAt', 'answerEndsAt', 'correctAt', 'nextRoundAt']],
     [specialRound.push, ['aimStartsAt', 'aimEndsAt', 'launchAt', 'nextRoundAt']],
     [specialRound.russian, ['turnStartsAt', 'arriveAt', 'decideStartsAt', 'decideEndsAt', 'nextAt']],
+    // Mecha de la bomba: se desplaza el inicio y el final a la vez, asi la pausa no la consume.
+    [specialRound.bomb, ['orbitEndsAt', 'passStartsAt', 'passEndsAt', 'typingStartsAt', 'explodeAt', 'nextAt']],
+    [specialRound.cannon, ['chooseStartsAt', 'chooseEndsAt', 'aimEndsAt', 'fireAt', 'impactAt', 'nextAt']],
+    [specialRound.bomberman, ['startsAt', 'endsAt']],
+    [specialRound.snake, ['startsAt', 'endsAt']],
+    [specialRound.race, ['startsAt', 'endsAt']],
+    ...(specialRound.bomberman?.bombs || []).map((bomb) => [bomb, ['explodeAt']]),
   ];
 
   for (const [state, keys] of deadlines) {
@@ -706,6 +765,7 @@ function toPublicSpecialRound(specialRound) {
     description: specialRound.description,
     startedAt: specialRound.startedAt,
     introMs: specialRound.introMs,
+    skipDescription: Boolean(specialRound.skipDescription),
     titleEndsAt: specialRound.titleEndsAt,
     introEndsAt: specialRound.introEndsAt,
     participantIds: specialRound.participantIds,
@@ -763,6 +823,11 @@ function toPublicSpecialRound(specialRound) {
     quiz: toPublicQuiz(specialRound.quiz),
     push: toPublicPush(specialRound.push),
     russian: toPublicRussian(specialRound.russian),
+    bomb: toPublicBomb(specialRound.bomb),
+    cannon: toPublicCannon(specialRound.cannon),
+    bomberman: toPublicBomberman(specialRound.bomberman),
+    snake: toPublicSnake(specialRound.snake),
+    race: toPublicRace(specialRound.race),
   };
 }
 
@@ -815,10 +880,32 @@ function buildPrivateState(room, playerId) {
     impostor: null,
     tenBut: null,
     pinturillo: null,
+    bomb: null,
+    cannon: null,
   };
 
   if (!specialRound || !specialRound.participantIds.includes(playerId)) {
     return base;
+  }
+
+  // Patata caliente: solo quien tiene la bomba sabe cuando explota (para su propio reloj).
+  const bomb = specialRound.bomb;
+
+  if (bomb?.stage === 'typing' && bomb.holderId === playerId) {
+    base.bomb = { turn: bomb.turn, explodeAt: bomb.explodeAt };
+  }
+
+  // Canon: los de abajo ven donde se pone cada uno; el canonero no lo sabe hasta el disparo.
+  const cannon = specialRound.cannon;
+
+  if (cannon && (cannon.stage === 'choosing' || cannon.stage === 'aiming') && cannon.cannoneerId !== playerId) {
+    base.cannon = {
+      round: cannon.round,
+      picks:
+        cannon.stage === 'aiming'
+          ? cannon.positions.map((entry) => ({ playerId: entry.playerId, zone: entry.zone }))
+          : [...cannon.picks.entries()].map(([id, zone]) => ({ playerId: id, zone })),
+    };
   }
 
   if (specialRound.pinturillo) {
@@ -995,7 +1082,13 @@ function startSpecialRound(room, minigameId) {
   const startedAt = Date.now();
   // Si el minijuego ya se jugo en esta partida, la explicacion dura lo minimo: ya la conocen.
   const playedMinigameIds = room.match.playedMinigameIds || (room.match.playedMinigameIds = new Set());
-  const introMs = playedMinigameIds.has(minigame.id) ? MINIGAME_INTRO_MS : minigameIntroMs(minigame.description);
+  // Con "sin descripciones" (opcion de la sala) solo se ve el titulo y el nombre del minijuego un momento.
+  const skipDescription = Boolean(room.settings.skipDescriptions);
+  const introMs = skipDescription
+    ? MINIGAME_TITLE_MS + MINIGAME_NAME_ONLY_MS
+    : playedMinigameIds.has(minigame.id)
+      ? MINIGAME_INTRO_MS
+      : minigameIntroMs(minigame.description);
   playedMinigameIds.add(minigame.id);
 
   room.match.phase = 'special-round';
@@ -1008,6 +1101,7 @@ function startSpecialRound(room, minigameId) {
     // Todos los clientes muestran el titulo y la explicacion con los mismos tiempos (reloj del servidor).
     startedAt,
     introMs,
+    skipDescription,
     titleEndsAt: startedAt + MINIGAME_TITLE_MS,
     introEndsAt: startedAt + introMs,
     participantIds,
@@ -1049,6 +1143,11 @@ function startSpecialRound(room, minigameId) {
     quiz: null,
     push: null,
     russian: null,
+    bomb: null,
+    cannon: null,
+    bomberman: null,
+    snake: null,
+    race: null,
   };
 
   if (minigame.id === 'blackjack') {
@@ -1095,6 +1194,16 @@ function startSpecialRound(room, minigameId) {
     setupPush(room);
   } else if (minigame.id === 'russian') {
     setupRussian(room);
+  } else if (minigame.id === 'bomb') {
+    setupBomb(room);
+  } else if (minigame.id === 'cannon') {
+    setupCannon(room);
+  } else if (minigame.id === 'bomberman') {
+    setupBomberman(room);
+  } else if (minigame.id === 'snake') {
+    setupSnake(room);
+  } else if (minigame.id === 'race') {
+    setupRace(room);
   } else if (minigame.id === 'impostor') {
     setupImpostor(room);
   } else if (minigame.id === 'ten-but') {
@@ -2969,15 +3078,14 @@ function toPublicBalloon(balloon) {
 /* ------------------------------------------------------------------ */
 /* Cubiletes                                                           */
 /* ------------------------------------------------------------------ */
-// - 4 rondas mas una ronda bonus final: el crupier mete la bola en un cubilete, los mezcla (cada ronda mas rapido;
-//   la bonus, muy rapido) y despues hay 15 s para elegir cubilete (sin confirmacion; se puede cambiar hasta que acaba
-//   el tiempo). Cada acierto suma 5 (max 25).
+// - 4 rondas: el crupier mete la bola en un cubilete, los mezcla (cada ronda mas rapido) y despues hay 15 s para
+//   elegir cubilete (sin confirmacion; se puede cambiar hasta que acaba el tiempo). Cada acierto suma 5 (max 20).
 // - Los movimientos los genera el servidor (anfitrion de la sala) y los manda a todos, asi todos ven el mismo
 //   patron. La posicion final de la bola no se envia hasta revelarla: solo se podria deducir del historial.
 // - Movimientos: 'swap' intercambia los cubiletes de dos huecos; 'fake' amaga el cambio y los deja como estaban.
 
 const CUPS_COUNT = 4;
-const CUPS_ROUNDS = 5;
+const CUPS_ROUNDS = 4;
 const CUPS_PLACE_MS = 2000;
 const CUPS_VOTE_MS = 15000;
 const CUPS_REVEAL_PAUSE_MS = 1000;
@@ -2989,8 +3097,6 @@ const CUPS_SPEEDS = [
   { moves: 13, moveMs: 230 },
   { moves: 15, moveMs: 190 },
   { moves: 17, moveMs: 150 },
-  // Ronda 5, bonus: mezcla muy rapida (no sigue la progresion de las anteriores).
-  { moves: 18, moveMs: 110 },
 ];
 
 function cupsFinalSlot(initialSlot, moves) {
@@ -4194,9 +4300,14 @@ function toPublicTower(tower) {
 //   sube y baja muy rapido: hay que pararlo lo mas cerca posible de la linea sin pasarse.
 // - El medidor corre en el cliente; solo se envia la fuerza. Cuando todos han lanzado se reparten las distancias
 //   y cada cliente anima todas las jarras a la vez, frenando poco a poco hasta su punto final.
-// - Puntos en escalera por cercania al borde (el mejor 30, el ultimo 0); quien tira su jarra, -5.
+// - 3 rondas. En cada una se apunta lo que le falta a cada jarra para el borde (12 m menos lo que recorre); quien la
+//   tira ese round cuenta como si no se hubiera movido (12 m). Gana quien menos suma en las 3.
+// - Puntos en escalera por esa suma (el mejor 30, el ultimo 0) y -5 por cada jarra tirada.
 
 const BEER_LENGTH = 12;
+const BEER_ROUNDS = 3;
+const BEER_FALL_PENALTY = 5;
+const BEER_NEXT_ROUND_MS = 1800;
 // Fuerza (0-1) que deja la jarra exactamente en el borde: la linea roja del medidor.
 const BEER_PERFECT_POWER = 0.8;
 // Metros que recorre la jarra con la fuerza maxima (asi el 80 % son justo los metros de la barra).
@@ -4209,23 +4320,42 @@ const BEER_RESULT_DELAY_MS = 1200;
 
 function setupBeer(room) {
   const specialRound = room.match.specialRound;
-  const aimStartsAt = specialRound.introEndsAt + BEER_LEAD_MS;
-  const length = BEER_LENGTH;
 
   specialRound.beer = {
     stage: 'aiming',
-    length,
+    round: 0,
+    length: BEER_LENGTH,
     reach: BEER_REACH,
-    aimStartsAt,
-    aimEndsAt: aimStartsAt + BEER_AIM_MS,
+    aimStartsAt: null,
+    aimEndsAt: null,
     powers: new Map(),
     slideStartsAt: null,
     slideMs: BEER_SLIDE_MS,
     throws: [],
+    history: [],
     outcome: null,
   };
 
-  setRoomTimer(room, 'beer', aimStartsAt + BEER_AIM_MS + 1000, () => startBeerSlide(room));
+  startBeerRound(room, 1, specialRound.introEndsAt + BEER_LEAD_MS);
+}
+
+/** Ronda nueva: todas las jarras vuelven a la salida y se vuelve a apuntar. */
+function startBeerRound(room, round, aimStartsAt) {
+  const beer = room.match?.specialRound?.beer;
+
+  if (!beer) {
+    return;
+  }
+
+  beer.round = round;
+  beer.stage = 'aiming';
+  beer.aimStartsAt = Math.max(Date.now(), aimStartsAt);
+  beer.aimEndsAt = beer.aimStartsAt + BEER_AIM_MS;
+  beer.powers = new Map();
+  beer.slideStartsAt = null;
+  beer.throws = [];
+  setRoomTimer(room, 'beer', beer.aimEndsAt + 1000, () => startBeerSlide(room));
+  emitMatchState(room);
 }
 
 function maybeStartBeerSlide(room) {
@@ -4252,7 +4382,16 @@ function startBeerSlide(room) {
   });
   beer.stage = 'sliding';
   beer.slideStartsAt = Date.now() + BEER_SLIDE_LEAD_MS;
-  setRoomTimer(room, 'beer', beer.slideStartsAt + BEER_SLIDE_MS + BEER_RESULT_DELAY_MS, () => finishBeer(room));
+  const round = beer.round;
+  setRoomTimer(room, 'beer', beer.slideStartsAt + BEER_SLIDE_MS + BEER_RESULT_DELAY_MS, () => {
+    // Resultado de la ronda (se ve un momento) y despues la siguiente o el final.
+    beer.history.push({ round, throws: beer.throws });
+    beer.stage = 'result';
+    setRoomTimer(room, 'beer', Date.now() + BEER_NEXT_ROUND_MS, () =>
+      round < BEER_ROUNDS ? startBeerRound(room, round + 1, Date.now() + 1200) : finishBeer(room),
+    );
+    emitMatchState(room);
+  });
   emitMatchState(room);
 }
 
@@ -4266,23 +4405,28 @@ function finishBeer(room) {
 
   clearRoomTimer(room, 'beer');
   beer.stage = 'finished';
-  const standing = beer.throws.filter((entry) => !entry.fell);
-  const gaps = [...new Set(standing.map((entry) => entry.gap))].sort((first, second) => first - second);
-  const ranking = beer.throws
+  // Suma de lo que se quedo del borde en cada ronda (tirarla cuenta como no haberse movido).
+  const totals = specialRound.participantIds.map((playerId) => {
+    const rounds = beer.history.map((entry) => entry.throws.find((row) => row.playerId === playerId)).filter(Boolean);
+    const total = Math.round(rounds.reduce((sum, row) => sum + (row.fell ? BEER_LENGTH : row.gap), 0) * 100) / 100;
+    return { playerId, total, falls: rounds.filter((row) => row.fell).length, rounds: rounds.map((row) => ({ gap: row.gap, fell: row.fell, distance: row.distance })) };
+  });
+  const levels = [...new Set(totals.map((entry) => entry.total))].sort((first, second) => first - second);
+  const ranking = totals
     .map((entry) => ({
       ...entry,
       playerName: room.players.get(entry.playerId)?.name || '',
-      position: entry.fell ? gaps.length + 1 : gaps.indexOf(entry.gap) + 1,
-      points: entry.fell ? -5 : ladderPoints(gaps.indexOf(entry.gap), gaps.length),
+      position: levels.indexOf(entry.total) + 1,
+      points: ladderPoints(levels.indexOf(entry.total), levels.length) - BEER_FALL_PENALTY * entry.falls,
     }))
-    .sort((first, second) => first.position - second.position || second.distance - first.distance);
+    .sort((first, second) => first.position - second.position);
   beer.outcome = { ranking };
   specialRound.results = ranking.map((entry) => ({
     playerId: entry.playerId,
     playerName: entry.playerName,
     points: entry.points,
-    correctCount: entry.fell ? 0 : 1,
-    answeredCount: 1,
+    correctCount: BEER_ROUNDS - entry.falls,
+    answeredCount: BEER_ROUNDS,
     finishedAt: null,
     submitted: true,
   }));
@@ -4297,6 +4441,10 @@ function toPublicBeer(beer) {
 
   return {
     stage: beer.stage,
+    round: beer.round,
+    totalRounds: BEER_ROUNDS,
+    fallPenalty: BEER_FALL_PENALTY,
+    history: beer.history,
     length: beer.length,
     reach: beer.reach,
     perfectPower: BEER_PERFECT_POWER,
@@ -4404,8 +4552,11 @@ const SWING_PIVOT = { x: 1, y: 13.2 };
 const SWING_ROPE = 4.5;
 const SWING_SPEED = 14;
 const SWING_GRAVITY = 9.8;
-// Una ida y vuelta completa del balanceo (de un extremo al otro y vuelta).
-const SWING_PERIOD_MS = 2600;
+// Una ida y vuelta completa del balanceo (de un extremo al otro y vuelta): rapida.
+const SWING_PERIOD_MS = 1500;
+// Hasta donde sube la cuerda a cada lado de la vertical: 105 grados (15 por encima de la horizontal). Pasada la
+// horizontal hacia delante, la cuerda ya vuelve hacia atras y el salto sale hacia atras (y al reves).
+const SWING_AMPLITUDE = 105;
 const SWING_WALK_MS = 1600;
 const SWING_TURN_MS = 10000;
 const SWING_AFTER_LANDING_MS = 3200;
@@ -4413,12 +4564,12 @@ const SWING_AFTER_LANDING_MS = 3200;
 /** Angulo de la cuerda (grados, 0 = vertical, +90 = horizontal hacia delante) y sentido en que se mueve. */
 function swingAngleAt(elapsedMs) {
   const phase = (2 * Math.PI * elapsedMs) / SWING_PERIOD_MS;
-  return { angle: 90 * Math.sin(phase), dir: Math.cos(phase) >= 0 ? 1 : -1 };
+  return { angle: SWING_AMPLITUDE * Math.sin(phase), dir: Math.cos(phase) >= 0 ? 1 : -1 };
 }
 
 /** Salto al soltarse: misma fisica en cliente y servidor. Distancia desde el tronco (x = 0). */
 function swingJump(angleDeg, dir) {
-  const angle = (Math.max(-90, Math.min(90, angleDeg)) * Math.PI) / 180;
+  const angle = (Math.max(-SWING_AMPLITUDE, Math.min(SWING_AMPLITUDE, angleDeg)) * Math.PI) / 180;
   const x0 = SWING_PIVOT.x + SWING_ROPE * Math.sin(angle);
   const y0 = SWING_PIVOT.y - SWING_ROPE * Math.cos(angle);
   const vx = dir * SWING_SPEED * Math.cos(angle);
@@ -4575,8 +4726,10 @@ const GOLF_ROUNDS = 3;
 const GOLF_PREVIEW_MS = 2500;
 const GOLF_AIM_MS = 15000;
 const GOLF_ROLL_LEAD_MS = 600;
+// Tope de lo que puede rodar una bola; la ronda real espera solo a la bola mas lenta (cada cliente lo envia).
 const GOLF_ROLL_MS = 7000;
-const GOLF_REVEAL_MS = 3000;
+// Pausa para ver donde ha quedado cada bola antes de pasar de hoyo.
+const GOLF_REVEAL_MS = 1000;
 // Distancia que cuenta quien no tira (o la tira al agua): peor que cualquier tiro real.
 const GOLF_MISS_DISTANCE = 1000;
 
@@ -4640,7 +4793,9 @@ function revealGolfRound(room, round) {
   golf.history.push({ round, map: golf.maps[round - 1], shots });
   golf.stage = 'rolling';
   golf.rollStartsAt = Date.now() + GOLF_ROLL_LEAD_MS;
-  golf.nextRoundAt = golf.rollStartsAt + GOLF_ROLL_MS + GOLF_REVEAL_MS;
+  // Solo se espera a que pare la bola mas lenta (las demas salen todas a la vez en rollStartsAt).
+  const slowestRollMs = Math.max(0, ...shots.filter((shot) => !shot.missed).map((shot) => shot.rollMs ?? GOLF_ROLL_MS));
+  golf.nextRoundAt = golf.rollStartsAt + slowestRollMs + GOLF_REVEAL_MS;
   setRoomTimer(room, 'golf', golf.nextRoundAt, () => (round < GOLF_ROUNDS ? startGolfRound(room, round + 1) : finishGolf(room)));
   emitMatchState(room);
 }
@@ -5560,14 +5715,16 @@ function toPublicQuiz(quiz) {
 /* ------------------------------------------------------------------ */
 /* Empujar                                                             */
 /* ------------------------------------------------------------------ */
-// - Discos (la foto de cada jugador) sobre una pista de hielo redonda rodeada de agua. 5 rondas seguidas sin
-//   recolocar a nadie: en cada una todos eligen a la vez direccion y fuerza (15 s, se puede rectificar hasta
-//   confirmar) y 2 s despues salen todos a la vez. Quien acaba con el disco entero fuera de la pista cae al agua.
+// - Discos (la foto de cada jugador) sobre una pista de hielo redonda rodeada de agua. Rondas seguidas sin
+//   recolocar a nadie, hasta que quede uno (o ninguno): en cada una todos eligen a la vez direccion y fuerza (15 s,
+//   se puede rectificar; si no se confirma vale la ultima elegida) y 2 s despues salen todos a la vez. Quien acaba
+//   con el disco entero fuera de la pista cae al agua.
+// - La pista se encoge: las 2 primeras rondas entera; desde la 2 se marca en rojo el anillo que se hunde al empezar
+//   la ronda siguiente, y quien tenga el centro en esa zona cae al agua. Asi hasta que la pista mide como una ficha.
 // - La fisica la calcula cada cliente con los impulsos de todos (es determinista); el primer cliente que termina
 //   envia el resultado y el servidor lo usa para la ronda siguiente.
 // - Puntos: los que siguen vivos al final 30; el resto, escalera segun cuando cayeron; el primero en caer 0.
 
-const PUSH_ROUNDS = 5;
 const PUSH_AIM_MS = 15000;
 const PUSH_LAUNCH_DELAY_MS = 2000;
 const PUSH_AFTER_MS = 1800;
@@ -5577,6 +5734,20 @@ const PUSH_MAX_SPEED = 16;
 const PUSH_MAX_STEPS = 120 * 12;
 // Si nadie enviara el resultado (todos desconectados), la ronda se da por terminada sin cambios.
 const PUSH_RESULT_FALLBACK_MS = PUSH_LAUNCH_DELAY_MS + 12000 + 4000;
+// La pista empieza a encogerse en esta ronda, perdiendo este radio en cada una, hasta medir como una ficha.
+const PUSH_SHRINK_FROM_ROUND = 3;
+const PUSH_SHRINK_STEP = 1.2;
+const PUSH_MIN_RADIUS = PUSH_DISC_RADIUS;
+// Animacion del anillo que se hunde al empezar la ronda (antes de poder apuntar).
+const PUSH_SHRINK_MS = 1600;
+// Con la pista ya al minimo, a lo sumo estas rondas mas (por si quedan dos que no se mueven).
+const PUSH_ROUNDS_AT_MINIMUM = 3;
+
+/** Radio de la pista en una ronda. */
+function pushArenaRadius(round) {
+  const steps = Math.max(0, round - PUSH_SHRINK_FROM_ROUND + 1);
+  return Math.max(PUSH_MIN_RADIUS, Math.round((PUSH_ARENA_RADIUS - steps * PUSH_SHRINK_STEP) * 1000) / 1000);
+}
 
 function setupPush(room) {
   const specialRound = room.match.specialRound;
@@ -5596,8 +5767,11 @@ function setupPush(room) {
     round: 0,
     players,
     aims: new Map(),
+    drafts: new Map(),
     impulses: [],
     launchBodies: [],
+    arenaRadius: PUSH_ARENA_RADIUS,
+    shrink: null,
     aimStartsAt: null,
     aimEndsAt: null,
     launchAt: null,
@@ -5615,9 +5789,44 @@ function startPushRound(room, round, extraMs = 0) {
     return;
   }
 
+  // La zona marcada en rojo en la ronda anterior se hunde: quien tenga el centro ahi cae al agua.
+  const radius = pushArenaRadius(round);
+  push.shrink = null;
+
+  if (radius < push.arenaRadius) {
+    const fallen = alivePushIds(push).filter((playerId) => {
+      const player = push.players.get(playerId);
+      return Math.hypot(player.x, player.y) > radius;
+    });
+
+    for (const playerId of fallen) {
+      // Cuenta como caido al final de la ronda anterior (despues de los que cayeron empujados en ella).
+      Object.assign(push.players.get(playerId), { alive: false, fell: { round: round - 1, step: PUSH_MAX_STEPS + 1 } });
+    }
+
+    push.shrink = { from: push.arenaRadius, to: radius, at: Date.now(), fallen };
+    extraMs = Math.max(extraMs, PUSH_SHRINK_MS);
+  }
+
+  push.arenaRadius = radius;
+  const atMinimum = round - Math.ceil((PUSH_ARENA_RADIUS - PUSH_MIN_RADIUS) / PUSH_SHRINK_STEP) - PUSH_SHRINK_FROM_ROUND + 1;
+
+  if (alivePushIds(push).length <= 1 || atMinimum > PUSH_ROUNDS_AT_MINIMUM) {
+    // Ya no se juega mas: se ve como se hunde la pista y se acaba (sin simular otra ronda).
+    push.round = round;
+    push.stage = 'resolved';
+    push.impulses = [];
+    push.launchBodies = [];
+    push.nextRoundAt = Date.now() + PUSH_SHRINK_MS;
+    setRoomTimer(room, 'push', push.nextRoundAt, () => finishPush(room));
+    emitMatchState(room);
+    return;
+  }
+
   push.round = round;
   push.stage = 'aiming';
   push.aims = new Map();
+  push.drafts = new Map();
   push.impulses = [];
   push.aimStartsAt = Date.now() + Math.max(0, extraMs);
   push.aimEndsAt = push.aimStartsAt + PUSH_AIM_MS;
@@ -5655,7 +5864,8 @@ function launchPush(room, round) {
 
   push.stage = 'launching';
   push.launchAt = Date.now() + PUSH_LAUNCH_DELAY_MS;
-  push.impulses = alivePushIds(push).map((playerId) => ({ playerId, ...(push.aims.get(playerId) || { vx: 0, vy: 0 }) }));
+  // Confirmada, o si no la ultima que eligio sin confirmar, o quieto.
+  push.impulses = alivePushIds(push).map((playerId) => ({ playerId, ...(push.aims.get(playerId) || push.drafts.get(playerId) || { vx: 0, vy: 0 }) }));
   // Posiciones de salida de la ronda: con ellas y los impulsos cada cliente anima la fisica, aunque el resultado
   // (que manda el cliente mas rapido) llegue antes de que empiece su animacion.
   push.launchBodies = alivePushIds(push).map((playerId) => ({ playerId, x: push.players.get(playerId).x, y: push.players.get(playerId).y }));
@@ -5690,7 +5900,7 @@ function applyPushResult(room, round, result) {
   const animationEnds = push.launchAt + Math.ceil((steps / 120) * 1000);
   push.nextRoundAt = Math.max(Date.now(), animationEnds) + PUSH_AFTER_MS;
   const remaining = alive.length - (result?.falls.length || 0);
-  setRoomTimer(room, 'push', push.nextRoundAt, () => (round < PUSH_ROUNDS && remaining > 1 ? startPushRound(room, round + 1) : finishPush(room)));
+  setRoomTimer(room, 'push', push.nextRoundAt, () => (remaining > 1 ? startPushRound(room, round + 1) : finishPush(room)));
   emitMatchState(room);
   return true;
 }
@@ -5727,8 +5937,8 @@ function finishPush(room) {
     playerId: entry.playerId,
     playerName: entry.playerName,
     points: entry.points,
-    correctCount: entry.survived ? PUSH_ROUNDS : (entry.fellRound || 1) - 1,
-    answeredCount: PUSH_ROUNDS,
+    correctCount: entry.survived ? push.round : (entry.fellRound || 1) - 1,
+    answeredCount: push.round,
     finishedAt: null,
     submitted: true,
   }));
@@ -5744,8 +5954,11 @@ function toPublicPush(push) {
   return {
     stage: push.stage,
     round: push.round,
-    totalRounds: PUSH_ROUNDS,
-    arenaRadius: PUSH_ARENA_RADIUS,
+    fullRadius: PUSH_ARENA_RADIUS,
+    arenaRadius: push.arenaRadius,
+    // Lo que medira la pista en la ronda siguiente: el anillo entre este radio y el actual se marca en rojo.
+    nextRadius: push.stage === 'finished' ? push.arenaRadius : pushArenaRadius(push.round + 1),
+    shrink: push.shrink,
     discRadius: PUSH_DISC_RADIUS,
     maxSpeed: PUSH_MAX_SPEED,
     players: [...push.players.entries()].map(([playerId, player]) => ({ playerId, x: player.x, y: player.y, alive: player.alive, fellRound: player.fell?.round ?? null })),
@@ -5998,6 +6211,1383 @@ function toPublicRussian(russian) {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Patata caliente                                                     */
+/* ------------------------------------------------------------------ */
+// - Todos en circulo (orden al azar). La bomba empieza en alguien al azar. Arriba sale una palabra y quien tiene
+//   la bomba escribe otra que empiece por la ultima, las dos o las tres ultimas letras de la anterior (sin
+//   repetir ninguna palabra en todo el minijuego; sin tildes ni mayusculas). Si vale, lanza la bomba al siguiente.
+// - La mecha dura entre 10 y 50 s al azar (secreta: solo la conoce quien tiene la bomba, para su reloj) y solo
+//   se consume mientras se puede escribir (los pases no cuentan). A quien le explota queda eliminado y empieza
+//   otra ronda con una mecha y una palabra nuevas. Gana el ultimo en pie; el resto, por orden de caida.
+// - Manda el cliente: comprueba la palabra y cuando se le acaba la mecha avisa de la explosion. El servidor
+//   acepta la palabra aunque llegue un poco tarde (latencia) y solo explota por su cuenta si el cliente no avisa.
+
+const BOMB_ORBIT_MS = 4200;
+const BOMB_FUSE_MIN_MS = 10000;
+const BOMB_FUSE_MAX_MS = 50000;
+// Minimo de mecha que le queda al siguiente (para que al menos pueda intentarlo).
+const BOMB_MIN_LEFT_MS = 1000;
+const BOMB_PASS_MS = 1300;
+const BOMB_SPAWN_MS = 1800;
+// Margen para palabras que salen a tiempo pero llegan tarde (o si el cliente no avisa de la explosion).
+const BOMB_GRACE_MS = 1500;
+const BOMB_BOOM_MS = 5200;
+// Quien tiene la bomba y se desconecta: explota a los pocos segundos.
+const BOMB_AWAY_MS = 2500;
+const BOMB_WORD_MIN = 3;
+const BOMB_WORD_MAX = 24;
+const BOMB_SEED_WORDS = [
+  'casa', 'perro', 'gato', 'mesa', 'silla', 'coche', 'playa', 'libro', 'arbol', 'mano', 'tomate', 'queso',
+  'reloj', 'camion', 'sol', 'luna', 'nube', 'lapiz', 'zapato', 'botella', 'ventana', 'puerta', 'pelota', 'leche',
+  'manzana', 'naranja', 'plato', 'cuchara', 'raton', 'caballo', 'tigre', 'conejo', 'pajaro', 'barco', 'avion',
+  'tren', 'bicicleta', 'guitarra', 'piano', 'camisa', 'sombrero', 'jardin', 'flor', 'hielo', 'fuego', 'agua',
+  'montaña', 'rio', 'isla', 'castillo', 'princesa', 'dragon', 'pirata', 'tesoro', 'chocolate', 'galleta',
+  'pizza', 'helado', 'cohete', 'robot', 'escuela', 'hospital', 'medico', 'bombero', 'payaso', 'circo', 'mago',
+  'espejo', 'cama', 'almohada', 'cocina', 'nevera', 'tortuga', 'elefante', 'jirafa', 'pingüino', 'calcetin',
+];
+
+/**
+ * Diccionario de espanol (unas 590.000 formas: plurales, femeninos, conjugaciones...), generado con
+ * scripts/generate-dictionary.cjs a partir del diccionario libre de LibreOffice (RLA-ES). Se guarda como un unico
+ * texto ordenado (una palabra por linea, sin tildes) y se busca con busqueda binaria: ocupa ~9 MB en memoria.
+ * Si faltara el archivo, se aceptan todas las palabras (solo se comprueban las reglas).
+ */
+const BOMB_DICTIONARY = (() => {
+  try {
+    const text = zlib.gunzipSync(fs.readFileSync(path.join(__dirname, '..', 'data', 'palabras-es.txt.gz'))).toString('utf8');
+    const starts = [0];
+
+    for (let index = text.indexOf('\n'); index >= 0; index = text.indexOf('\n', index + 1)) {
+      starts.push(index + 1);
+    }
+
+    return { text, starts: Int32Array.from(starts) };
+  } catch (error) {
+    console.warn(`Patata caliente: no se pudo cargar el diccionario (${error.message}); se aceptan todas las palabras.`);
+    return null;
+  }
+})();
+
+function bombWordExists(word) {
+  if (!BOMB_DICTIONARY) {
+    return true;
+  }
+
+  const { text, starts } = BOMB_DICTIONARY;
+  let low = 0;
+  let high = starts.length - 1;
+
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    const end = middle + 1 < starts.length ? starts[middle + 1] - 1 : text.length;
+    const candidate = text.slice(starts[middle], end);
+
+    if (candidate === word) {
+      return true;
+    }
+
+    // Mismo orden que al generar la lista (sort() de JavaScript: por unidades de codigo).
+    if (candidate < word) {
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+
+  return false;
+}
+
+/** Minusculas y sin tildes (la ñ se mantiene). Igual que en el cliente. */
+function normalizeBombWord(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/ñ/g, '\u0001')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\u0001/g, 'ñ');
+}
+
+/** null si la palabra vale; si no, el motivo. Mismas reglas que en el cliente. */
+function bombWordProblem(word, previous, used) {
+  if (!/^[a-zñ]+$/.test(word) || word.length < BOMB_WORD_MIN || word.length > BOMB_WORD_MAX || !/[aeiou]/.test(word) || /(.)\1\1/.test(word)) {
+    return 'format';
+  }
+
+  // Empieza por la ultima, las dos o las tres ultimas letras de la anterior (vale aunque sea solo eso: "rio" tras "armario").
+  const chains = [1, 2, 3].some((size) => size <= previous.length && word.startsWith(previous.slice(-size)));
+
+  if (!chains) {
+    return 'chain';
+  }
+
+  if (used.has(word)) {
+    return 'used';
+  }
+
+  return bombWordExists(word) ? null : 'unknown';
+}
+
+function setupBomb(room) {
+  const specialRound = room.match.specialRound;
+  const order = secureShuffle(specialRound.participantIds);
+
+  specialRound.bomb = {
+    stage: 'intro',
+    order,
+    alive: new Set(order),
+    eliminated: [],
+    round: 0,
+    turn: 0,
+    holderId: null,
+    fromId: null,
+    seedWord: '',
+    lastWord: '',
+    chain: [],
+    used: new Set(),
+    wordCounts: new Map(),
+    fuseLeftMs: 0,
+    orbitEndsAt: specialRound.introEndsAt + BOMB_ORBIT_MS,
+    passStartsAt: null,
+    passEndsAt: null,
+    typingStartsAt: null,
+    explodeAt: null,
+    boom: null,
+    nextAt: null,
+    outcome: null,
+  };
+
+  // Mientras la camara da la vuelta al circulo se elige al azar quien empieza.
+  const starterId = order[crypto.randomInt(order.length)];
+  setRoomTimer(room, 'bomb', specialRound.bomb.orbitEndsAt, () => startBombRound(room, starterId));
+}
+
+/** Ronda nueva: mecha y palabra nuevas; la bomba aparece en las manos de `holderId`. */
+function startBombRound(room, holderId) {
+  const bomb = room.match?.specialRound?.bomb;
+
+  if (!bomb || bomb.outcome) {
+    return;
+  }
+
+  const fresh = BOMB_SEED_WORDS.map(normalizeBombWord).filter((word) => !bomb.used.has(word));
+  const seed = fresh.length ? fresh[crypto.randomInt(fresh.length)] : normalizeBombWord(BOMB_SEED_WORDS[crypto.randomInt(BOMB_SEED_WORDS.length)]);
+  bomb.round += 1;
+  bomb.seedWord = seed;
+  bomb.lastWord = seed;
+  bomb.chain = [];
+  bomb.used.add(seed);
+  bomb.fuseLeftMs = crypto.randomInt(BOMB_FUSE_MIN_MS, BOMB_FUSE_MAX_MS + 1);
+  bomb.boom = null;
+  passBomb(room, null, holderId, BOMB_SPAWN_MS);
+}
+
+/** La bomba va de `fromId` (null = aparece) a `toId`; durante el pase la mecha no corre. */
+function passBomb(room, fromId, toId, durationMs) {
+  const bomb = room.match.specialRound.bomb;
+  const now = Date.now();
+  bomb.stage = 'passing';
+  bomb.fromId = fromId;
+  bomb.holderId = toId;
+  bomb.passStartsAt = now;
+  bomb.passEndsAt = now + durationMs;
+  bomb.typingStartsAt = null;
+  bomb.explodeAt = null;
+  bomb.nextAt = null;
+  setRoomTimer(room, 'bomb', bomb.passEndsAt, () => startBombTyping(room));
+  emitMatchState(room);
+  sendPrivateStates(room);
+}
+
+function startBombTyping(room) {
+  const bomb = room.match?.specialRound?.bomb;
+
+  if (!bomb || bomb.outcome || bomb.stage !== 'passing') {
+    return;
+  }
+
+  const now = Date.now();
+  bomb.stage = 'typing';
+  bomb.turn += 1;
+  bomb.typingStartsAt = now;
+  bomb.explodeAt = now + bomb.fuseLeftMs;
+  scheduleBombFallback(room);
+  emitMatchState(room);
+  sendPrivateStates(room);
+}
+
+/** Explosion por si el cliente no avisa (o si quien tiene la bomba ya no esta). */
+function scheduleBombFallback(room) {
+  const bomb = room.match.specialRound.bomb;
+  const turn = bomb.turn;
+  const away = !room.players.get(bomb.holderId)?.active;
+  const at = away ? Math.min(bomb.explodeAt + BOMB_GRACE_MS, Date.now() + BOMB_AWAY_MS) : bomb.explodeAt + BOMB_GRACE_MS;
+  setRoomTimer(room, 'bomb', at, () => explodeBomb(room, turn));
+}
+
+/** Palabra valida (comprobada en el cliente, que ha medido cuanto ha tardado): la bomba pasa al siguiente. */
+function acceptBombWord(room, playerId, rawWord, usedMs) {
+  const bomb = room.match?.specialRound?.bomb;
+  const now = Date.now();
+
+  if (!bomb || bomb.outcome || bomb.stage !== 'typing' || bomb.holderId !== playerId) {
+    return { ok: false, reason: 'Ahora no tienes la bomba.' };
+  }
+
+  if (now > bomb.explodeAt + BOMB_GRACE_MS) {
+    return { ok: false, reason: '¡Demasiado tarde!' };
+  }
+
+  const word = normalizeBombWord(rawWord);
+  const problem = bombWordProblem(word, bomb.lastWord, bomb.used);
+
+  if (problem) {
+    return { ok: false, reason: problem === 'unknown' ? `«${word.toUpperCase()}» no está en el diccionario.` : 'Esa palabra no vale.', problem };
+  }
+
+  // El tiempo lo mide el cliente (asi la latencia no le quita mecha); como mucho, lo que ha pasado de verdad.
+  const spent = Math.max(0, Math.min(Number(usedMs) || 0, now - bomb.typingStartsAt));
+
+  if (spent >= bomb.fuseLeftMs) {
+    return { ok: false, reason: '¡Demasiado tarde!' };
+  }
+
+  bomb.fuseLeftMs = Math.max(BOMB_MIN_LEFT_MS, bomb.fuseLeftMs - spent);
+  bomb.used.add(word);
+  bomb.lastWord = word;
+  bomb.chain.push({ word, playerId });
+  bomb.wordCounts.set(playerId, (bomb.wordCounts.get(playerId) || 0) + 1);
+  passBomb(room, playerId, nextBombHolder(room, playerId), BOMB_PASS_MS);
+  return { ok: true };
+}
+
+/** Siguiente jugador vivo (y presente si hay alguno) en el circulo despues de `playerId`. */
+function nextBombHolder(room, playerId) {
+  const bomb = room.match.specialRound.bomb;
+  const start = bomb.order.indexOf(playerId);
+  const candidates = [];
+
+  for (let step = 1; step <= bomb.order.length; step += 1) {
+    const id = bomb.order[(start + step) % bomb.order.length];
+
+    if (bomb.alive.has(id) && id !== playerId) {
+      candidates.push(id);
+    }
+  }
+
+  return candidates.find((id) => room.players.get(id)?.active) || candidates[0] || playerId;
+}
+
+function explodeBomb(room, turn) {
+  const bomb = room.match?.specialRound?.bomb;
+
+  if (!bomb || bomb.outcome || bomb.stage !== 'typing' || bomb.turn !== turn) {
+    return false;
+  }
+
+  const victimId = bomb.holderId;
+  const now = Date.now();
+  bomb.stage = 'boom';
+  bomb.boom = { playerId: victimId, at: now, round: bomb.round };
+  bomb.alive.delete(victimId);
+  bomb.eliminated.push({ playerId: victimId, round: bomb.round });
+  bomb.explodeAt = null;
+  bomb.nextAt = now + BOMB_BOOM_MS;
+  setRoomTimer(room, 'bomb', bomb.nextAt, () => {
+    if (room.match?.specialRound?.bomb !== bomb) {
+      return;
+    }
+
+    const contenders = bomb.order.filter((id) => bomb.alive.has(id) && room.players.get(id)?.active);
+
+    if (contenders.length <= 1) {
+      finishBomb(room);
+      return;
+    }
+
+    startBombRound(room, nextBombHolder(room, victimId));
+  });
+  emitMatchState(room);
+  sendPrivateStates(room);
+  return true;
+}
+
+function finishBomb(room) {
+  const specialRound = room.match?.specialRound;
+  const bomb = specialRound?.bomb;
+
+  if (!bomb || bomb.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'bomb');
+  bomb.stage = 'finished';
+  bomb.holderId = null;
+  const survivors = bomb.order.filter((playerId) => bomb.alive.has(playerId));
+  const ordered = [
+    ...survivors.filter((playerId) => room.players.get(playerId)?.active),
+    ...survivors.filter((playerId) => !room.players.get(playerId)?.active),
+    ...[...bomb.eliminated].reverse().map((entry) => entry.playerId),
+  ];
+  const ranking = ordered.map((playerId, index) => ({
+    playerId,
+    playerName: room.players.get(playerId)?.name || '',
+    survived: bomb.alive.has(playerId),
+    words: bomb.wordCounts.get(playerId) || 0,
+    position: index + 1,
+    points: ladderPoints(index, ordered.length),
+  }));
+  bomb.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.survived ? 1 : 0,
+    answeredCount: 1,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+  sendPrivateStates(room);
+}
+
+/** Si quien tiene la bomba se va mientras escribe, explota a los pocos segundos. */
+function maybeBombAway(room) {
+  const bomb = room.match?.specialRound?.bomb;
+
+  if (bomb?.stage === 'typing' && !room.players.get(bomb.holderId)?.active) {
+    scheduleBombFallback(room);
+  }
+}
+
+function toPublicBomb(bomb) {
+  if (!bomb) {
+    return null;
+  }
+
+  // La mecha (cuanto queda) no sale de aqui: solo la recibe quien tiene la bomba, en su estado privado.
+  return {
+    stage: bomb.stage,
+    order: bomb.order,
+    alive: bomb.order.filter((playerId) => bomb.alive.has(playerId)),
+    eliminated: bomb.eliminated,
+    round: bomb.round,
+    turn: bomb.turn,
+    holderId: bomb.holderId,
+    fromId: bomb.fromId,
+    seedWord: bomb.seedWord,
+    lastWord: bomb.lastWord,
+    chain: bomb.chain,
+    used: [...bomb.used],
+    orbitEndsAt: bomb.orbitEndsAt,
+    passStartsAt: bomb.passStartsAt,
+    passEndsAt: bomb.passEndsAt,
+    typingStartsAt: bomb.typingStartsAt,
+    boom: bomb.boom,
+    nextAt: bomb.nextAt,
+    timings: { passMs: BOMB_PASS_MS, spawnMs: BOMB_SPAWN_MS, boomMs: BOMB_BOOM_MS, minWord: BOMB_WORD_MIN, maxWord: BOMB_WORD_MAX },
+    outcome: bomb.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Canon                                                               */
+/* ------------------------------------------------------------------ */
+// - Uno al azar lleva el canon (en lo alto de una muralla) y el resto, abajo, eligen una de 4 zonas en 15 s (si
+//   no eligen, una al azar). El canonero no ve donde se ponen. Despues el canonero tiene 15 s para elegir a que
+//   zona dispara (si no, al azar). Se desvela quien esta en cada zona, dispara y los de esa zona salen volando.
+// - Maximo 3 rondas (o hasta que no quede nadie abajo). Puntos: el canonero, 10 por cada uno que derriba si en
+//   el minijuego hay 3 jugadores o menos (5 si hay mas); los de abajo, 10 por cada ronda que sobreviven.
+// - Las zonas elegidas solo las reciben los de abajo (estado privado); el canonero no las ve hasta el disparo.
+
+const CANNON_ROUNDS = 3;
+const CANNON_ZONES = 4;
+const CANNON_CHOOSE_MS = 15000;
+// Si ya han elegido todos, la eleccion se cierra este rato despues del ultimo cambio.
+const CANNON_SETTLE_MS = 2500;
+const CANNON_AIM_MS = 15000;
+const CANNON_AWAY_MS = 2500;
+const CANNON_REVEAL_MS = 1800;
+const CANNON_FLIGHT_MS = 900;
+const CANNON_RESULT_MS = 4200;
+const CANNON_SURVIVE_POINTS = 10;
+
+function setupCannon(room) {
+  const specialRound = room.match.specialRound;
+  const ids = specialRound.participantIds;
+  const cannoneerId = ids[crypto.randomInt(ids.length)];
+  const victims = secureShuffle(ids.filter((playerId) => playerId !== cannoneerId));
+
+  specialRound.cannon = {
+    stage: 'choosing',
+    cannoneerId,
+    victims,
+    alive: new Set(victims),
+    round: 0,
+    picks: new Map(),
+    chooseStartsAt: null,
+    chooseEndsAt: null,
+    aimEndsAt: null,
+    target: null,
+    positions: [],
+    fireAt: null,
+    impactAt: null,
+    nextAt: null,
+    history: [],
+    kills: 0,
+    survived: new Map(victims.map((playerId) => [playerId, 0])),
+    pointsPerKill: ids.length <= 3 ? 10 : 5,
+    outcome: null,
+  };
+
+  startCannonRound(room, 1, specialRound.introEndsAt);
+}
+
+function startCannonRound(room, round, startsAt) {
+  const cannon = room.match?.specialRound?.cannon;
+
+  if (!cannon || cannon.outcome) {
+    return;
+  }
+
+  cannon.round = round;
+  cannon.stage = 'choosing';
+  cannon.picks = new Map();
+  cannon.chooseStartsAt = Math.max(Date.now(), startsAt);
+  cannon.chooseEndsAt = cannon.chooseStartsAt + CANNON_CHOOSE_MS;
+  cannon.aimEndsAt = null;
+  cannon.target = null;
+  cannon.positions = [];
+  cannon.fireAt = null;
+  cannon.impactAt = null;
+  cannon.nextAt = null;
+  setRoomTimer(room, 'cannon', cannon.chooseEndsAt, () => closeCannonChoosing(room, round));
+  emitMatchState(room);
+  sendPrivateStates(room);
+}
+
+function cannonVictimsInPlay(room) {
+  const cannon = room.match.specialRound.cannon;
+  return cannon.victims.filter((playerId) => cannon.alive.has(playerId));
+}
+
+/** Si ya han elegido todos los de abajo (presentes), se cierra poco despues del ultimo cambio. */
+function maybeSettleCannonChoosing(room) {
+  const cannon = room.match?.specialRound?.cannon;
+
+  if (cannon?.stage !== 'choosing') {
+    return;
+  }
+
+  const present = cannonVictimsInPlay(room).filter((playerId) => room.players.get(playerId)?.active);
+
+  if (present.every((playerId) => cannon.picks.has(playerId))) {
+    const round = cannon.round;
+    setRoomTimer(room, 'cannon', Math.min(cannon.chooseEndsAt, Date.now() + CANNON_SETTLE_MS), () => closeCannonChoosing(room, round));
+  }
+}
+
+function closeCannonChoosing(room, round) {
+  const cannon = room.match?.specialRound?.cannon;
+
+  if (!cannon || cannon.outcome || cannon.stage !== 'choosing' || cannon.round !== round) {
+    return;
+  }
+
+  // Quien no ha elegido va a una zona al azar.
+  cannon.positions = cannonVictimsInPlay(room).map((playerId) =>
+    cannon.picks.has(playerId) ? { playerId, zone: cannon.picks.get(playerId), auto: false } : { playerId, zone: crypto.randomInt(CANNON_ZONES), auto: true },
+  );
+  cannon.stage = 'aiming';
+  const away = !room.players.get(cannon.cannoneerId)?.active;
+  cannon.aimEndsAt = Date.now() + (away ? CANNON_AWAY_MS : CANNON_AIM_MS);
+  setRoomTimer(room, 'cannon', cannon.aimEndsAt, () => fireCannon(room, round, crypto.randomInt(CANNON_ZONES)));
+  emitMatchState(room);
+  sendPrivateStates(room);
+}
+
+function fireCannon(room, round, zone) {
+  const cannon = room.match?.specialRound?.cannon;
+
+  if (!cannon || cannon.outcome || cannon.stage !== 'aiming' || cannon.round !== round) {
+    return false;
+  }
+
+  const now = Date.now();
+  const hit = cannon.positions.filter((entry) => entry.zone === zone).map((entry) => entry.playerId);
+  cannon.stage = 'firing';
+  cannon.target = zone;
+  cannon.fireAt = now + CANNON_REVEAL_MS;
+  cannon.impactAt = cannon.fireAt + CANNON_FLIGHT_MS;
+  cannon.nextAt = cannon.impactAt + CANNON_RESULT_MS;
+  cannon.kills += hit.length;
+
+  for (const entry of cannon.positions) {
+    if (hit.includes(entry.playerId)) {
+      cannon.alive.delete(entry.playerId);
+    } else {
+      cannon.survived.set(entry.playerId, (cannon.survived.get(entry.playerId) || 0) + 1);
+    }
+  }
+
+  cannon.history.push({ round, target: zone, positions: cannon.positions, hit });
+  const current = () => room.match?.specialRound?.cannon === cannon && !cannon.outcome;
+  setRoomTimer(room, 'cannon', cannon.impactAt, () => {
+    if (current()) {
+      cannon.stage = 'result';
+      emitMatchState(room);
+    }
+  });
+  setRoomTimer(room, 'cannon-next', cannon.nextAt, () => {
+    if (!current()) {
+      return;
+    }
+
+    const remaining = cannonVictimsInPlay(room).filter((playerId) => room.players.get(playerId)?.active);
+
+    if (round >= CANNON_ROUNDS || !remaining.length || !room.players.get(cannon.cannoneerId)) {
+      finishCannon(room);
+      return;
+    }
+
+    startCannonRound(room, round + 1, Date.now());
+  });
+  emitMatchState(room);
+  sendPrivateStates(room);
+  return true;
+}
+
+function finishCannon(room) {
+  const specialRound = room.match?.specialRound;
+  const cannon = specialRound?.cannon;
+
+  if (!cannon || cannon.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'cannon');
+  clearRoomTimer(room, 'cannon-next');
+  cannon.stage = 'finished';
+  const rows = [
+    { playerId: cannon.cannoneerId, role: 'cannoneer', kills: cannon.kills, rounds: 0, points: cannon.kills * cannon.pointsPerKill },
+    ...cannon.victims.map((playerId) => {
+      const rounds = cannon.survived.get(playerId) || 0;
+      return { playerId, role: 'victim', kills: 0, rounds, survived: cannon.alive.has(playerId), points: rounds * CANNON_SURVIVE_POINTS };
+    }),
+  ];
+  const levels = [...new Set(rows.map((row) => row.points))].sort((first, second) => second - first);
+  const ranking = rows
+    .map((row) => ({ ...row, playerName: room.players.get(row.playerId)?.name || '', position: levels.indexOf(row.points) + 1 }))
+    .sort((first, second) => first.position - second.position);
+  cannon.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.role === 'cannoneer' ? entry.kills : entry.rounds,
+    answeredCount: entry.role === 'cannoneer' ? cannon.victims.length : CANNON_ROUNDS,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+  sendPrivateStates(room);
+}
+
+/** Si el canonero se va mientras apunta, dispara al azar enseguida; si se van los de abajo, puede cerrarse antes. */
+function maybeCannonAway(room) {
+  const cannon = room.match?.specialRound?.cannon;
+
+  if (cannon?.stage === 'aiming' && !room.players.get(cannon.cannoneerId)?.active) {
+    const round = cannon.round;
+    setRoomTimer(room, 'cannon', Math.min(cannon.aimEndsAt, Date.now() + CANNON_AWAY_MS), () => fireCannon(room, round, crypto.randomInt(CANNON_ZONES)));
+  }
+
+  maybeSettleCannonChoosing(room);
+}
+
+function toPublicCannon(cannon) {
+  if (!cannon) {
+    return null;
+  }
+
+  // Donde se ha puesto cada uno no se publica hasta el disparo (los de abajo lo reciben en su estado privado).
+  const revealed = cannon.stage === 'firing' || cannon.stage === 'result' || cannon.stage === 'finished';
+  return {
+    stage: cannon.stage,
+    cannoneerId: cannon.cannoneerId,
+    victims: cannon.victims,
+    alive: cannon.victims.filter((playerId) => cannon.alive.has(playerId)),
+    round: cannon.round,
+    totalRounds: CANNON_ROUNDS,
+    zones: CANNON_ZONES,
+    chooseStartsAt: cannon.chooseStartsAt,
+    chooseEndsAt: cannon.chooseEndsAt,
+    aimEndsAt: cannon.aimEndsAt,
+    pickedPlayerIds: [...cannon.picks.keys()],
+    target: revealed ? cannon.target : null,
+    positions: revealed ? cannon.positions : [],
+    fireAt: cannon.fireAt,
+    impactAt: cannon.impactAt,
+    nextAt: cannon.nextAt,
+    history: cannon.history,
+    kills: cannon.kills,
+    pointsPerKill: cannon.pointsPerKill,
+    survivePoints: CANNON_SURVIVE_POINTS,
+    outcome: cannon.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Bomberman                                                           */
+/* ------------------------------------------------------------------ */
+// - Arena cuadrada en cuadricula (11x11 hasta 5 jugadores; mas grande con mas): pared exterior, columnas fijas en
+//   las casillas pares y piedras en todo lo demas salvo los spawns (la casilla y sus 4 vecinas).
+// - Cada cliente mueve su personaje casilla a casilla (al instante en su pantalla) y envia solo la casilla nueva
+//   al cambiar; el servidor la reenvia a los demas en un evento ligero (sin el estado completo).
+// - Bombas: se envian una sola vez, con su hora de explosion en el reloj comun (puesta + 5 s). Cada cliente la
+//   hace explotar a esa hora (todas a la vez) calculando la cruz con la misma regla; el servidor hace lo mismo y
+//   publica el mapa resultante (piedras rotas, mejoras nuevas). Las mejoras solas las decide el servidor.
+// - Cada cliente decide si su personaje esta en una llama (como los atropellos de la carretera) y lo avisa.
+// - Gana el ultimo en pie (si caen todos a la vez, empatan). Tiempo maximo: si se acaba, empatan los vivos.
+
+const BM_FUSE_MS = 5000;
+const BM_START_RADIUS = 3;
+const BM_START_BOMBS = 1;
+// Probabilidad de que una piedra rota deje una mejora.
+const BM_POWERUP_CHANCE = 0.3;
+const BM_LEAD_MS = 3000;
+const BM_DURATION_MS = 180000;
+// Tras una baja se espera un poco por si caen mas en la misma explosion (empate).
+const BM_SETTLE_MS = 1300;
+// Margen para la hora de colocacion que envia el cliente (latencia).
+const BM_PLACE_SLACK_MS = 400;
+const BM_MIN_SPAWN_DISTANCE = 5;
+
+function bombermanSize(players) {
+  if (players <= 2) return 11;
+  if (players <= 4) return 13;
+  if (players <= 9) return 15;
+  if (players <= 14) return 17;
+  if (players <= 20) return 19;
+  return 21;
+}
+
+/** Casillas de aparicion segun el numero de jugadores (todas en suelo: nunca en columnas). */
+function bombermanSpawns(size, count) {
+  const last = size - 2;
+  const center = (size - 1) / 2;
+  const fix = (x, y) => (x % 2 === 0 && y % 2 === 0 ? [x + 1, y + 1] : [x, y]);
+  const corners = secureShuffle([
+    [1, 1],
+    [last, last],
+    [last, 1],
+    [1, last],
+  ]);
+  let spots;
+
+  if (count === 2) {
+    // Esquinas en diagonal.
+    spots = [corners[0], [size - 1 - corners[0][0], size - 1 - corners[0][1]]];
+  } else if (count <= 4) {
+    spots = corners.slice(0, count);
+  } else if (count === 5) {
+    spots = [...corners, fix(center, center)];
+  } else {
+    const sides = secureShuffle([
+      [center, 1],
+      [1, center],
+      [last, center],
+      [center, last],
+    ]).map(([x, y]) => fix(x, y));
+    spots = [...corners, ...sides, fix(center, center)].slice(0, count);
+  }
+
+  // Si no hay bastantes, al azar a 5 casillas (o mas) de todos los demas. Se prueba varias veces antes de
+  // conformarse con menos distancia (solo si el mapa no da para mas).
+  const distance = (first, second) => Math.abs(first[0] - second[0]) + Math.abs(first[1] - second[1]);
+  const fixed = spots;
+
+  for (let minimum = BM_MIN_SPAWN_DISTANCE; minimum >= 1; minimum -= 1) {
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const placed = [...fixed];
+
+      while (placed.length < count) {
+        const free = [];
+
+        for (let y = 1; y <= last; y += 1) {
+          for (let x = 1; x <= last; x += 1) {
+            if (!(x % 2 === 0 && y % 2 === 0) && placed.every((spot) => distance(spot, [x, y]) >= minimum)) {
+              free.push([x, y]);
+            }
+          }
+        }
+
+        if (!free.length) {
+          break;
+        }
+
+        placed.push(free[crypto.randomInt(free.length)]);
+      }
+
+      if (placed.length === count) {
+        return placed;
+      }
+    }
+  }
+
+  return spots;
+}
+
+/**
+ * Mapa inicial: 'W' pared exterior, 'C' columna, 'S' piedra, '.' suelo. Todo es piedra salvo las columnas y la
+ * zona de cada spawn (su casilla y sus 4 vecinas ortogonales si no son pared ni columna).
+ */
+function bombermanMap(size, spawns) {
+  const cells = [];
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      cells.push(x === 0 || y === 0 || x === size - 1 || y === size - 1 ? 'W' : x % 2 === 0 && y % 2 === 0 ? 'C' : 'S');
+    }
+  }
+
+  for (const [x, y] of spawns) {
+    for (const [dx, dy] of [
+      [0, 0],
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const index = (y + dy) * size + (x + dx);
+
+      if (cells[index] === 'S') {
+        cells[index] = '.';
+      }
+    }
+  }
+
+  return cells;
+}
+
+/**
+ * Explosion (con reaccion en cadena) de un grupo de bombas sobre una foto del mapa: cada bomba hace una cruz de
+ * su radio; las piedras se rompen y paran la llama, las columnas y la pared la paran sin romperse, y cualquier
+ * otra bomba alcanzada explota en el acto. Como se calcula sobre la foto inicial, el orden no cambia el
+ * resultado. Misma funcion en el cliente (bomberman-rules.ts).
+ */
+function bombermanBlast(size, cells, bombs, triggerIds) {
+  const byCell = new Map(bombs.map((bomb) => [bomb.y * size + bomb.x, bomb]));
+  const detonated = new Set();
+  const queue = [...triggerIds];
+  const hit = new Set();
+  const stones = new Set();
+
+  while (queue.length) {
+    const id = queue.shift();
+
+    if (detonated.has(id)) {
+      continue;
+    }
+
+    const bomb = bombs.find((item) => item.id === id);
+
+    if (!bomb) {
+      continue;
+    }
+
+    detonated.add(id);
+    hit.add(bomb.y * size + bomb.x);
+
+    for (const [dx, dy] of [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ]) {
+      for (let step = 1; step <= bomb.radius; step += 1) {
+        const x = bomb.x + dx * step;
+        const y = bomb.y + dy * step;
+
+        if (x < 0 || y < 0 || x >= size || y >= size) {
+          break;
+        }
+
+        const index = y * size + x;
+        const cell = cells[index];
+
+        if (cell === 'W' || cell === 'C') {
+          break;
+        }
+
+        hit.add(index);
+        const other = byCell.get(index);
+
+        if (other && !detonated.has(other.id)) {
+          queue.push(other.id);
+        }
+
+        if (cell === 'S') {
+          stones.add(index);
+          break;
+        }
+      }
+    }
+  }
+
+  return { detonated: [...detonated], hit: [...hit].sort((a, b) => a - b), stones: [...stones].sort((a, b) => a - b) };
+}
+
+function setupBomberman(room) {
+  const specialRound = room.match.specialRound;
+  const ids = secureShuffle(specialRound.participantIds);
+  const size = bombermanSize(ids.length);
+  const spawns = bombermanSpawns(size, ids.length);
+  const startsAt = specialRound.introEndsAt + BM_LEAD_MS;
+
+  specialRound.bomberman = {
+    stage: 'playing',
+    size,
+    cells: bombermanMap(size, spawns),
+    players: new Map(
+      ids.map((playerId, index) => [
+        playerId,
+        { x: spawns[index][0], y: spawns[index][1], alive: true, radius: BM_START_RADIUS, capacity: BM_START_BOMBS, deathAt: null },
+      ]),
+    ),
+    bombs: [],
+    powerups: [],
+    blasts: [],
+    nextBombId: 1,
+    nextBlastId: 1,
+    lastBoomAt: 0,
+    startsAt,
+    endsAt: startsAt + BM_DURATION_MS,
+    outcome: null,
+  };
+
+  setRoomTimer(room, 'bomberman-end', specialRound.bomberman.endsAt, () => finishBomberman(room));
+}
+
+/** Programa el temporizador para la proxima bomba que toque. */
+function scheduleBombermanBoom(room) {
+  const bm = room.match?.specialRound?.bomberman;
+
+  if (!bm || bm.outcome) {
+    return;
+  }
+
+  if (!bm.bombs.length) {
+    clearRoomTimer(room, 'bomberman');
+    return;
+  }
+
+  const next = Math.min(...bm.bombs.map((bomb) => bomb.explodeAt));
+  setRoomTimer(room, 'bomberman', next, () => explodeBombermanBombs(room));
+}
+
+/** Explotan las bombas cuya hora ha llegado (y todas las que alcancen en cadena). */
+function explodeBombermanBombs(room) {
+  const bm = room.match?.specialRound?.bomberman;
+
+  if (!bm || bm.outcome) {
+    return;
+  }
+
+  const now = Date.now();
+  const due = bm.bombs.filter((bomb) => bomb.explodeAt <= now + 5).sort((first, second) => first.explodeAt - second.explodeAt || first.id - second.id);
+
+  if (!due.length) {
+    scheduleBombermanBoom(room);
+    return;
+  }
+
+  // Cada bomba vencida (si no la ha detonado ya otra) abre su propio grupo, a su hora.
+  while (due.length) {
+    const first = due.shift();
+
+    if (!bm.bombs.includes(first)) {
+      continue;
+    }
+
+    const result = bombermanBlast(bm.size, bm.cells, bm.bombs, [first.id]);
+    const at = first.explodeAt;
+    bm.bombs = bm.bombs.filter((bomb) => !result.detonated.includes(bomb.id));
+
+    for (const index of result.stones) {
+      bm.cells[index] = '.';
+    }
+
+    // Las mejoras alcanzadas se queman; despues aparecen las nuevas en las piedras rotas.
+    bm.powerups = bm.powerups.filter((powerup) => !result.hit.includes(powerup.y * bm.size + powerup.x));
+    const spawned = [];
+
+    for (const index of result.stones) {
+      if (crypto.randomInt(1000) < BM_POWERUP_CHANCE * 1000) {
+        const powerup = { x: index % bm.size, y: Math.floor(index / bm.size), type: crypto.randomInt(2) ? 'radius' : 'bombs' };
+        bm.powerups.push(powerup);
+        spawned.push(powerup);
+      }
+    }
+
+    bm.blasts.push({ id: bm.nextBlastId, at, bombIds: result.detonated, hit: result.hit, stones: result.stones, powerups: spawned });
+    bm.blasts = bm.blasts.slice(-12);
+    bm.nextBlastId += 1;
+    bm.lastBoomAt = Math.max(bm.lastBoomAt, at);
+
+    // Los que no estan conectados no pueden avisar: cuenta su ultima casilla conocida.
+    for (const [playerId, player] of bm.players) {
+      if (player.alive && !room.players.get(playerId)?.active && result.hit.includes(player.y * bm.size + player.x)) {
+        eliminateBombermanPlayer(room, playerId, at);
+      }
+    }
+  }
+
+  emitMatchState(room);
+  scheduleBombermanBoom(room);
+}
+
+function eliminateBombermanPlayer(room, playerId, at) {
+  const bm = room.match.specialRound.bomberman;
+  const player = bm.players.get(playerId);
+
+  if (!player?.alive) {
+    return false;
+  }
+
+  player.alive = false;
+  player.deathAt = at;
+  // Se espera un momento por si caen mas en la misma explosion antes de ver si ha terminado.
+  setRoomTimer(room, 'bomberman-settle', Date.now() + BM_SETTLE_MS, () => {
+    const alive = [...bm.players.entries()].filter(([id, entry]) => entry.alive && room.players.get(id)?.active);
+
+    if (alive.length <= 1) {
+      finishBomberman(room);
+    }
+  });
+  return true;
+}
+
+function finishBomberman(room) {
+  const specialRound = room.match?.specialRound;
+  const bm = specialRound?.bomberman;
+
+  if (!bm || bm.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'bomberman');
+  clearRoomTimer(room, 'bomberman-end');
+  clearRoomTimer(room, 'bomberman-settle');
+  bm.stage = 'finished';
+  // Primero los que siguen en pie (empatados entre si); despues, cuanto mas tarde cayo, mejor. Los que caen en
+  // la misma explosion empatan.
+  const entries = [...bm.players.entries()].map(([playerId, player]) => ({ playerId, ...player, key: player.alive ? Infinity : player.deathAt }));
+  const levels = [...new Set(entries.map((entry) => entry.key))].sort((first, second) => second - first);
+  const ranking = entries
+    .map((entry) => ({
+      playerId: entry.playerId,
+      playerName: room.players.get(entry.playerId)?.name || '',
+      survived: entry.alive,
+      position: levels.indexOf(entry.key) + 1,
+      points: ladderPoints(levels.indexOf(entry.key), levels.length),
+    }))
+    .sort((first, second) => first.position - second.position);
+  const winners = ranking.filter((row) => row.position === 1);
+  bm.outcome = { ranking, draw: winners.length > 1, winnerId: winners.length === 1 ? winners[0].playerId : null };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.position === 1 ? 1 : 0,
+    answeredCount: 1,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+/** Si quedan menos de dos conectados vivos (alguien se ha ido), se acaba. */
+function maybeFinishBomberman(room) {
+  const bm = room.match?.specialRound?.bomberman;
+
+  if (bm && !bm.outcome && [...bm.players.entries()].filter(([id, player]) => player.alive && room.players.get(id)?.active).length <= 1) {
+    setRoomTimer(room, 'bomberman-settle', Date.now() + BM_SETTLE_MS, () => {
+      if ([...bm.players.entries()].filter(([id, player]) => player.alive && room.players.get(id)?.active).length <= 1) {
+        finishBomberman(room);
+      }
+    });
+  }
+}
+
+function toPublicBomberman(bm) {
+  if (!bm) {
+    return null;
+  }
+
+  return {
+    stage: bm.stage,
+    size: bm.size,
+    cells: bm.cells.join(''),
+    players: [...bm.players.entries()].map(([playerId, player]) => ({ playerId, ...player })),
+    bombs: bm.bombs.map(({ id, owner, x, y, radius, explodeAt }) => ({ id, owner, x, y, radius, explodeAt })),
+    powerups: bm.powerups,
+    blasts: bm.blasts,
+    lastBoomAt: bm.lastBoomAt,
+    startsAt: bm.startsAt,
+    endsAt: bm.endsAt,
+    fuseMs: BM_FUSE_MS,
+    outcome: bm.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Snake                                                               */
+/* ------------------------------------------------------------------ */
+// - Tablero cuadrado (mas grande cuantos mas jugadores) con una serpiente por jugador, repartidas en circulo.
+// - Cada cliente mueve su serpiente al momento (paso fijo) y envia solo la casilla nueva de la cabeza; el servidor
+//   la reenvia a los demas en un evento ligero y lleva el cuerpo de cada una (para quien llega tarde).
+// - Frutas: siempre una por jugador; al comerse una aparece otra en una casilla libre. Cada fruta alarga 2.
+// - Cada cliente decide si su cabeza choca (pared, otra serpiente o ella misma) y lo avisa.
+// - Termina cuando queda una (o ninguna) o se acaba el tiempo. Primero los que siguen vivos (por largo); despues
+//   los demas por el largo que tenian al caer (y, a igualdad, quien cayo mas tarde).
+
+const SN_STEP_MS = 125;
+const SN_START_LENGTH = 4;
+const SN_GROW = 2;
+const SN_LEAD_MS = 3000;
+const SN_DURATION_MS = 150000;
+const SN_SETTLE_MS = 1200;
+// Quien se desconecta (sin volver en este tiempo) queda fuera.
+const SN_AWAY_MS = 4000;
+
+function snakeSize(players) {
+  if (players <= 2) return 22;
+  if (players <= 4) return 26;
+  if (players <= 6) return 30;
+  if (players <= 8) return 34;
+  if (players <= 10) return 38;
+  if (players <= 14) return 42;
+  return 46;
+}
+
+/** Serpientes repartidas en un circulo, mirando en el sentido de las agujas del reloj (sin chocar al empezar). */
+function snakeSpawns(size, count) {
+  const center = (size - 1) / 2;
+  const radius = size * 0.33;
+  const offset = Math.random() * Math.PI * 2;
+  return Array.from({ length: count }, (_unused, index) => {
+    const angle = offset + (index / count) * Math.PI * 2;
+    const x = Math.round(center + Math.cos(angle) * radius);
+    const y = Math.round(center + Math.sin(angle) * radius);
+    const tx = -Math.sin(angle);
+    const ty = Math.cos(angle);
+    const dir = Math.abs(tx) > Math.abs(ty) ? [Math.sign(tx), 0] : [0, Math.sign(ty)];
+    // El cuerpo, detras de la cabeza.
+    const body = Array.from({ length: SN_START_LENGTH }, (_value, step) => [x - dir[0] * step, y - dir[1] * step]);
+    return { body, dir };
+  });
+}
+
+function snakeOccupied(sn) {
+  const cells = new Set();
+
+  for (const player of sn.players.values()) {
+    if (player.alive) {
+      for (const [x, y] of player.body) {
+        cells.add(y * sn.size + x);
+      }
+    }
+  }
+
+  for (const fruit of sn.fruits) {
+    cells.add(fruit.y * sn.size + fruit.x);
+  }
+
+  return cells;
+}
+
+/** Fruta nueva en una casilla libre (lejos de las cabezas para que no aparezca en la boca de nadie). */
+function spawnSnakeFruit(sn) {
+  const occupied = snakeOccupied(sn);
+  const heads = [...sn.players.values()].filter((player) => player.alive).map((player) => player.body[0]);
+
+  for (let attempt = 0; attempt < 400; attempt += 1) {
+    const x = crypto.randomInt(sn.size);
+    const y = crypto.randomInt(sn.size);
+
+    if (!occupied.has(y * sn.size + x) && heads.every(([hx, hy]) => Math.abs(hx - x) + Math.abs(hy - y) > 2)) {
+      sn.fruits.push({ id: sn.nextFruitId, x, y });
+      sn.nextFruitId += 1;
+      return;
+    }
+  }
+}
+
+function setupSnake(room) {
+  const specialRound = room.match.specialRound;
+  const ids = secureShuffle(specialRound.participantIds);
+  const size = snakeSize(ids.length);
+  const spawns = snakeSpawns(size, ids.length);
+  const startsAt = specialRound.introEndsAt + SN_LEAD_MS;
+
+  specialRound.snake = {
+    stage: 'playing',
+    size,
+    players: new Map(
+      ids.map((playerId, index) => [
+        playerId,
+        { body: spawns[index].body, dir: spawns[index].dir, length: SN_START_LENGTH, alive: true, deathAt: null, eaten: 0, seq: 0 },
+      ]),
+    ),
+    fruits: [],
+    nextFruitId: 1,
+    startsAt,
+    endsAt: startsAt + SN_DURATION_MS,
+    outcome: null,
+  };
+
+  for (let index = 0; index < ids.length; index += 1) {
+    spawnSnakeFruit(specialRound.snake);
+  }
+
+  setRoomTimer(room, 'snake-end', specialRound.snake.endsAt, () => finishSnake(room));
+}
+
+function eliminateSnakePlayer(room, playerId, at) {
+  const sn = room.match.specialRound.snake;
+  const player = sn.players.get(playerId);
+
+  if (!player?.alive) {
+    return false;
+  }
+
+  player.alive = false;
+  player.deathAt = at;
+  setRoomTimer(room, 'snake-settle', Date.now() + SN_SETTLE_MS, () => {
+    if ([...sn.players.values()].filter((entry) => entry.alive).length <= 1) {
+      finishSnake(room);
+    }
+  });
+  return true;
+}
+
+function finishSnake(room) {
+  const specialRound = room.match?.specialRound;
+  const sn = specialRound?.snake;
+
+  if (!sn || sn.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'snake-end');
+  clearRoomTimer(room, 'snake-settle');
+  sn.stage = 'finished';
+  const entries = [...sn.players.entries()].map(([playerId, player]) => ({ playerId, ...player }));
+  // Clave de orden: vivos antes que caidos; despues el largo; a igualdad, quien cayo mas tarde.
+  const key = (entry) => `${entry.alive ? 1 : 0}:${String(entry.length).padStart(5, '0')}:${entry.alive ? '' : String(entry.deathAt).padStart(15, '0')}`;
+  const levels = [...new Set(entries.map(key))].sort().reverse();
+  const ranking = entries
+    .map((entry) => ({
+      playerId: entry.playerId,
+      playerName: room.players.get(entry.playerId)?.name || '',
+      survived: entry.alive,
+      length: entry.length,
+      eaten: entry.eaten,
+      position: levels.indexOf(key(entry)) + 1,
+      points: ladderPoints(levels.indexOf(key(entry)), levels.length),
+    }))
+    .sort((first, second) => first.position - second.position);
+  sn.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.eaten,
+    answeredCount: entry.eaten,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+/** Quien se desconecta en plena partida queda fuera si no vuelve enseguida. */
+function maybeSnakeAway(room) {
+  const sn = room.match?.specialRound?.snake;
+
+  if (!sn || sn.outcome) {
+    return;
+  }
+
+  for (const [playerId, player] of sn.players) {
+    // Una sola cuenta por desconexion (si se vuelve a revisar, no se alarga).
+    if (player.alive && !room.players.get(playerId)?.active && !room.timers?.has(`snake-away-${playerId}`)) {
+      setRoomTimer(room, `snake-away-${playerId}`, Date.now() + SN_AWAY_MS, () => {
+        if (room.match?.specialRound?.snake === sn && !room.players.get(playerId)?.active && eliminateSnakePlayer(room, playerId, Date.now())) {
+          emitMatchState(room);
+        }
+      });
+    }
+  }
+}
+
+function toPublicSnake(sn) {
+  if (!sn) {
+    return null;
+  }
+
+  return {
+    stage: sn.stage,
+    size: sn.size,
+    players: [...sn.players.entries()].map(([playerId, player]) => ({
+      playerId,
+      body: player.body,
+      dir: player.dir,
+      length: player.length,
+      alive: player.alive,
+      deathAt: player.deathAt,
+      eaten: player.eaten,
+    })),
+    fruits: sn.fruits,
+    startsAt: sn.startsAt,
+    endsAt: sn.endsAt,
+    stepMs: SN_STEP_MS,
+    grow: SN_GROW,
+    outcome: sn.outcome,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Carrera                                                             */
+/* ------------------------------------------------------------------ */
+// - Carrera 2D vista desde arriba en uno de los circuitos (al azar), a 2 vueltas. La geometria de los circuitos
+//   y la fisica de los coches viven en el cliente.
+// - Cada cliente conduce su coche al momento y envia su posicion ~10 veces por segundo (con lo que lleva
+//   recorrido); el servidor la reenvia a los demas en un evento ligero. Al cruzar la meta, el cliente envia su
+//   tiempo (medido con el reloj comun desde la salida) y eso es lo que cuenta.
+// - Cada circuito tiene un tiempo maximo: quien no termina se queda sin terminar (-15). Entre los que terminan,
+//   escalera de 30 (primero) a 0 (ultimo).
+
+const RACE_MAPS = [
+  { id: 'bosque', timeLimitMs: 600000 },
+  { id: 'circuito', timeLimitMs: 600000 },
+  { id: 'canon', timeLimitMs: 600000 },
+];
+const RACE_LAPS = 2;
+// Semaforo de salida: 3, 2, 1, ¡ya!
+const RACE_LEAD_MS = 4000;
+const RACE_DNF_POINTS = -15;
+// Tiempo minimo creible para terminar (para descartar envios imposibles).
+const RACE_MIN_TIME_MS = 20000;
+// Tras cruzar la meta el ultimo, un momento para verlo antes de los resultados.
+const RACE_FINISH_DELAY_MS = 1500;
+
+function setupRace(room) {
+  const specialRound = room.match.specialRound;
+  const map = RACE_MAPS[crypto.randomInt(RACE_MAPS.length)];
+  const ids = secureShuffle(specialRound.participantIds);
+  const startsAt = specialRound.introEndsAt + RACE_LEAD_MS;
+
+  specialRound.race = {
+    stage: 'racing',
+    mapId: map.id,
+    laps: RACE_LAPS,
+    startsAt,
+    endsAt: startsAt + map.timeLimitMs,
+    players: new Map(ids.map((playerId, slot) => [playerId, { slot, x: null, y: null, a: 0, progress: 0, index: null, checkpoint: 0, finishMs: null, seq: 0 }])),
+    outcome: null,
+  };
+
+  setRoomTimer(room, 'race-end', specialRound.race.endsAt, () => finishRace(room));
+}
+
+/** Si ya han llegado todos los que siguen conectados, se cierra la carrera. */
+function maybeFinishRace(room) {
+  const race = room.match?.specialRound?.race;
+
+  if (!race || race.outcome) {
+    return;
+  }
+
+  const pending = [...race.players.entries()].filter(([playerId, player]) => player.finishMs === null && room.players.get(playerId)?.active);
+
+  if (!pending.length) {
+    setRoomTimer(room, 'race-end', Date.now() + RACE_FINISH_DELAY_MS, () => finishRace(room));
+  }
+}
+
+function finishRace(room) {
+  const specialRound = room.match?.specialRound;
+  const race = specialRound?.race;
+
+  if (!race || race.outcome) {
+    return;
+  }
+
+  clearRoomTimer(room, 'race-end');
+  race.stage = 'finished';
+  const entries = [...race.players.entries()].map(([playerId, player]) => ({ playerId, ...player }));
+  const finishers = entries.filter((entry) => entry.finishMs !== null).sort((first, second) => first.finishMs - second.finishMs);
+  const others = entries.filter((entry) => entry.finishMs === null).sort((first, second) => second.progress - first.progress);
+  const levels = [...new Set(finishers.map((entry) => entry.finishMs))];
+  const ranking = [
+    ...finishers.map((entry) => ({ entry, level: levels.indexOf(entry.finishMs), points: ladderPoints(levels.indexOf(entry.finishMs), levels.length) })),
+    ...others.map((entry, index) => ({ entry, level: levels.length + index, points: RACE_DNF_POINTS })),
+  ].map(({ entry, level, points }) => ({
+    playerId: entry.playerId,
+    playerName: room.players.get(entry.playerId)?.name || '',
+    finished: entry.finishMs !== null,
+    timeMs: entry.finishMs,
+    progress: entry.progress,
+    position: level + 1,
+    points,
+  }));
+  race.outcome = { ranking };
+  specialRound.results = ranking.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    points: entry.points,
+    correctCount: entry.finished ? 1 : 0,
+    answeredCount: 1,
+    finishedAt: null,
+    submitted: true,
+  }));
+  specialRound.hasResults = true;
+  emitMatchState(room);
+}
+
+function toPublicRace(race) {
+  if (!race) {
+    return null;
+  }
+
+  return {
+    stage: race.stage,
+    mapId: race.mapId,
+    laps: race.laps,
+    startsAt: race.startsAt,
+    endsAt: race.endsAt,
+    players: [...race.players.entries()].map(([playerId, player]) => ({
+      playerId,
+      slot: player.slot,
+      x: player.x,
+      y: player.y,
+      a: player.a,
+      progress: player.progress,
+      index: player.index ?? null,
+      checkpoint: player.checkpoint ?? 0,
+      finishMs: player.finishMs,
+    })),
+    dnfPoints: RACE_DNF_POINTS,
+    outcome: race.outcome,
+  };
+}
+
 // Revisa si una desconexion o salida desbloquea (o invalida) la fase actual de un minijuego.
 function reevaluateActiveMinigame(room) {
   const specialRound = room.match?.specialRound;
@@ -6045,6 +7635,11 @@ function reevaluateActiveMinigame(room) {
   maybeRevealQuiz(room);
   maybeLaunchPush(room);
   maybeRussianAway(room);
+  maybeBombAway(room);
+  maybeCannonAway(room);
+  maybeFinishBomberman(room);
+  maybeSnakeAway(room);
+  maybeFinishRace(room);
 }
 
 /* ------------------------------------------------------------------ */
@@ -6081,6 +7676,8 @@ function resumeHostPause(room) {
 
   io.to(room.code).emit('match:host-resumed', { lobbyId: room.code });
   emitMatchState(room);
+  // Los plazos privados (p. ej. la mecha de la bomba) tambien se han desplazado.
+  sendPrivateStates(room);
   reevaluateActiveMinigame(room);
 }
 
@@ -7579,11 +9176,14 @@ io.on('connection', (socket) => {
     }
 
     const holed = Boolean(payload.holed);
+    const rollMs = Number(payload.rollMs);
     golf.shots.set(player.id, {
       angle: Math.round(angle * 100000) / 100000,
       power: Math.round(power * 100000) / 100000,
       holed,
       distance: holed ? 0 : Math.min(GOLF_MISS_DISTANCE, Math.round(distance)),
+      // Lo que tarda la bola en pararse (simulado en el cliente); sin dato se espera el tope.
+      rollMs: Number.isFinite(rollMs) ? Math.max(0, Math.min(GOLF_ROLL_MS, Math.round(rollMs))) : GOLF_ROLL_MS,
     });
     emitMatchState(room);
     callback?.({ ok: true });
@@ -7817,6 +9417,298 @@ io.on('connection', (socket) => {
     callback?.({ ok: true });
   });
 
+  // Patata caliente: palabra (ya comprobada en el cliente, con lo que ha tardado) o aviso de que le ha explotado.
+  socket.on('match:bomb-word', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const bomb = room?.match?.specialRound?.bomb;
+
+    if (!room || !player || !bomb || room.match.phase !== 'special-round') {
+      callback?.({ ok: false, reason: 'No hay patata caliente en juego.' });
+      return;
+    }
+
+    if (Number(payload.turn) !== bomb.turn) {
+      callback?.({ ok: false, reason: 'Ese turno ya ha pasado.' });
+      return;
+    }
+
+    callback?.(acceptBombWord(room, player.id, payload.word, payload.usedMs));
+  });
+
+  socket.on('match:bomb-boom', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const bomb = room?.match?.specialRound?.bomb;
+
+    if (!room || !player || !bomb || bomb.holderId !== player.id || Number(payload.turn) !== bomb.turn) {
+      callback?.({ ok: false, reason: 'No tienes la bomba.' });
+      return;
+    }
+
+    // Solo cuenta si de verdad se le ha acabado la mecha (con un margen por la diferencia de relojes).
+    if (Date.now() < bomb.explodeAt - BOMB_GRACE_MS) {
+      callback?.({ ok: false, reason: 'Aún queda mecha.' });
+      return;
+    }
+
+    callback?.({ ok: explodeBomb(room, bomb.turn) });
+  });
+
+  // Reloj comun: el cliente mide la ida y vuelta y se queda con la mas rapida (para que todo pase a la vez).
+  socket.on('clock:ping', (_payload, callback) => {
+    callback?.({ serverTime: Date.now() });
+  });
+
+  // Bomberman: casilla nueva del jugador. Sin respuesta (es lo que mas se envia); se reenvia a los demas en un
+  // evento ligero. Si en esa casilla hay una mejora, se la lleva el primero que llega.
+  socket.on('match:bm-move', (payload = {}) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const bm = room?.match?.specialRound?.bomberman;
+    const me = bm?.players.get(player?.id);
+    const x = Number(payload.x);
+    const y = Number(payload.y);
+
+    if (!room || !me || bm.outcome || !me.alive || Date.now() < bm.startsAt - 500 || !Number.isInteger(x) || !Number.isInteger(y)) {
+      return;
+    }
+
+    if (x < 1 || y < 1 || x >= bm.size - 1 || y >= bm.size - 1 || bm.cells[y * bm.size + x] === 'W' || bm.cells[y * bm.size + x] === 'C') {
+      return;
+    }
+
+    me.x = x;
+    me.y = y;
+    socket.to(room.code).emit('match:bm-move', { lobbyId: room.code, playerId: player.id, x, y, s: Number(payload.s) || 0 });
+    const powerup = bm.powerups.find((item) => item.x === x && item.y === y);
+
+    if (powerup) {
+      bm.powerups = bm.powerups.filter((item) => item !== powerup);
+
+      if (powerup.type === 'radius') {
+        me.radius += 1;
+      } else {
+        me.capacity += 1;
+      }
+
+      emitMatchState(room);
+    }
+  });
+
+  // Carrera: posicion del coche (~10 por segundo, sin respuesta) con lo recorrido; se reenvia a los demas.
+  socket.on('match:race-pos', (payload = {}) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const race = room?.match?.specialRound?.race;
+    const me = race?.players.get(player?.id);
+    const x = Number(payload.x);
+    const y = Number(payload.y);
+    const a = Number(payload.a);
+    const p = Number(payload.p);
+    const s = Number(payload.s) || 0;
+    // i: punto de la linea central en el que esta (para saber si va por un puente); c: siguiente punto de control.
+    const i = Math.max(0, Math.round(Number(payload.i) || 0));
+    const c = Math.max(0, Math.round(Number(payload.c) || 0));
+
+    if (!room || !me || race.outcome || ![x, y, a, p].every(Number.isFinite) || s <= me.seq) {
+      return;
+    }
+
+    Object.assign(me, { x: Math.round(x), y: Math.round(y), a: Math.round(a * 1000) / 1000, progress: Math.round(p), index: i, checkpoint: c, seq: s });
+    socket.to(room.code).emit('match:race-pos', { lobbyId: room.code, playerId: player.id, x: me.x, y: me.y, a: me.a, p: me.progress, i, c, s });
+  });
+
+  // Carrera: el cliente ha cruzado la meta en su ultima vuelta; su tiempo (reloj comun) es el que cuenta.
+  socket.on('match:race-finish', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const race = room?.match?.specialRound?.race;
+    const me = race?.players.get(player?.id);
+    const timeMs = Math.round(Number(payload.timeMs));
+
+    if (!room || !me || race.outcome) {
+      callback?.({ ok: false, reason: 'No hay carrera en juego.' });
+      return;
+    }
+
+    if (me.finishMs !== null) {
+      callback?.({ ok: true, ignored: true });
+      return;
+    }
+
+    if (!Number.isFinite(timeMs) || timeMs < RACE_MIN_TIME_MS || timeMs > Date.now() - race.startsAt + 2000 || race.startsAt + timeMs > race.endsAt + 2000) {
+      callback?.({ ok: false, reason: 'Tiempo no válido.' });
+      return;
+    }
+
+    me.finishMs = timeMs;
+    emitMatchState(room);
+    maybeFinishRace(room);
+    callback?.({ ok: true });
+  });
+
+  // Snake: casilla nueva de la cabeza (sin respuesta: es lo que mas se envia). Se reenvia a los demas y, si hay
+  // una fruta, se la come quien llega primero.
+  socket.on('match:sn-move', (payload = {}) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const sn = room?.match?.specialRound?.snake;
+    const me = sn?.players.get(player?.id);
+    const x = Number(payload.x);
+    const y = Number(payload.y);
+
+    if (!room || !me || sn.outcome || !me.alive || Date.now() < sn.startsAt - 500 || !Number.isInteger(x) || !Number.isInteger(y)) {
+      return;
+    }
+
+    if (x < 0 || y < 0 || x >= sn.size || y >= sn.size) {
+      return;
+    }
+
+    const [hx, hy] = me.body[0];
+    me.dir = [Math.sign(x - hx), Math.sign(y - hy)];
+    me.body.unshift([x, y]);
+    me.seq = Number(payload.s) || me.seq + 1;
+    const fruit = sn.fruits.find((item) => item.x === x && item.y === y);
+
+    if (fruit) {
+      sn.fruits = sn.fruits.filter((item) => item !== fruit);
+      me.length += SN_GROW;
+      me.eaten += 1;
+      spawnSnakeFruit(sn);
+    }
+
+    me.body = me.body.slice(0, me.length);
+    socket.to(room.code).emit('match:sn-move', { lobbyId: room.code, playerId: player.id, x, y, s: me.seq });
+
+    if (fruit) {
+      emitMatchState(room);
+    }
+  });
+
+  // Snake: el cliente avisa de que su serpiente ha chocado (lo decide su pantalla).
+  socket.on('match:sn-dead', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const sn = room?.match?.specialRound?.snake;
+
+    if (!room || !sn?.players.has(player?.id) || sn.outcome) {
+      callback?.({ ok: false });
+      return;
+    }
+
+    const ok = eliminateSnakePlayer(room, player.id, Date.now());
+    emitMatchState(room);
+    callback?.({ ok });
+  });
+
+  // Bomberman: bomba nueva (se publica una sola vez, con su hora de explosion en el reloj comun).
+  socket.on('match:bm-bomb', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const bm = room?.match?.specialRound?.bomberman;
+    const me = bm?.players.get(player?.id);
+    const x = Number(payload.x);
+    const y = Number(payload.y);
+    const now = Date.now();
+
+    if (!room || !me || bm.outcome || !me.alive || now < bm.startsAt - 300) {
+      callback?.({ ok: false, reason: 'Ahora no puedes poner bombas.' });
+      return;
+    }
+
+    if (!Number.isInteger(x) || !Number.isInteger(y) || Math.abs(x - me.x) + Math.abs(y - me.y) > 1 || bm.cells[y * bm.size + x] !== '.') {
+      callback?.({ ok: false, reason: 'Ahí no se puede poner una bomba.' });
+      return;
+    }
+
+    if (bm.bombs.some((bomb) => bomb.x === x && bomb.y === y)) {
+      callback?.({ ok: false, reason: 'Ya hay una bomba ahí.' });
+      return;
+    }
+
+    if (bm.bombs.filter((bomb) => bomb.owner === player.id).length >= me.capacity) {
+      callback?.({ ok: false, reason: 'No te quedan bombas.' });
+      return;
+    }
+
+    // La hora la pone el cliente (asi explota justo a los 5 s de verla), dentro de un margen.
+    const placedAt = Math.max(now - BM_PLACE_SLACK_MS, Math.min(now, Number(payload.placedAt) || now));
+    const bomb = { id: bm.nextBombId, owner: player.id, x, y, radius: me.radius, explodeAt: placedAt + BM_FUSE_MS };
+    bm.nextBombId += 1;
+    bm.bombs.push(bomb);
+    scheduleBombermanBoom(room);
+    emitMatchState(room);
+    callback?.({ ok: true, bomb });
+  });
+
+  // Bomberman: el cliente avisa de que una llama ha alcanzado a su personaje (en su pantalla, sin lag).
+  socket.on('match:bm-dead', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const bm = room?.match?.specialRound?.bomberman;
+    const me = bm?.players.get(player?.id);
+    const at = Number(payload.at);
+
+    if (!room || !me || bm.outcome || !me.alive || !Number.isFinite(at)) {
+      callback?.({ ok: false });
+      return;
+    }
+
+    // Tiene que coincidir con una explosion real (ya hecha o a punto, segun el reloj del servidor).
+    const times = [...bm.blasts.map((blast) => blast.at), ...bm.bombs.map((bomb) => bomb.explodeAt)];
+    const closest = times.sort((first, second) => Math.abs(first - at) - Math.abs(second - at))[0];
+
+    if (closest === undefined || Math.abs(closest - at) > 1500 || closest > Date.now() + 1500) {
+      callback?.({ ok: false, reason: 'No hay ninguna explosión ahí.' });
+      return;
+    }
+
+    eliminateBombermanPlayer(room, player.id, closest);
+    emitMatchState(room);
+    callback?.({ ok: true });
+  });
+
+  // Canon: los de abajo eligen zona (pueden cambiarla mientras dure la eleccion); el canonero elige donde dispara.
+  socket.on('match:cannon-pick', (payload = {}, callback) => {
+    const room = getRoomFromPayload(payload);
+    const player = getRequestPlayer(room, payload);
+    const cannon = room?.match?.specialRound?.cannon;
+    const zone = Number(payload.zone);
+
+    if (!room || !player || !cannon || room.match.phase !== 'special-round') {
+      callback?.({ ok: false, reason: 'No hay cañón en juego.' });
+      return;
+    }
+
+    if (!Number.isInteger(zone) || zone < 0 || zone >= CANNON_ZONES || Number(payload.round) !== cannon.round) {
+      callback?.({ ok: false, reason: 'Zona no válida.' });
+      return;
+    }
+
+    if (player.id === cannon.cannoneerId) {
+      if (cannon.stage !== 'aiming') {
+        callback?.({ ok: false, reason: 'Todavía no puedes disparar.' });
+        return;
+      }
+
+      callback?.({ ok: fireCannon(room, cannon.round, zone) });
+      return;
+    }
+
+    if (cannon.stage !== 'choosing' || !cannon.alive.has(player.id)) {
+      callback?.({ ok: false, reason: 'Ya no puedes cambiar de zona.' });
+      return;
+    }
+
+    cannon.picks.set(player.id, zone);
+    emitMatchState(room);
+    sendPrivateStates(room);
+    maybeSettleCannonChoosing(room);
+    callback?.({ ok: true });
+  });
+
   // Preguntas y respuestas: una respuesta por ronda (0-3), sin poder cambiarla.
   socket.on('match:quiz-answer', (payload = {}, callback) => {
     const room = getRoomFromPayload(payload);
@@ -7879,7 +9771,16 @@ io.on('connection', (socket) => {
     }
 
     const round4 = (value) => Math.round(value * 10000) / 10000;
-    push.aims.set(player.id, { vx: round4(vx), vy: round4(vy) });
+    const aim = { vx: round4(vx), vy: round4(vy) };
+
+    // Sin confirmar: se guarda como borrador (se puede cambiar); si se acaba el tiempo, sale con esa.
+    if (payload.confirm === false) {
+      push.drafts.set(player.id, aim);
+      callback?.({ ok: true, draft: true });
+      return;
+    }
+
+    push.aims.set(player.id, aim);
     emitMatchState(room);
     callback?.({ ok: true });
     maybeLaunchPush(room);
@@ -7906,7 +9807,7 @@ io.on('connection', (socket) => {
     const falls = Array.isArray(payload.falls) ? payload.falls : [];
     const steps = Math.trunc(Number(payload.steps));
     const reported = [...positions.map((body) => body?.playerId), ...falls.map((fall) => fall?.playerId)];
-    const limit = PUSH_ARENA_RADIUS + PUSH_DISC_RADIUS + 0.01;
+    const limit = push.arenaRadius + PUSH_DISC_RADIUS + 0.01;
     const valid =
       Number.isInteger(steps) &&
       steps >= 0 &&
@@ -7980,7 +9881,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (!Number.isFinite(angle) || angle < -90 || angle > 90) {
+    if (!Number.isFinite(angle) || angle < -SWING_AMPLITUDE || angle > SWING_AMPLITUDE) {
       callback?.({ ok: false, reason: 'Ángulo no válido.' });
       return;
     }
@@ -8000,7 +9901,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (beer.stage !== 'aiming') {
+    if (beer.stage !== 'aiming' || (payload.round !== undefined && Number(payload.round) !== beer.round)) {
       callback?.({ ok: false, reason: 'Las jarras ya se han lanzado.' });
       return;
     }

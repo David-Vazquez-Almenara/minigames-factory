@@ -11,6 +11,8 @@ interface ServerReadyPayload {
 export interface CreateRoomSettings {
   rounds: number;
   enabledMinigames: string[];
+  /** No mostrar las explicaciones de los minijuegos (solo el nombre un momento). */
+  skipDescriptions?: boolean;
 }
 
 export interface MinigameInfo {
@@ -77,6 +79,8 @@ export interface SpecialRoundPayload {
   /** Tiempos de la intro en el reloj del servidor: titulo "Minijuego" y despues la explicacion. */
   startedAt?: number;
   introMs?: number;
+  /** La sala esta en "sin descripciones": la explicacion solo muestra el nombre del minijuego. */
+  skipDescription?: boolean;
   titleEndsAt?: number;
   introEndsAt?: number;
   participantIds: string[];
@@ -120,6 +124,140 @@ export interface SpecialRoundPayload {
   quiz?: QuizPublicState | null;
   push?: PushPublicState | null;
   russian?: RussianPublicState | null;
+  bomb?: BombPublicState | null;
+  cannon?: CannonPublicState | null;
+  bomberman?: BombermanPublicState | null;
+  snake?: SnakePublicState | null;
+  race?: RacePublicState | null;
+}
+
+export interface RacePublicState {
+  stage: 'racing' | 'finished';
+  mapId: string;
+  laps: number;
+  startsAt: number;
+  endsAt: number;
+  /**
+   * x/y/a: ultima posicion conocida (las de en directo llegan aparte); progress: recorrido valido (sin pasar del siguiente
+   * punto de control); index: punto de la linea central; checkpoint: siguiente punto de control de la vuelta.
+   */
+  players: Array<{
+    playerId: string;
+    slot: number;
+    x: number | null;
+    y: number | null;
+    a: number;
+    progress: number;
+    index: number | null;
+    checkpoint: number;
+    finishMs: number | null;
+  }>;
+  dnfPoints: number;
+  outcome: {
+    ranking: Array<{ playerId: string; playerName: string; finished: boolean; timeMs: number | null; progress: number; position: number; points: number }>;
+  } | null;
+}
+
+export interface SnakePublicState {
+  stage: 'playing' | 'finished';
+  size: number;
+  /** body: casillas [x, y] de la cabeza a la cola. */
+  players: Array<{ playerId: string; body: Array<[number, number]>; dir: [number, number]; length: number; alive: boolean; deathAt: number | null; eaten: number }>;
+  fruits: Array<{ id: number; x: number; y: number }>;
+  startsAt: number;
+  endsAt: number;
+  stepMs: number;
+  grow: number;
+  outcome: {
+    ranking: Array<{ playerId: string; playerName: string; survived: boolean; length: number; eaten: number; position: number; points: number }>;
+  } | null;
+}
+
+export interface BombermanBomb {
+  id: number;
+  owner: string;
+  x: number;
+  y: number;
+  radius: number;
+  /** Hora de explosion (reloj del servidor). */
+  explodeAt: number;
+}
+
+export interface BombermanPublicState {
+  stage: 'playing' | 'finished';
+  size: number;
+  /** Mapa fila a fila: 'W' pared, 'C' columna, 'S' piedra, '.' suelo. */
+  cells: string;
+  players: Array<{ playerId: string; x: number; y: number; alive: boolean; radius: number; capacity: number; deathAt: number | null }>;
+  bombs: BombermanBomb[];
+  powerups: Array<{ x: number; y: number; type: 'radius' | 'bombs' }>;
+  /** Ultimas explosiones procesadas por el servidor (casillas de indice y*size+x). */
+  blasts: Array<{ id: number; at: number; bombIds: number[]; hit: number[]; stones: number[]; powerups: Array<{ x: number; y: number; type: 'radius' | 'bombs' }> }>;
+  lastBoomAt: number;
+  startsAt: number;
+  endsAt: number;
+  fuseMs: number;
+  outcome: {
+    ranking: Array<{ playerId: string; playerName: string; survived: boolean; position: number; points: number }>;
+    draw: boolean;
+    winnerId: string | null;
+  } | null;
+}
+
+export interface BombPublicState {
+  stage: 'intro' | 'passing' | 'typing' | 'boom' | 'finished';
+  /** Orden del circulo. */
+  order: string[];
+  alive: string[];
+  eliminated: Array<{ playerId: string; round: number }>;
+  round: number;
+  /** Turno de escritura (sube cada vez que alguien recibe la bomba y puede escribir). */
+  turn: number;
+  holderId: string | null;
+  /** Quien la ha lanzado (null = la bomba aparece al empezar la ronda). */
+  fromId: string | null;
+  seedWord: string;
+  /** Palabra de la que hay que encadenar (ya normalizada). */
+  lastWord: string;
+  chain: Array<{ word: string; playerId: string }>;
+  /** Palabras ya usadas en el minijuego (normalizadas). */
+  used: string[];
+  orbitEndsAt: number;
+  passStartsAt: number | null;
+  passEndsAt: number | null;
+  typingStartsAt: number | null;
+  boom: { playerId: string; at: number; round: number } | null;
+  nextAt: number | null;
+  timings: { passMs: number; spawnMs: number; boomMs: number; minWord: number; maxWord: number };
+  outcome: { ranking: Array<{ playerId: string; playerName: string; survived: boolean; words: number; position: number; points: number }> } | null;
+}
+
+export interface CannonPublicState {
+  stage: 'choosing' | 'aiming' | 'firing' | 'result' | 'finished';
+  cannoneerId: string;
+  victims: string[];
+  alive: string[];
+  round: number;
+  totalRounds: number;
+  zones: number;
+  chooseStartsAt: number | null;
+  chooseEndsAt: number | null;
+  aimEndsAt: number | null;
+  pickedPlayerIds: string[];
+  /** Zona a la que dispara (solo desde el disparo). */
+  target: number | null;
+  /** Donde esta cada uno (solo desde el disparo). */
+  positions: Array<{ playerId: string; zone: number; auto: boolean }>;
+  fireAt: number | null;
+  impactAt: number | null;
+  nextAt: number | null;
+  history: Array<{ round: number; target: number; positions: Array<{ playerId: string; zone: number; auto: boolean }>; hit: string[] }>;
+  kills: number;
+  pointsPerKill: number;
+  survivePoints: number;
+  outcome: {
+    ranking: Array<{ playerId: string; playerName: string; role: 'cannoneer' | 'victim'; kills: number; rounds: number; survived?: boolean; position: number; points: number }>;
+  } | null;
 }
 
 export interface RussianPublicState {
@@ -168,8 +306,12 @@ export interface QuizPublicState {
 export interface PushPublicState {
   stage: 'aiming' | 'launching' | 'resolved' | 'finished';
   round: number;
-  totalRounds: number;
+  /** Radio de la pista entera, el de esta ronda y el de la siguiente (el anillo entre ambos se hunde). */
+  fullRadius: number;
   arenaRadius: number;
+  nextRadius: number;
+  /** Encogimiento al empezar esta ronda (y quien cayo al agua con el anillo). */
+  shrink: { from: number; to: number; at: number; fallen: string[] } | null;
   discRadius: number;
   maxSpeed: number;
   players: Array<{ playerId: string; x: number; y: number; alive: boolean; fellRound: number | null }>;
@@ -364,7 +506,12 @@ export interface BeerThrow {
 }
 
 export interface BeerPublicState {
-  stage: 'aiming' | 'sliding' | 'finished';
+  stage: 'aiming' | 'sliding' | 'result' | 'finished';
+  round: number;
+  totalRounds: number;
+  /** Puntos que se restan al final por cada jarra tirada. */
+  fallPenalty: number;
+  history: Array<{ round: number; throws: BeerThrow[] }>;
   /** Metros de barra (de la linea de salida al borde). */
   length: number;
   /** Metros que recorre una jarra lanzada con la fuerza maxima. */
@@ -377,7 +524,18 @@ export interface BeerPublicState {
   slideStartsAt: number | null;
   slideMs: number;
   throws: BeerThrow[];
-  outcome: { ranking: Array<BeerThrow & { playerName: string; position: number; points: number }> } | null;
+  outcome: {
+    ranking: Array<{
+      playerId: string;
+      playerName: string;
+      /** Suma de lo que se quedo del borde en las 3 rondas (tirarla cuenta como la barra entera). */
+      total: number;
+      falls: number;
+      rounds: Array<{ gap: number; fell: boolean; distance: number }>;
+      position: number;
+      points: number;
+    }>;
+  } | null;
 }
 
 export type CountKind = 'walk' | 'run' | 'bike' | 'moto' | 'car';
@@ -754,6 +912,10 @@ export interface PrivateMatchState {  lobbyId: string;
     | { role: 'guesser'; submittedAnswer: number | null }
     | null;
   pinturillo?: { role: 'drawer'; word: string; category: string } | { role: 'guesser' } | null;
+  /** Patata caliente: solo quien tiene la bomba recibe cuando explota (reloj del servidor). */
+  bomb?: { turn: number; explodeAt: number } | null;
+  /** Canon: zonas elegidas por los de abajo (el canonero no las recibe). */
+  cannon?: { round: number; picks: Array<{ playerId: string; zone: number }> } | null;
 }
 
 export interface PaintTargetPayload {
@@ -867,8 +1029,17 @@ export class SocketService {
   readonly lastPogoJump = signal<{ playerId: string; gain: number; at: number } | null>(null);
   /** Cruza la carretera: ultima posicion conocida de cada gallina (llega aparte del estado, cada ~500 ms). */
   readonly crossyPositions = signal<Record<string, Omit<CrossyPlayerState, 'playerId'> & { at: number }>>({});
+  /** Carrera: ultimas posiciones recibidas de cada coche (con su hora local de llegada, para interpolar). */
+  readonly raceSamples = signal<Record<string, Array<{ x: number; y: number; a: number; p: number; i: number; at: number }>>>({});
+  /** Snake: cada casilla nueva de la cabeza de los demas, en orden (se consumen en el componente). */
+  readonly snakeMoves = signal<Array<{ playerId: string; x: number; y: number; s: number; at: number }>>([]);
+  /** Bomberman: ultima casilla de cada jugador (llega aparte del estado, en cuanto cambia). */
+  readonly bombermanMoves = signal<Record<string, { x: number; y: number; s: number; at: number }>>({});
   /** Cuando el host ya esta en el lobby: momento (reloj local) en que el resto vuelve tambien. */
   readonly lobbyReturnAt = signal<number | null>(null);
+  /** Ida y vuelta mas rapida medida con el servidor (el reloj comun sale de esa medida, la mas precisa). */
+  private bestClockRtt = Infinity;
+  private clockSyncTimer?: ReturnType<typeof setInterval>;
   readonly playerId = this.getOrCreateStoredId(PLAYER_ID_KEY);
   private readonly playerSecret = this.getOrCreateStoredId(PLAYER_SECRET_KEY);
 
@@ -883,6 +1054,14 @@ export class SocketService {
 
     this.socket.on('connect', () => {
       this.connected.set(true);
+      // Reloj comun preciso (y se repasa cada 20 s por si el reloj del dispositivo se mueve).
+      this.bestClockRtt = Infinity;
+      void this.syncClock();
+      clearInterval(this.clockSyncTimer);
+      this.clockSyncTimer = setInterval(() => {
+        this.bestClockRtt = Infinity;
+        void this.syncClock();
+      }, 20000);
       const activeLobby = this.lobby();
 
       // Tras una reconexion se recupera el socket en la sala y la informacion privada del jugador.
@@ -1032,6 +1211,26 @@ export class SocketService {
     this.socket.on('match:pinturillo-frame', (payload: { lobbyId: string; imageDataUrl: string }) => {
       if (payload.lobbyId === this.match()?.lobbyId) {
         this.pinturilloFrame.set(payload.imageDataUrl);
+      }
+    });
+
+    this.socket.on('match:race-pos', (payload: { lobbyId: string; playerId: string; x: number; y: number; a: number; p: number; i: number }) => {
+      if (payload.lobbyId === this.match()?.lobbyId) {
+        const sample = { x: payload.x, y: payload.y, a: payload.a, p: payload.p, i: payload.i, at: performance.now() };
+        this.raceSamples.update((samples) => ({ ...samples, [payload.playerId]: [...(samples[payload.playerId] || []).slice(-3), sample] }));
+      }
+    });
+
+    this.socket.on('match:sn-move', (payload: { lobbyId: string; playerId: string; x: number; y: number; s: number }) => {
+      if (payload.lobbyId === this.match()?.lobbyId) {
+        // Se guardan las ultimas (cada cuerpo necesita todas las casillas, no solo la ultima).
+        this.snakeMoves.update((moves) => [...moves.slice(-400), { playerId: payload.playerId, x: payload.x, y: payload.y, s: payload.s, at: performance.now() }]);
+      }
+    });
+
+    this.socket.on('match:bm-move', (payload: { lobbyId: string; playerId: string; x: number; y: number; s: number }) => {
+      if (payload.lobbyId === this.match()?.lobbyId) {
+        this.bombermanMoves.update((moves) => ({ ...moves, [payload.playerId]: { x: payload.x, y: payload.y, s: payload.s, at: performance.now() } }));
       }
     });
 
@@ -1326,7 +1525,7 @@ export class SocketService {
     return this.emitWithResponse('match:tower-progress', { code, level, ...state, playerId: this.playerId });
   }
 
-  golfShot(code: string, round: number, shot: { angle: number; power: number; holed: boolean; distance: number }): Promise<RoomResponse> {
+  golfShot(code: string, round: number, shot: { angle: number; power: number; holed: boolean; distance: number; rollMs: number }): Promise<RoomResponse> {
     return this.emitWithResponse('match:golf-shot', { code, round, ...shot, playerId: this.playerId });
   }
 
@@ -1354,12 +1553,56 @@ export class SocketService {
     return this.emitWithResponse('match:russian-action', { code, turnNumber, action, playerId: this.playerId });
   }
 
+  /** Bomberman: casilla nueva (sin esperar respuesta: es lo que mas se envia y tiene que ir ligero). */
+  bombermanMove(code: string, x: number, y: number, s: number): void {
+    this.socket?.emit('match:bm-move', { code, x, y, s, playerId: this.playerId, playerSecret: this.playerSecret });
+  }
+
+  /** Carrera: posicion del coche (sin esperar respuesta, ~10 por segundo). */
+  racePosition(code: string, x: number, y: number, a: number, p: number, i: number, c: number, s: number): void {
+    this.socket?.emit('match:race-pos', { code, x, y, a, p, i, c, s, playerId: this.playerId, playerSecret: this.playerSecret });
+  }
+
+  raceFinish(code: string, timeMs: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:race-finish', { code, timeMs, playerId: this.playerId });
+  }
+
+  /** Snake: casilla nueva de la cabeza (sin esperar respuesta). */
+  snakeMove(code: string, x: number, y: number, s: number): void {
+    this.socket?.emit('match:sn-move', { code, x, y, s, playerId: this.playerId, playerSecret: this.playerSecret });
+  }
+
+  snakeDead(code: string): Promise<RoomResponse> {
+    return this.emitWithResponse('match:sn-dead', { code, playerId: this.playerId });
+  }
+
+  bombermanBomb(code: string, x: number, y: number, placedAt: number): Promise<RoomResponse & { bomb?: BombermanBomb }> {
+    return this.emitWithResponse('match:bm-bomb', { code, x, y, placedAt, playerId: this.playerId });
+  }
+
+  bombermanDead(code: string, at: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:bm-dead', { code, at, playerId: this.playerId });
+  }
+
+  bombWord(code: string, turn: number, word: string, usedMs: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:bomb-word', { code, turn, word, usedMs, playerId: this.playerId });
+  }
+
+  bombBoom(code: string, turn: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:bomb-boom', { code, turn, playerId: this.playerId });
+  }
+
+  cannonPick(code: string, round: number, zone: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:cannon-pick', { code, round, zone, playerId: this.playerId });
+  }
+
   quizAnswer(code: string, round: number, choice: number): Promise<RoomResponse> {
     return this.emitWithResponse('match:quiz-answer', { code, round, choice, playerId: this.playerId });
   }
 
-  pushAim(code: string, round: number, vx: number, vy: number): Promise<RoomResponse> {
-    return this.emitWithResponse('match:push-aim', { code, round, vx, vy, playerId: this.playerId });
+  /** confirm = false guarda la direccion como borrador (se usa si se acaba el tiempo sin confirmar). */
+  pushAim(code: string, round: number, vx: number, vy: number, confirm: boolean): Promise<RoomResponse> {
+    return this.emitWithResponse('match:push-aim', { code, round, vx, vy, confirm, playerId: this.playerId });
   }
 
   pushResult(
@@ -1377,8 +1620,8 @@ export class SocketService {
     return this.emitWithResponse('match:swing-release', { code, turnIndex, angle, dir, playerId: this.playerId });
   }
 
-  throwBeer(code: string, power: number): Promise<RoomResponse> {
-    return this.emitWithResponse('match:beer-throw', { code, power, playerId: this.playerId });
+  throwBeer(code: string, power: number, round: number): Promise<RoomResponse> {
+    return this.emitWithResponse('match:beer-throw', { code, power, round, playerId: this.playerId });
   }
 
   stopStopwatch(code: string, round: number, elapsedMs: number): Promise<RoomResponse> {
@@ -1459,6 +1702,9 @@ export class SocketService {
     this.pinturilloFrame.set(null);
     this.lastPogoJump.set(null);
     this.crossyPositions.set({});
+    this.bombermanMoves.set({});
+    this.snakeMoves.set([]);
+    this.raceSamples.set({});
     this.lobbyReturnAt.set(null);
     this.hostPauseDeadline.set(null);
     this.scoreboard.set(null);
@@ -1484,12 +1730,48 @@ export class SocketService {
         lobbyId: lobby.code,
         rounds: lobby.settings.rounds,
         enabledMinigames: lobby.settings.enabledMinigames,
+        skipDescriptions: Boolean(lobby.settings.skipDescriptions),
       }),
     );
   }
 
+  /**
+   * Reloj comun: varias medidas de ida y vuelta con el servidor; vale la mas rapida (su mitad es el retraso de la
+   * respuesta). Asi todas las pantallas comparten la hora con un error de pocos milisegundos.
+   */
+  private async syncClock(samples = 5): Promise<void> {
+    for (let sample = 0; sample < samples; sample += 1) {
+      const sentAt = Date.now();
+      const serverTime = await new Promise<number | null>((resolve) => {
+        if (!this.socket?.connected) {
+          resolve(null);
+          return;
+        }
+
+        this.socket.timeout(3000).emit('clock:ping', {}, (error: Error | null, response?: { serverTime: number }) => resolve(error ? null : response?.serverTime ?? null));
+      });
+
+      if (serverTime === null) {
+        return;
+      }
+
+      const receivedAt = Date.now();
+      const rtt = receivedAt - sentAt;
+
+      if (rtt <= this.bestClockRtt) {
+        this.bestClockRtt = rtt;
+        this.clockOffset.set(serverTime + rtt / 2 - receivedAt);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 120));
+    }
+  }
+
   private applyMatchState(payload: MatchState): void {
-    this.clockOffset.set(payload.serverTime ? payload.serverTime - Date.now() : 0);
+    // Sin medida precisa todavia, la hora del estado (lleva el retraso del viaje) sirve de aproximacion.
+    if (this.bestClockRtt === Infinity) {
+      this.clockOffset.set(payload.serverTime ? payload.serverTime - Date.now() : 0);
+    }
     this.hostPauseDeadline.set(payload.hostPaused ? payload.hostPauseDeadline : null);
 
     const previousMatch = this.match();
@@ -1501,6 +1783,13 @@ export class SocketService {
 
     if (previousMatch && (previousMatch.roundNumber !== payload.roundNumber || !payload.specialRound?.pinturillo)) {
       this.pinturilloFrame.set(null);
+    }
+
+    // Las casillas en directo del Bomberman son de esta ronda; en otra ronda se olvidan.
+    if (previousMatch && previousMatch.roundNumber !== payload.roundNumber) {
+      this.bombermanMoves.set({});
+      this.snakeMoves.set([]);
+      this.raceSamples.set({});
     }
 
     if (payload.scoreboard) {

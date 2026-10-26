@@ -164,6 +164,56 @@
   }
 }
 
+// Modo espectador: flechas para cambiar de jugador, abajo en el centro.
+.spectator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  pointer-events: auto;
+
+  span {
+    display: grid;
+    min-width: 150px;
+    max-width: 220px;
+    padding: 4px 16px;
+    text-align: center;
+    background-color: #fff7ec;
+    border: 3px solid #000;
+    border-radius: 14px;
+
+    small {
+      font-size: 0.7rem;
+      opacity: 0.7;
+    }
+
+    b {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  button {
+    width: 52px;
+    height: 52px;
+    font: inherit;
+    font-size: 1.3rem;
+    color: #fff;
+    cursor: pointer;
+    background-color: #38a852;
+    border: 4px solid #000;
+    border-radius: 14px;
+    box-shadow: 0 4px 0 #000;
+    touch-action: manipulation;
+
+    &:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #000;
+    }
+  }
+}
+
 .status {
   margin: 0;
   padding: 6px 14px;
@@ -329,6 +379,11 @@
   .dock {
     bottom: 160px;
     width: calc(100% - 24px);
+
+    // Sin cruceta (espectando), el panel baja hasta el borde.
+    &.spectating {
+      bottom: 12px;
+    }
   }
 
   .dpad {

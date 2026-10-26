@@ -1,0 +1,71 @@
+<section class="cannon" #root aria-label="Minijuego Cañón">
+  <canvas #canvas class="scene-canvas" aria-hidden="true"></canvas>
+
+  <!-- Nombres bajo los pies y numero de cada zona. -->
+  <div class="labels" #nameTags aria-hidden="true">
+    @for (zone of [0, 1, 2, 3]; track zone) {
+    <div class="zone-badge" [attr.data-cn-zone]="zone" [style.background-color]="zoneColors[zone]">{{ zone + 1 }}</div>
+    }
+    @for (tag of tags(); track tag.playerId) {
+    <div class="tag" [attr.data-cn-label]="tag.playerId" [class.mine]="tag.mine" [class.cannoneer]="tag.cannoneer">
+      {{ tag.mine ? 'Tú' : tag.name }}
+    </div>
+    }
+  </div>
+
+  <header class="top-bar" #topBar>
+    <span class="pill title">Cañón</span>
+    @if (state(); as game) {
+    <span class="pill">Ronda <b>{{ game.round }}</b>/{{ game.totalRounds }}</span>
+    <span class="pill role" [class.mine]="isCannoneer()">{{ isCannoneer() ? '💣 Eres el cañonero' : '💣 ' + cannoneerName() }}</span>
+    @if (game.stage === 'choosing') {
+    <span class="pill timer" [class.hurry]="chooseTimer.seconds() <= 5">{{ chooseTimer.seconds() }}s</span>
+    } @else if (game.stage === 'aiming') {
+    <span class="pill timer" [class.hurry]="aimTimer.seconds() <= 5">{{ aimTimer.seconds() }}s</span>
+    }
+    }
+  </header>
+
+  <footer class="dock" #dock [class.hidden]="!!state()?.outcome">
+    @if (canPick() || canFire()) {
+    <div class="zones" [class.fire]="canFire()" role="group" [attr.aria-label]="canFire() ? 'Elige dónde disparar' : 'Elige zona'">
+      @for (button of zoneButtons(); track button.zone) {
+      <button type="button" data-sfx="off" [style.--zone]="button.color" [class.selected]="button.selected" (click)="chooseZone(button.zone)">
+        <span>{{ button.label }}</span>
+        @if (canFire()) {
+        <small>¡Fuego!</small>
+        }
+      </button>
+      }
+    </div>
+    }
+    <p class="status" [class.mine]="canPick() || canFire()" [class.boom]="state()?.stage === 'result' && hitIds().length > 0">{{ statusText() }}</p>
+    @if (errorMessage()) {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+    }
+  </footer>
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado del Cañón">
+      <h2>Resultados</h2>
+      <p class="hint">10 puntos por ronda sobrevivida; el cañonero, {{ state()?.pointsPerKill }} por cada uno que derriba.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.cannoneer]="row.role === 'cannoneer'">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.text }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+
+  @if (unsupported()) {
+  <p class="no-webgl">Tu navegador no puede mostrar la muralla en 3D, pero puedes jugar con los botones.</p>
+  }
+</section>

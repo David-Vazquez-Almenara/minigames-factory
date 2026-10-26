@@ -149,6 +149,9 @@
         </div>
         } @else {
         <p>Rondas: {{ lobby()?.settings?.rounds }}</p>
+        @if (lobby()?.settings?.skipDescriptions) {
+        <p>Sin descripciones de los minijuegos.</p>
+        }
         <p>Minijuegos en la ruleta:</p>
         <div class="chip-list readonly-minigames">
           @for (minigameId of lobby()?.settings?.enabledMinigames; track minigameId) {
@@ -174,6 +177,22 @@
       }
     </select>
   </label>
+
+  <!-- Para quien ya se sabe los minijuegos: sin explicaciones, solo el nombre un momento y a jugar. -->
+  <label class="toggle-row compact minigame-option skip-descriptions" [style.--option-accent]="'#e6e0ff'">
+    <span>
+      Sin descripciones de los minijuegos
+      <small>Solo se ve el nombre del minijuego y se empieza a jugar enseguida</small>
+    </span>
+    <input type="checkbox" [checked]="!!settings().skipDescriptions" (change)="updateSkipDescriptions($any($event.target).checked)" />
+  </label>
+
+  <!-- Activar o desactivar todos los minijuegos de golpe (para jugar solo a unos pocos sin ir uno a uno). -->
+  @if (minigameCatalog().length) {
+  <button type="button" class="toggle-all-button" (click)="toggleAllMinigames()">
+    {{ allMinigamesEnabled() ? 'Desactivar todos los minijuegos' : 'Activar todos los minijuegos' }}
+  </button>
+  }
 
   <fieldset class="minigame-picker">
     <legend>Minijuegos disponibles</legend>

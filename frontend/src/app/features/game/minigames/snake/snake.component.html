@@ -1,0 +1,61 @@
+<section class="snake" #root aria-label="Minijuego Snake">
+  <canvas
+    #canvas
+    class="board"
+    aria-hidden="true"
+    (pointerdown)="swipeDown($event)"
+    (pointermove)="swipeMove($event)"
+    (pointerup)="swipeUp()"
+    (pointercancel)="swipeUp()"
+    (pointerleave)="swipeUp()"
+  ></canvas>
+
+  <!-- Barra de arriba como la del Snake de Google: manzanas comidas, serpientes vivas y tiempo. -->
+  <header class="top-bar" #topBar>
+    <span class="title">Snake</span>
+    @if (state(); as game) {
+    <span class="stat" title="Manzanas comidas"><span class="apple" aria-hidden="true"></span>{{ eaten() }}</span>
+    <span class="stat" title="Serpientes vivas">🐍 {{ aliveCount() }}/{{ game.players.length }}</span>
+    @if (hasStarted() && game.stage === 'playing') {
+    <span class="stat timer" [class.hurry]="playTimer.seconds() <= 10">{{ timeText() }}</span>
+    }
+    }
+  </header>
+
+  @if (countdownText()) {
+  <div class="countdown" [class.go]="countdownText() === '¡YA!'">{{ countdownText() }}</div>
+  }
+
+  @if (dead() && !state()?.outcome) {
+  <div class="banner" role="status">¡Te has chocado! Mira cómo acaba.</div>
+  }
+
+  @if (isPlayer() && !state()?.outcome) {
+  <div class="controls" #controls [class.disabled]="!canPlay()" role="group" aria-label="Girar">
+    <button type="button" class="up" data-sfx="off" aria-label="Arriba" (pointerdown)="turn('up', $event)">▲</button>
+    <button type="button" class="left" data-sfx="off" aria-label="Izquierda" (pointerdown)="turn('left', $event)">◀</button>
+    <button type="button" class="down" data-sfx="off" aria-label="Abajo" (pointerdown)="turn('down', $event)">▼</button>
+    <button type="button" class="right" data-sfx="off" aria-label="Derecha" (pointerdown)="turn('right', $event)">▶</button>
+  </div>
+  }
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de Snake">
+      <h2>Resultados</h2>
+      <p class="hint">Primero quien sigue viva (la más larga gana); después, las que cayeron más largas.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.dead]="!row.survived">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.survived ? '¡Viva!' : '💥' }} · largo {{ row.length }} · 🍎 {{ row.eaten }}</span>
+          <span class="points">+{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+</section>

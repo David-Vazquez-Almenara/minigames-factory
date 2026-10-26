@@ -53,6 +53,7 @@ export class PogoComponent implements OnDestroy {
   readonly isRacer = computed(() => Boolean(this.state()?.racers.some((racer) => racer.playerId === this.currentPlayerId)));
   readonly startTimer = this.timerService.countdown(() => this.state()?.raceStartsAt, { paused: () => this.matchService.hostPaused() });
   readonly raceTimer = this.timerService.countdown(() => (this.state()?.stage === 'racing' ? this.state()?.raceEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
   });
   readonly raceStarted = computed(() => this.startTimer.remainingMs() <= 0);

@@ -62,6 +62,7 @@ export class CrossyComponent implements AfterViewInit, OnDestroy {
 
   readonly startTimer = this.timerService.countdown(() => this.state()?.startsAt);
   readonly playTimer = this.timerService.countdown(() => (this.state()?.stage === 'playing' ? this.state()?.endsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 40000,
   });
@@ -112,11 +113,35 @@ export class CrossyComponent implements AfterViewInit, OnDestroy {
       .sort((first, second) => Number(second.finished) - Number(first.finished) || second.best - first.best);
   });
 
+  /** Fuera de juego (atropellado, en la meta o sin jugar): se puede ver a los que siguen en carrera. */
+  readonly spectateOut = computed(
+    () => this.state()?.stage === 'playing' && this.started() && (this.isPlayer() ? Boolean(this.dead()) || this.finished() : true),
+  );
+  /** A quien se puede espectar: solo los que siguen vivos y sin llegar a la meta (en el orden de la partida). */
+  readonly spectatable = computed(() => {
+    const status = new Map(this.standings().map((row) => [row.playerId, row]));
+    return (this.matchService.match()?.specialRound?.participantIds || []).filter((playerId) => {
+      const row = status.get(playerId);
+      return playerId !== this.currentPlayerId && row && !row.dead && !row.finished;
+    });
+  });
+  /** Gallina que se esta espectando (null = la propia). */
+  readonly spectateId = signal<string | null>(null);
+  readonly spectateName = computed(() => {
+    const id = this.spectateId();
+    return id ? this.matchService.playerName(id) : '';
+  });
+  private spectateTimer = 0;
+
   readonly statusText = computed(() => {
     const state = this.state();
 
     if (!state || state.stage === 'finished') {
       return 'Fin de Cruza la carretera.';
+    }
+
+    if (this.spectateOut() && this.spectateId() && !this.spectatable().includes(this.spectateId()!)) {
+      return `${this.spectateName()} ya no está en carrera.`;
     }
 
     if (!this.started()) {
@@ -212,6 +237,36 @@ export class CrossyComponent implements AfterViewInit, OnDestroy {
     });
 
     effect(() => {
+      // Espectador: al caer (o llegar a la meta) la camara se queda ahi 2 s y despues pasa a otro jugador vivo.
+      // Lo mismo si cae (o llega) aquel al que se esta viendo.
+      const out = this.spectateOut();
+      const candidates = this.spectatable();
+      const current = this.spectateId();
+
+      untracked(() => {
+        if (!out || this.spectateTimer || (current !== null && candidates.includes(current)) || !candidates.length) {
+          return;
+        }
+
+        this.spectateTimer = window.setTimeout(
+          () => {
+            this.spectateTimer = 0;
+            this.cycleSpectate(1);
+          },
+          current === null && !this.isPlayer() ? 0 : 2000,
+        );
+      });
+    });
+
+    effect(() => {
+      const followId = this.spectateId();
+
+      if (this.sceneReady()) {
+        untracked(() => this.scene?.setFollow(followId));
+      }
+    });
+
+    effect(() => {
       const outcome = this.state()?.outcome;
 
       if (outcome && !this.announcedFinal) {
@@ -242,9 +297,25 @@ export class CrossyComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    clearTimeout(this.spectateTimer);
     cancelAnimationFrame(this.frameHandle);
     this.scene?.dispose();
     this.scene = undefined;
+  }
+
+  /** Flechas del espectador: siguiente o anterior jugador que sigue en carrera. */
+  cycleSpectate(step: 1 | -1): void {
+    const candidates = this.spectatable();
+
+    if (!candidates.length) {
+      return;
+    }
+
+    clearTimeout(this.spectateTimer);
+    this.spectateTimer = 0;
+    const index = candidates.indexOf(this.spectateId() || '');
+    const nextIndex = index < 0 ? (step > 0 ? 0 : candidates.length - 1) : (index + step + candidates.length) % candidates.length;
+    this.spectateId.set(candidates[nextIndex]);
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -252,6 +323,17 @@ export class CrossyComponent implements AfterViewInit, OnDestroy {
     const direction = KEYS[event.code];
 
     if (!direction) {
+      return;
+    }
+
+    // Espectando, izquierda y derecha cambian de jugador.
+    if (this.spectateOut() && (direction === 'left' || direction === 'right')) {
+      event.preventDefault();
+
+      if (!event.repeat) {
+        this.cycleSpectate(direction === 'right' ? 1 : -1);
+      }
+
       return;
     }
 

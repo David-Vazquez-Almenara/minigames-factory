@@ -40,6 +40,7 @@ export class RussianComponent implements AfterViewInit, OnDestroy {
   private readonly now = signal(performance.now());
 
   readonly decideTimer = this.timerService.countdown(() => (this.state()?.stage === 'deciding' ? this.state()?.decideEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 15000,
   });

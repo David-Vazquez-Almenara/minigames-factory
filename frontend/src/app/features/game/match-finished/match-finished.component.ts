@@ -96,9 +96,14 @@ export class MatchFinishedComponent implements OnDestroy {
   }));
 
   constructor() {
-    inject(AudioService).playEffect('victory');
+    const audioService = inject(AudioService);
+    audioService.playEffect('victory');
     this.timers.push(
-      setTimeout(() => this.phase.set('losers'), PODIUM_MS),
+      setTimeout(() => {
+        this.phase.set('losers');
+        // Al salir el "maricon del dia", el sonido de perder.
+        audioService.playFileEffect('lose');
+      }, PODIUM_MS),
       setTimeout(() => this.showPodium.set(false), PODIUM_MS + SLIDE_MS + 100),
       setTimeout(() => this.phase.set('actions'), PODIUM_MS + LOSERS_BEFORE_ACTIONS_MS),
     );

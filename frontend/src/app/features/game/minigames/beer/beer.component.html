@@ -13,6 +13,9 @@
 
   <header class="top-bar">
     <span class="pill title">Jarras en la barra</span>
+    @if (state(); as beer) {
+    <span class="pill">Ronda <b>{{ beer.round || 1 }}</b> de {{ beer.totalRounds }}</span>
+    }
     <span class="pill">Barra de <b>{{ lengthText() }} m</b></span>
     @if (state()?.stage === 'aiming' && aiming()) {
     <span class="pill timer" [class.hurry]="aimTimer.seconds() <= 3">{{ aimTimer.seconds() }}s</span>
@@ -25,6 +28,21 @@
     <span>{{ second }}</span>
     }
   </div>
+  }
+
+  <!-- Suma de lo que cada uno se ha quedado del borde en las rondas jugadas (menos es mejor). -->
+  @if (standings().length && !state()?.outcome) {
+  <aside class="standings" aria-label="Clasificación acumulada">
+    <b class="head">Del borde (total)</b>
+    @for (row of standings(); track row.playerId; let index = $index) {
+    <div class="row" [class.mine]="row.mine">
+      <span>{{ index + 1 }}</span>
+      <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.name" [color]="row.colorId" [size]="20" />
+      <b class="name">{{ row.mine ? 'Tú' : row.name }}</b>
+      <span>{{ row.total }} m{{ row.falls ? ' · ✖' + row.falls : '' }}</span>
+    </div>
+    }
+  </aside>
   }
 
   <footer class="dock" [class.hidden]="!!state()?.outcome">
@@ -48,11 +66,11 @@
   <div class="results-overlay">
     <section class="results-card" aria-label="Resultado de las jarras">
       <h2>Resultados</h2>
-      <p class="hint">La barra medía {{ lengthText() }} m. Gana la jarra más cerca del borde.</p>
+      <p class="hint">Suma de lo que se quedó cada jarra del borde en las 3 rondas (tirarla cuenta {{ lengthText() }} m). Cada jarra tirada, −{{ state()?.fallPenalty }}.</p>
       <ol>
         @for (row of ranking(); track row.playerId) {
-        <li [class.mine]="row.mine" [class.fell]="row.fell">
-          <span class="pos">{{ row.fell ? '✖' : row.position + 'º' }}</span>
+        <li [class.mine]="row.mine" [class.fell]="row.falls > 0">
+          <span class="pos">{{ row.position }}º</span>
           <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
           <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
           <span class="what">{{ row.detail }}</span>

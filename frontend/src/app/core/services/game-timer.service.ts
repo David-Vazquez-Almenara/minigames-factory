@@ -1,7 +1,11 @@
 import { DestroyRef, Injectable, Signal, computed, effect, inject, signal, untracked } from '@angular/core';
+import { AudioService } from './audio.service';
 import { SocketService } from './socket.service';
 
 const TICK_MS = 200;
+// Aviso de los ultimos segundos: un pitido por segundo desde 5; los 3 ultimos, mas agudos.
+const BEEP_FROM_SECONDS = 5;
+const BEEP_URGENT_SECONDS = 3;
 
 export interface GameCountdown {
   /** Segundos restantes redondeados hacia arriba, listos para mostrar. */
@@ -21,6 +25,8 @@ export interface CountdownOptions {
   onExpire?: () => void;
   /** Los plazos locales usan Date.now(); los del servidor, el reloj sincronizado (por defecto). */
   clock?: 'server' | 'local';
+  /** Pitidos en los 5 ultimos segundos (5 y 4 suaves; 3, 2 y 1 mas agudos). Para los contadores de los minijuegos. */
+  beep?: boolean;
 }
 
 /**
@@ -30,6 +36,7 @@ export interface CountdownOptions {
 @Injectable({ providedIn: 'root' })
 export class GameTimerService {
   private readonly socketService = inject(SocketService);
+  private readonly audioService = inject(AudioService);
   private readonly tick = signal(Date.now());
   private subscribers = 0;
   private handle?: ReturnType<typeof setInterval>;
@@ -76,6 +83,26 @@ export class GameTimerService {
       expiredDeadline = target;
       untracked(() => options.onExpire?.());
     });
+
+    if (options.beep) {
+      // Un pitido al entrar en cada uno de los 5 ultimos segundos (una sola vez por plazo y segundo).
+      let lastBeep = '';
+      effect(() => {
+        const target = deadline();
+        const second = seconds();
+
+        if (!target || second < 1 || second > BEEP_FROM_SECONDS || frozenRemaining() !== null) {
+          return;
+        }
+
+        const key = `${target}:${second}`;
+
+        if (key !== lastBeep) {
+          lastBeep = key;
+          untracked(() => this.audioService.playSfx('tic', { rate: second <= BEEP_URGENT_SECONDS ? 1.5 : 1 }));
+        }
+      });
+    }
 
     return { seconds, remainingMs, progress };
   }

@@ -33,6 +33,7 @@ export class CupsComponent implements AfterViewInit, OnDestroy {
   readonly localPick = signal<{ round: number; slot: number } | null>(null);
 
   readonly voteTimer = this.timerService.countdown(() => (this.state()?.stage === 'voting' ? this.state()?.voteEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 15000,
   });

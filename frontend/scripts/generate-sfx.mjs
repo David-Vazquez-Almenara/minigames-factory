@@ -96,6 +96,13 @@ function bell(out, start, { frequency, seconds = 0.4, decay = 0.12, gain = 0.4, 
 
 const SOUNDS = {
   // --- Interfaz -------------------------------------------------------------------------------
+  // Pitido de los ultimos segundos de un contador (se reproduce mas agudo en los 3 ultimos).
+  tic: () => {
+    const out = buffer(0.2);
+    toneHit(out, 0, { seconds: 0.18, from: 880, attack: 0.003, decay: 0.06, gain: 0.7 });
+    toneHit(out, 0, { seconds: 0.12, shape: 'triangle', from: 1760, attack: 0.002, decay: 0.03, gain: 0.18 });
+    return out;
+  },
   // Click suave para cualquier boton de la interfaz.
   boton: () => {
     const out = buffer(0.09);
@@ -445,6 +452,57 @@ const SOUNDS = {
     const osc = oscillator('sine');
     layer(out, 0, 0.42, (t) => osc(430 * (1 + 0.4 * Math.exp(-7 * t) * Math.sin(TAU * 16 * t))) * env(t, 0.003, 0.12) * 0.7);
     noiseHit(out, 0, { seconds: 0.03, type: 'lowpass', from: 1200, decay: 0.008, gain: 0.4 });
+    return out;
+  },
+
+  // --- Patata caliente ------------------------------------------------------------------------
+  // Explosion: estallido, golpe muy grave y estruendo que se apaga con cascotes cayendo.
+  explosion: () => {
+    const out = buffer(2.2);
+    noiseHit(out, 0, { seconds: 0.12, type: 'highpass', from: 1800, attack: 0.0005, decay: 0.03, gain: 1 });
+    toneHit(out, 0, { seconds: 0.9, from: 75, to: 28, attack: 0.002, decay: 0.28, gain: 1 });
+    noiseHit(out, 0, { seconds: 2.1, type: 'lowpass', from: 2600, to: 160, q: 0.7, attack: 0.004, decay: 0.55, gain: 1 });
+    [0.35, 0.52, 0.7, 0.95, 1.2].forEach((start, index) =>
+      noiseHit(out, start, { seconds: 0.08, type: 'lowpass', from: 1600 - index * 150, decay: 0.02, gain: 0.25 - index * 0.03 }),
+    );
+    return out;
+  },
+  // Mecha encendida: chisporroteo corto (se repite mientras alguien tiene la bomba).
+  mecha: () => {
+    const out = buffer(0.7);
+    const filter = biquad('highpass', 0.8);
+    layer(out, 0, 0.7, (t, p) => filter(white() * (random() < 0.08 ? 2.4 : 0.6), 4200) * clamp01(t / 0.03) * clamp01((1 - p) / 0.1) * 0.5);
+    return out;
+  },
+  // Palabra no valida: zumbido grave doble.
+  error: () => {
+    const out = buffer(0.42);
+    [0, 0.2].forEach((start) => toneHit(out, start, { seconds: 0.16, shape: 'square', from: 170, to: 150, attack: 0.003, decay: 0.08, gain: 0.45 }));
+    return out;
+  },
+  // La bomba cae en las manos: golpe blando.
+  atrapar: () => {
+    const out = buffer(0.2);
+    toneHit(out, 0, { seconds: 0.16, from: 210, to: 120, attack: 0.001, decay: 0.04, gain: 0.8 });
+    noiseHit(out, 0, { seconds: 0.06, type: 'lowpass', from: 1400, decay: 0.015, gain: 0.5 });
+    return out;
+  },
+
+  // --- Canon ----------------------------------------------------------------------------------
+  // Canonazo: golpe seco muy grave y bocanada de humo.
+  canonazo: () => {
+    const out = buffer(1.4);
+    noiseHit(out, 0, { seconds: 0.05, type: 'highpass', from: 2200, attack: 0.0005, decay: 0.01, gain: 0.9 });
+    toneHit(out, 0, { seconds: 0.6, from: 95, to: 32, attack: 0.001, decay: 0.16, gain: 1 });
+    noiseHit(out, 0, { seconds: 1.3, type: 'lowpass', from: 1800, to: 200, attack: 0.003, decay: 0.32, gain: 0.85 });
+    return out;
+  },
+  // Bala de canon cortando el aire: silbido que baja.
+  silbido: () => {
+    const out = buffer(0.9);
+    const osc = oscillator('sine');
+    layer(out, 0, 0.88, (t, p) => osc(expLerp(1500, 520, p)) * clamp01(t / 0.08) * clamp01((1 - p) / 0.15) * 0.45);
+    noiseHit(out, 0, { seconds: 0.85, from: 3000, to: 900, q: 1.5, attack: 0.1, decay: 0.4, gain: 0.3 });
     return out;
   },
 };

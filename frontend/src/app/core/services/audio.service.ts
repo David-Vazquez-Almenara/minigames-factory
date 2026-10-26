@@ -61,7 +61,14 @@ export type SfxName =
   | 'tambor'
   | 'martillo'
   | 'recarga'
-  | 'bala';
+  | 'bala'
+  | 'tic'
+  | 'explosion'
+  | 'mecha'
+  | 'error'
+  | 'atrapar'
+  | 'canonazo'
+  | 'silbido';
 
 /** Control de un efecto en curso (para cortarlo, p. ej. el silbido del barril al frenarlo). */
 export interface SfxHandle {
@@ -154,6 +161,13 @@ const SFX_GAIN: Record<SfxName, number> = {
   martillo: 0.7,
   recarga: 0.7,
   bala: 0.85,
+  tic: 0.75,
+  explosion: 1.2,
+  mecha: 0.35,
+  error: 0.6,
+  atrapar: 0.7,
+  canonazo: 1.1,
+  silbido: 0.6,
 };
 const SFX_NAMES = Object.keys(SFX_GAIN) as SfxName[];
 // Si un efecto aun no se ha descargado al pedirlo, solo se reproduce si llega a tiempo (si no, ya no viene a cuento).

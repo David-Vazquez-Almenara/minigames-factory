@@ -62,6 +62,7 @@ export class PinturilloComponent implements OnDestroy {
 
   readonly startTimer = this.timerService.countdown(() => this.state()?.startsAt, { paused: () => this.matchService.hostPaused() });
   readonly drawTimer = this.timerService.countdown(() => (this.state()?.stage === 'drawing' ? this.state()?.endsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
   });
   readonly started = computed(() => this.startTimer.remainingMs() <= 0);

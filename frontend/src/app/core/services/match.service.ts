@@ -30,6 +30,9 @@ export class MatchService {
   readonly pinturilloFrame = this.socketService.pinturilloFrame;
   readonly lastPogoJump = this.socketService.lastPogoJump;
   readonly crossyPositions = this.socketService.crossyPositions;
+  readonly bombermanMoves = this.socketService.bombermanMoves;
+  readonly snakeMoves = this.socketService.snakeMoves;
+  readonly raceSamples = this.socketService.raceSamples;
 
   readonly totalPlayers = computed(() => this.match()?.totalPlayers || 0);
   readonly hostPaused = computed(() => Boolean(this.match()?.hostPaused));
@@ -206,7 +209,7 @@ export class MatchService {
     return this.socketService.towerProgress(lobbyId, level, state);
   }
 
-  golfShot(lobbyId: string, round: number, shot: { angle: number; power: number; holed: boolean; distance: number }) {
+  golfShot(lobbyId: string, round: number, shot: { angle: number; power: number; holed: boolean; distance: number; rollMs: number }) {
     return this.socketService.golfShot(lobbyId, round, shot);
   }
 
@@ -234,12 +237,52 @@ export class MatchService {
     return this.socketService.russianAction(lobbyId, turnNumber, action);
   }
 
+  bombWord(lobbyId: string, turn: number, word: string, usedMs: number) {
+    return this.socketService.bombWord(lobbyId, turn, word, usedMs);
+  }
+
+  bombBoom(lobbyId: string, turn: number) {
+    return this.socketService.bombBoom(lobbyId, turn);
+  }
+
+  cannonPick(lobbyId: string, round: number, zone: number) {
+    return this.socketService.cannonPick(lobbyId, round, zone);
+  }
+
+  racePosition(lobbyId: string, x: number, y: number, a: number, p: number, i: number, c: number, s: number) {
+    this.socketService.racePosition(lobbyId, x, y, a, p, i, c, s);
+  }
+
+  raceFinish(lobbyId: string, timeMs: number) {
+    return this.socketService.raceFinish(lobbyId, timeMs);
+  }
+
+  snakeMove(lobbyId: string, x: number, y: number, s: number) {
+    this.socketService.snakeMove(lobbyId, x, y, s);
+  }
+
+  snakeDead(lobbyId: string) {
+    return this.socketService.snakeDead(lobbyId);
+  }
+
+  bombermanMove(lobbyId: string, x: number, y: number, s: number) {
+    this.socketService.bombermanMove(lobbyId, x, y, s);
+  }
+
+  bombermanBomb(lobbyId: string, x: number, y: number, placedAt: number) {
+    return this.socketService.bombermanBomb(lobbyId, x, y, placedAt);
+  }
+
+  bombermanDead(lobbyId: string, at: number) {
+    return this.socketService.bombermanDead(lobbyId, at);
+  }
+
   quizAnswer(lobbyId: string, round: number, choice: number) {
     return this.socketService.quizAnswer(lobbyId, round, choice);
   }
 
-  pushAim(lobbyId: string, round: number, vx: number, vy: number) {
-    return this.socketService.pushAim(lobbyId, round, vx, vy);
+  pushAim(lobbyId: string, round: number, vx: number, vy: number, confirm: boolean) {
+    return this.socketService.pushAim(lobbyId, round, vx, vy, confirm);
   }
 
   pushResult(lobbyId: string, result: Parameters<SocketService['pushResult']>[1]) {
@@ -254,8 +297,8 @@ export class MatchService {
     return this.socketService.releaseSwing(lobbyId, turnIndex, angle, dir);
   }
 
-  throwBeer(lobbyId: string, power: number) {
-    return this.socketService.throwBeer(lobbyId, power);
+  throwBeer(lobbyId: string, power: number, round: number) {
+    return this.socketService.throwBeer(lobbyId, power, round);
   }
 
   stopStopwatch(lobbyId: string, round: number, elapsedMs: number) {

@@ -55,6 +55,7 @@ export class JavelinBoard {
   private drag: { startX: number; startY: number; x: number; y: number } | null = null;
   private aiming = false;
   private zoomOut = false;
+  private spectate = false;
   private camera: Camera = { x: VIEW_WIDTH / 2 - 4, y: 4, scale: 30 };
   private insets = { top: 70, bottom: 110 };
   private lastFrame = performance.now();
@@ -113,6 +114,11 @@ export class JavelinBoard {
   /** Al final, la camara se aleja para ver todas las jabalinas y la bandera. */
   setZoomOut(zoomOut: boolean): void {
     this.zoomOut = zoomOut;
+  }
+
+  /** Sin tiros propios pendientes: camara abierta para ir viendo en directo como lanzan los demas. */
+  setSpectate(spectate: boolean): void {
+    this.spectate = spectate;
   }
 
   setInsets(top: number, bottom: number): void {
@@ -218,12 +224,28 @@ export class JavelinBoard {
       return { x: Math.max(this.restCamera().x, point.x), y: Math.max(terrainHeight(this.map, point.x) + 2.5, point.y - 1), scale };
     }
 
+    if (this.spectate) {
+      // De la jabalina mas cercana a la mas lejana (y la bandera), con las ya clavadas. Las que vuelan solo
+      // estiran el encuadre hacia delante segun avanzan (sin desvelar antes de tiempo donde van a caer).
+      const landed = this.shots.filter((shot) => now >= shot.startedAt + shot.flight.time * 1000).map((shot) => shot.flight.landX);
+      const nearest = Math.min(this.flagX, ...landed);
+      const flying = this.shots
+        .filter((shot) => now >= shot.startedAt && now < shot.startedAt + shot.flight.time * 1000)
+        .map((shot) => flightPoint(shot.flight, (now - shot.startedAt) / 1000).x)
+        .filter((x) => x > nearest);
+      return this.frameCamera([this.flagX, ...landed, ...flying]);
+    }
+
     return this.restCamera();
   }
 
   /** Encuadre final: desde la jabalina mas atrasada hasta la mas lejana (y la bandera). */
   private zoomCamera(): Camera {
-    const xs = [this.flagX, ...this.shots.map((shot) => shot.flight.landX)];
+    return this.frameCamera([this.flagX, ...this.shots.map((shot) => shot.flight.landX)]);
+  }
+
+  /** Camara que abarca todas las posiciones x indicadas (con margen) y el terreno entre ellas. */
+  private frameCamera(xs: number[]): Camera {
     const minX = Math.min(...xs) - 3;
     const maxX = Math.max(...xs) + 3;
     const heights: number[] = [];
@@ -257,7 +279,7 @@ export class JavelinBoard {
     const delta = Math.min(0.05, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
     const target = this.targetCamera(now);
-    const ease = Math.min(1, delta * (this.zoomOut ? 2.2 : 5));
+    const ease = Math.min(1, delta * (this.zoomOut || this.spectate ? 2.2 : 5));
     this.camera = {
       x: this.camera.x + (target.x - this.camera.x) * ease,
       y: this.camera.y + (target.y - this.camera.y) * ease,

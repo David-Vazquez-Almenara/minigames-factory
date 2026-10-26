@@ -43,13 +43,13 @@ export interface PushResult {
 /** Redondeo de los impulsos que viajan por la red (todos simulan con el valor redondeado). */
 export const roundImpulse = (value: number) => Math.round(value * 10000) / 10000;
 
-/** Disco completamente fuera de la pista. */
-export function isOut(x: number, y: number): boolean {
-  const limit = ARENA_RADIUS + DISC_RADIUS;
+/** Disco completamente fuera de la pista (que va encogiendo: se pasa su radio de la ronda). */
+export function isOut(x: number, y: number, arenaRadius = ARENA_RADIUS): boolean {
+  const limit = arenaRadius + DISC_RADIUS;
   return x * x + y * y > limit * limit;
 }
 
-export function simulatePush(bodies: PushBody[], impulses: PushImpulse[]): PushResult {
+export function simulatePush(bodies: PushBody[], impulses: PushImpulse[], arenaRadius = ARENA_RADIUS): PushResult {
   const count = bodies.length;
   const ids = bodies.map((body) => body.playerId);
   const px = bodies.map((body) => body.x);
@@ -131,7 +131,7 @@ export function simulatePush(bodies: PushBody[], impulses: PushImpulse[]): PushR
         vy[index] *= slowed;
       }
 
-      if (isOut(px[index], py[index])) {
+      if (isOut(px[index], py[index], arenaRadius)) {
         active[index] = false;
         falls.push({ playerId: ids[index], step, x: px[index], y: py[index], vx: vx[index], vy: vy[index] });
         continue;
@@ -168,8 +168,8 @@ export function simulatePush(bodies: PushBody[], impulses: PushImpulse[]): PushR
 }
 
 /** Donde acabaria un disco con ese impulso si no chocara con nadie (el circulito de la vista previa). */
-export function predictStop(body: PushBody, vx: number, vy: number): { x: number; y: number } {
-  const result = simulatePush([body], [{ playerId: body.playerId, vx, vy }]);
+export function predictStop(body: PushBody, vx: number, vy: number, arenaRadius = ARENA_RADIUS): { x: number; y: number } {
+  const result = simulatePush([body], [{ playerId: body.playerId, vx, vy }], arenaRadius);
   const last = result.frames[result.frames.length - 1];
   const fall = result.falls[0];
   // Si se sale, se marca el sitio por donde cae.

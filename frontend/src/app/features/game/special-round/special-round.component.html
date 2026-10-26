@@ -7,8 +7,11 @@
   @if (stage() === 'explanation') {
   <section class="special-explanation" aria-live="polite">
     <h2>{{ specialRound()?.title || 'Minijuego' }}</h2>
+    <!-- Con "sin descripciones" solo se ve el nombre del minijuego. -->
+    @if (!specialRound()?.skipDescription) {
     <p>{{ specialRound()?.description }}</p>
     <div class="pacman-timer" [style.--timer-progress]="explanationTimer.progress()"></div>
+    }
   </section>
   }
 
@@ -167,6 +170,41 @@
       @case ('russian') {
       @defer (on immediate) {
       <app-russian />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('bomb') {
+      @defer (on immediate) {
+      <app-bomb />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('cannon') {
+      @defer (on immediate) {
+      <app-cannon />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('bomberman') {
+      @defer (on immediate) {
+      <app-bomberman />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('snake') {
+      @defer (on immediate) {
+      <app-snake />
+      } @placeholder {
+      <p class="minigame-loading">Cargando minijuego…</p>
+      }
+      }
+      @case ('race') {
+      @defer (on immediate) {
+      <app-race />
       } @placeholder {
       <p class="minigame-loading">Cargando minijuego…</p>
       }

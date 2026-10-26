@@ -1,0 +1,96 @@
+<section class="race" #root aria-label="Minijuego Carrera">
+  <canvas #canvas class="world" aria-hidden="true"></canvas>
+
+  <!-- Minimapa arriba a la izquierda: el circuito entero y un punto por coche. -->
+  <div class="minimap">
+    <canvas #minimap aria-label="Minimapa"></canvas>
+  </div>
+
+  <header class="top-bar">
+    <span class="pill title">Carrera · {{ trackName() }}</span>
+    @if (state(); as race) {
+    @if (isPlayer()) {
+    <span class="pill">Vuelta <b>{{ lap() }}</b>/{{ race.laps }}</span>
+    <span class="pill checkpoint" [class.done]="checkpoint() >= checkpointCount()" title="Puntos de control de esta vuelta">
+      🚩 <b>{{ checkpoint() }}</b>/{{ checkpointCount() }}
+    </span>
+    <span class="pill">Pos. <b>{{ place() }}º</b>/{{ totalPlayers() }}</span>
+    }
+    @if (started()) {
+    <span class="pill time">{{ formatTime(finishedMs() ?? elapsedMs()) }}</span>
+    }
+    }
+  </header>
+
+  @if (lights(); as light) {
+  <div class="lights" [class.go]="light.go" aria-hidden="true">
+    @for (index of [1, 2, 3]; track index) {
+    <span [class.on]="light.go || index <= light.lit"></span>
+    }
+  </div>
+  @if (light.go) {
+  <div class="go-text">¡YA!</div>
+  }
+  }
+
+  @if (lapFlash()) {
+  <div class="flash">{{ lapFlash() }}</div>
+  }
+
+  @if (racing() && missedCheckpoint() !== null) {
+  <div class="warning">¡Te has saltado el control {{ missedCheckpoint() }}! Vuelve a por él</div>
+  } @else if (racing() && wrongWay()) {
+  <div class="warning">¡Sentido contrario!</div>
+  } @else if (racing() && respawning()) {
+  <div class="warning soft">Volviendo a la pista…</div>
+  }
+
+  @if (finishedMs() !== null && !state()?.outcome) {
+  <div class="banner">¡Meta! {{ formatTime(finishedMs()!) }}</div>
+  }
+
+  @if (isPlayer() && racing()) {
+  <div class="speed" aria-hidden="true"><b>{{ speedKmh() }}</b> km/h</div>
+  }
+
+  <!-- Mandos en pantalla: girar a la izquierda; acelerar y frenar a la derecha (se mantienen pulsados). -->
+  @if (isPlayer() && !state()?.outcome && finishedMs() === null) {
+  <div class="pad steer" [class.disabled]="!racing()">
+    <button type="button" data-sfx="off" aria-label="Izquierda" (pointerdown)="press('left', $event)" (pointerup)="release('left')" (pointerleave)="release('left')" (pointercancel)="release('left')" (contextmenu)="$event.preventDefault()">◀</button>
+    <button type="button" data-sfx="off" aria-label="Derecha" (pointerdown)="press('right', $event)" (pointerup)="release('right')" (pointerleave)="release('right')" (pointercancel)="release('right')" (contextmenu)="$event.preventDefault()">▶</button>
+  </div>
+  <div class="pad pedals" [class.disabled]="!racing()">
+    <button type="button" class="brake" data-sfx="off" aria-label="Frenar" (pointerdown)="press('brake', $event)" (pointerup)="release('brake')" (pointerleave)="release('brake')" (pointercancel)="release('brake')" (contextmenu)="$event.preventDefault()">▼</button>
+    <button type="button" class="gas" data-sfx="off" aria-label="Acelerar" (pointerdown)="press('gas', $event)" (pointerup)="release('gas')" (pointerleave)="release('gas')" (pointercancel)="release('gas')" (contextmenu)="$event.preventDefault()">▲</button>
+  </div>
+  }
+
+  <!-- Espectador: flechas para cambiar de coche (solo los que siguen corriendo). -->
+  @if (spectating() && racingOthers().length) {
+  <div class="spectator" role="group" aria-label="Modo espectador">
+    <button type="button" aria-label="Coche anterior" (click)="cycleSpectate(-1)">◀</button>
+    <span><small>Viendo a</small><b>{{ spectateId() ? spectateName() : '…' }}</b></span>
+    <button type="button" aria-label="Coche siguiente" (click)="cycleSpectate(1)">▶</button>
+  </div>
+  }
+
+  @if (ranking().length) {
+  <div class="results-overlay">
+    <section class="results-card" aria-label="Resultado de la Carrera">
+      <h2>Resultados</h2>
+      <p class="hint">30 puntos al primero y 0 al último en llegar; quien no termina a tiempo, {{ state()?.dnfPoints }}.</p>
+      <ol>
+        @for (row of ranking(); track row.playerId) {
+        <li [class.mine]="row.mine" [class.dnf]="!row.finished">
+          <span class="pos">{{ row.position }}º</span>
+          <app-player-avatar [avatarUrl]="row.avatarUrl" [name]="row.playerName" [color]="row.colorId" [size]="28" />
+          <b class="name">{{ row.playerName }}{{ row.mine ? ' (tú)' : '' }}</b>
+          <span class="what">{{ row.timeText }}</span>
+          <span class="points">{{ row.points > 0 ? '+' : '' }}{{ row.points }}</span>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+  }
+</section>

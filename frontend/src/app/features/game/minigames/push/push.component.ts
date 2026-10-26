@@ -39,10 +39,11 @@ export class PushComponent implements AfterViewInit, OnDestroy {
   private readonly now = signal(performance.now());
 
   readonly aimTimer = this.timerService.countdown(() => (this.state()?.stage === 'aiming' ? this.state()?.aimEndsAt : null), {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
     totalMs: 15000,
-    onExpire: () => this.autoConfirm(),
   });
+  private lastShrinkAt = 0;
   readonly startTimer = this.timerService.countdown(() => (this.state()?.stage === 'aiming' ? this.state()?.aimStartsAt : null));
   readonly launchTimer = this.timerService.countdown(() => (this.state()?.stage === 'launching' ? this.state()?.launchAt : null));
 
@@ -87,41 +88,14 @@ export class PushComponent implements AfterViewInit, OnDestroy {
     const aim = this.aim();
     return aim ? Math.round((Math.hypot(aim.vx, aim.vy) / (this.state()?.maxSpeed || 16)) * 100) : 0;
   });
+  /** Lo que queda de pista (en diametro) respecto a la inicial. */
+  readonly arenaPercent = computed(() => {
+    const state = this.state();
+    return state ? Math.round((state.arenaRadius / state.fullRadius) * 100) : 100;
+  });
   readonly launchCountdown = computed(() => {
     const remaining = this.launchTimer.remainingMs();
     return this.state()?.stage === 'launching' && remaining > 0 ? String(Math.ceil(remaining / 1000)) : '';
-  });
-
-  readonly statusText = computed(() => {
-    const state = this.state();
-
-    if (!state || state.stage === 'finished') {
-      return 'Fin de Empujar.';
-    }
-
-    if (state.stage === 'launching' && this.launchTimer.remainingMs() > 0) {
-      return '¡Preparados… todos salen a la vez!';
-    }
-
-    if (state.stage !== 'aiming') {
-      return this.isPlayer() && !this.amAlive() ? '¡Al agua! Mira cómo sigue la partida.' : '¡Empujones!';
-    }
-
-    if (this.startTimer.remainingMs() > 0) {
-      return `Ronda ${state.round} de ${state.totalRounds}: prepárate…`;
-    }
-
-    if (!this.isPlayer() || !this.amAlive()) {
-      return 'Los demás están eligiendo dirección y fuerza…';
-    }
-
-    if (this.confirmed()) {
-      return `Confirmado. Esperando al resto (${state.confirmedPlayerIds.length}/${this.aliveIds().length})…`;
-    }
-
-    return this.aim()
-      ? 'Puedes volver a arrastrar para rectificar. Cuando lo tengas, confirma.'
-      : 'Arrastra hacia atrás (como un tirachinas) para elegir dirección y fuerza.';
   });
 
   readonly ranking = computed(() =>
@@ -167,6 +141,15 @@ export class PushComponent implements AfterViewInit, OnDestroy {
     });
 
     effect(() => {
+      // Tamano de la pista, anillo rojo de la ronda siguiente y, al empezar ronda, el anillo que se hunde.
+      const state = this.state();
+
+      if (state) {
+        untracked(() => this.syncArena(state));
+      }
+    });
+
+    effect(() => {
       const aiming = this.canAim();
       untracked(() => this.board?.setAiming(aiming));
     });
@@ -187,7 +170,10 @@ export class PushComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.board = new PushBoard(this.canvasRef().nativeElement, this.hostRef().nativeElement);
-    this.board.onAim = (vx, vy) => this.aim.set(Math.hypot(vx, vy) > 0 ? { vx, vy } : null);
+    this.board.onAim = (vx, vy) => {
+      this.aim.set(Math.hypot(vx, vy) > 0 ? { vx, vy } : null);
+      this.saveDraft(vx, vy);
+    };
     this.board.onHit = (strength) => {
       const now = performance.now();
 
@@ -199,6 +185,11 @@ export class PushComponent implements AfterViewInit, OnDestroy {
     this.board.onFall = () => this.audioService.playSfx('chapuzon');
     this.board.setDiscs(this.discs());
     this.board.setAiming(this.canAim());
+
+    if (this.state()) {
+      this.syncArena(this.state()!);
+    }
+
     this.insetObserver = new ResizeObserver(() => this.updateInsets());
 
     for (const element of [this.hostRef(), this.topBarRef(), this.dockRef()]) {
@@ -239,21 +230,58 @@ export class PushComponent implements AfterViewInit, OnDestroy {
     this.confirmedRound.set(state.round);
     this.board?.setAiming(false);
     this.audioService.playSfx('voto');
-    void this.matchService.pushAim(lobbyId, state.round, vx, vy);
+    void this.matchService.pushAim(lobbyId, state.round, vx, vy, true);
   }
 
   clearAim(): void {
     if (this.canAim()) {
       this.aim.set(null);
       this.board?.setAim(null);
+      this.saveDraft(0, 0);
     }
   }
 
-  /** Si se acaba el tiempo con una direccion elegida pero sin confirmar, se envia esa. */
-  private autoConfirm(): void {
-    if (this.aim() && this.canAim()) {
-      this.confirm();
+  /**
+   * Direccion elegida pero sin confirmar: se guarda en el servidor como borrador, asi si se acaba el tiempo sale con
+   * esa (aunque no se haya pulsado "Confirmar").
+   */
+  private saveDraft(vx: number, vy: number): void {
+    const state = this.state();
+    const lobbyId = this.matchService.match()?.lobbyId;
+
+    if (state && lobbyId && this.canAim()) {
+      void this.matchService.pushAim(lobbyId, state.round, roundImpulse(vx), roundImpulse(vy), false);
     }
+  }
+
+  private syncArena(state: NonNullable<ReturnType<typeof this.state>>): void {
+    const shrink = state.shrink;
+    let animation: { from: number; to: number; startAt: number } | null = null;
+
+    if (shrink) {
+      const startAt = performance.now() + (shrink.at - this.matchService.serverNow());
+      animation = { from: shrink.from, to: shrink.to, startAt };
+
+      // Las fichas que estaban en la zona roja se hunden con el anillo (una vez por encogimiento).
+      if (shrink.at !== this.lastShrinkAt) {
+        this.lastShrinkAt = shrink.at;
+        const sinking = state.players
+          .filter((player) => shrink.fallen.includes(player.playerId))
+          .map((player) => ({
+            playerId: player.playerId,
+            x: player.x,
+            y: player.y,
+            color: getPlayerColor(this.matchService.playerColor(player.playerId)).body,
+            image: this.imageFor(player.playerId),
+            mine: player.playerId === this.currentPlayerId,
+            name: this.matchService.playerName(player.playerId),
+            confirmed: false,
+          }));
+        this.board?.sink(sinking, startAt);
+      }
+    }
+
+    this.board?.setArena(state.arenaRadius, state.nextRadius, animation);
   }
 
   /** Fichas en pantalla: posicion de la ronda (la animacion la mueve el tablero). */
@@ -298,7 +326,7 @@ export class PushComponent implements AfterViewInit, OnDestroy {
 
     // Siempre desde las posiciones de salida de la ronda (no las finales, que pueden haber llegado ya).
     const bodies = state.launchBodies.map(({ playerId, x, y }) => ({ playerId, x, y }));
-    const result = simulatePush(bodies, state.impulses);
+    const result = simulatePush(bodies, state.impulses, state.arenaRadius);
     const startAt = performance.now() + (state.launchAt - this.matchService.serverNow());
     this.simulation.set({ round: state.round, result, startAt });
     this.board?.setAim(null);

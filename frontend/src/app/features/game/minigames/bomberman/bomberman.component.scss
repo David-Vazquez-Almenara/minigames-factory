@@ -1,0 +1,332 @@
+// Pantalla completa: ocupa toda la capa del minijuego y nada se sale de ella (sin barras de scroll).
+// Estetica pixel art: bordes rectos, sombras duras y letra monoespaciada.
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: #000;
+}
+
+.bomberman {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  font-weight: 900;
+  background-color: #1d2b1f;
+  user-select: none;
+  touch-action: none;
+}
+
+.board {
+  position: absolute;
+  inset: 0;
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* --------------------------------- HUD ---------------------------------- */
+
+.top-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 232px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  font-size: clamp(0.8rem, 1.5vw, 0.98rem);
+  color: #fff;
+  background-color: #263238;
+  border: 3px solid #000;
+  box-shadow: 3px 3px 0 #000;
+
+  b {
+    color: #ffe14d;
+  }
+
+  &.title {
+    color: #000;
+    text-transform: uppercase;
+    background-color: #c9f2c9;
+  }
+
+  &.timer.hurry {
+    background-color: #b3121c;
+  }
+}
+
+// Iconos pixel art hechos con CSS (bomba y llama).
+.icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  image-rendering: pixelated;
+}
+
+.bomb-icon {
+  background:
+    radial-gradient(circle at 6px 8px, #9aa2b4 0 1.5px, transparent 2px),
+    radial-gradient(circle at 7px 8px, #111 0 5.5px, transparent 6px),
+    linear-gradient(#ffb000, #ffb000) 10px 1px / 2px 2px no-repeat,
+    linear-gradient(#c9a46a, #c9a46a) 8px 3px / 2px 2px no-repeat;
+
+  &.big {
+    width: 34px;
+    height: 34px;
+    background:
+      radial-gradient(circle at 13px 19px, #9aa2b4 0 3px, transparent 3.5px),
+      radial-gradient(circle at 16px 19px, #111 0 12px, transparent 12.5px),
+      linear-gradient(#ffd23f, #ffd23f) 25px 2px / 5px 5px no-repeat,
+      linear-gradient(#c9a46a, #c9a46a) 20px 6px / 5px 4px no-repeat;
+  }
+}
+
+.fire-icon {
+  background:
+    linear-gradient(#fffbe0, #fffbe0) 6px 8px / 2px 3px no-repeat,
+    linear-gradient(#ffd23f, #ffd23f) 5px 6px / 4px 6px no-repeat,
+    linear-gradient(#ff7a00, #ff7a00) 3px 4px / 8px 9px no-repeat,
+    linear-gradient(#d6260c, #d6260c) 5px 1px / 4px 4px no-repeat;
+}
+
+.countdown {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  z-index: 4;
+  font-size: clamp(4rem, 14vw, 8rem);
+  color: #fff;
+  pointer-events: none;
+  text-shadow:
+    6px 6px 0 #000,
+    -3px -3px 0 #000,
+    3px -3px 0 #000,
+    -3px 3px 0 #000;
+  transform: translate(-50%, -50%);
+
+  &.go {
+    color: #ffe14d;
+  }
+}
+
+.banner {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  z-index: 4;
+  padding: 8px 16px;
+  color: #fff;
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  background-color: #b3121c;
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0 #000;
+  transform: translateX(-50%);
+}
+
+/* --------------------------------- Mandos -------------------------------- */
+
+// Cruceta abajo a la izquierda y boton de bomba abajo a la derecha.
+.controls {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  pointer-events: none;
+
+  &.disabled {
+    opacity: 0.45;
+  }
+
+  button {
+    font: inherit;
+    color: #fff;
+    cursor: pointer;
+    pointer-events: auto;
+    border: 4px solid #000;
+    box-shadow: 4px 4px 0 #000;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+      box-shadow: 1px 1px 0 #000;
+      transform: translate(3px, 3px);
+    }
+  }
+}
+
+.dpad {
+  display: grid;
+  grid-template-areas:
+    '. up .'
+    'left . right'
+    '. down .';
+  grid-template-columns: repeat(3, 54px);
+  grid-template-rows: repeat(3, 54px);
+  gap: 4px;
+
+  button {
+    font-size: 1.3rem;
+    background-color: #37474f;
+  }
+
+  .up {
+    grid-area: up;
+  }
+
+  .left {
+    grid-area: left;
+  }
+
+  .right {
+    grid-area: right;
+  }
+
+  .down {
+    grid-area: down;
+  }
+}
+
+.bomb-button {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  width: 104px;
+  height: 104px;
+  background-color: #d6260c;
+  border-radius: 0;
+
+  small {
+    font-size: 0.75rem;
+  }
+}
+
+/* ------------------------------ Resultados ------------------------------- */
+
+.results-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 72px 12px 24px;
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.results-card {
+  display: grid;
+  gap: 8px;
+  width: min(480px, 100%);
+  max-height: 100%;
+  padding: 14px;
+  overflow-y: auto;
+  color: #fff;
+  background-color: #263238;
+  border: 4px solid #000;
+  box-shadow: 6px 6px 0 #000;
+  animation: pop-in 420ms steps(6) both;
+
+  h2,
+  .hint {
+    margin: 0;
+    text-align: center;
+  }
+
+  h2 {
+    color: #ffe14d;
+    text-transform: uppercase;
+  }
+
+  .hint {
+    font-size: 0.78rem;
+  }
+
+  ol {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 30px auto 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    color: #000;
+    background-color: #eceff1;
+    border: 3px solid #000;
+
+    &.mine {
+      background-color: #c9f2c9;
+    }
+
+    &.dead .what {
+      color: #b00020;
+    }
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .what {
+    font-size: 0.75rem;
+  }
+
+  .points {
+    color: #10752c;
+  }
+}
+
+@media (max-width: 640px) {
+  .top-bar {
+    top: 96px;
+    left: 12px;
+    justify-content: center;
+  }
+
+  .banner {
+    top: 150px;
+  }
+
+  .dpad {
+    grid-template-columns: repeat(3, 50px);
+    grid-template-rows: repeat(3, 50px);
+  }
+
+  .bomb-button {
+    width: 92px;
+    height: 92px;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}

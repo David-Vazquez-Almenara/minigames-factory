@@ -96,6 +96,7 @@ export class TenButComponent implements OnDestroy {
   readonly answeredCount = computed(() => this.guessers().filter((guesser) => guesser.answered).length);
 
   readonly answerTimer = this.timerService.countdown(() => this.state()?.answerEndsAt, {
+    beep: true,
     paused: () => this.matchService.hostPaused(),
   });
 

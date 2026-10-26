@@ -56,6 +56,7 @@ export class GameSetupFlowComponent implements OnInit {
   });
 
   readonly enabledMinigameCount = computed(() => this.resolvedEnabledMinigames().length);
+  readonly allMinigamesEnabled = computed(() => this.minigameCatalog().length > 0 && this.minigameCatalog().every((minigame) => this.isMinigameEnabled(minigame.id)));
   readonly canContinueCreate = computed(
     () => !this.loading() && (this.enabledMinigameCount() > 0 || !this.minigameCatalog().length),
   );
@@ -244,8 +245,17 @@ export class GameSetupFlowComponent implements OnInit {
     this.patchSettings({ rounds: Number(value) });
   }
 
+  updateSkipDescriptions(skip: boolean): void {
+    this.patchSettings({ skipDescriptions: skip });
+  }
+
   isMinigameEnabled(minigameId: string): boolean {
     return this.resolvedEnabledMinigames().includes(minigameId);
+  }
+
+  /** Boton de la configuracion: si estan todos activos los desactiva todos; si no, los activa todos. */
+  toggleAllMinigames(): void {
+    this.patchSettings({ enabledMinigames: this.allMinigamesEnabled() ? [] : this.minigameCatalog().map((minigame) => minigame.id) });
   }
 
   toggleMinigame(minigameId: string, enabled: boolean): void {

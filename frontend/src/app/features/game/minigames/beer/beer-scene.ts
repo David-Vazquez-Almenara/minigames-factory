@@ -21,6 +21,8 @@ export interface BeerSceneJug {
 }
 
 export interface BeerSceneState {
+  /** Ronda actual: al cambiar, todas las jarras vuelven enteras a la salida. */
+  round: number;
   jugs: BeerSceneJug[];
   /** Momento (reloj performance.now) en que salen todas las jarras a la vez. */
   slideStartsAt: number | null;
@@ -93,6 +95,7 @@ export class BeerScene {
   }
 
   sync(state: BeerSceneState): void {
+    const newRound = state.round !== this.state.round;
     this.state = state;
 
     for (const data of state.jugs) {
@@ -100,6 +103,14 @@ export class BeerScene {
 
       if (jug) {
         jug.data = data;
+
+        // Ronda nueva: jarra nueva en la salida (las rotas o caidas vuelven a estar sobre la barra).
+        if (newRound) {
+          jug.falling = null;
+          jug.landed = false;
+          jug.group.rotation.set(0, 0, 0);
+          jug.group.position.set(jug.lane * LANE_GAP, COUNTER_TOP, this.startZ(jug.row));
+        }
       }
     }
   }

@@ -55,6 +55,7 @@ export class PaintComponent {
   private readonly phaseTimer = inject(GameTimerService).countdown(
     () => (this.phase() === 'drawing' ? this.specialRound()?.paintEndsAt : this.specialRound()?.paintVoteEndsAt),
     {
+      beep: true,
       paused: () => this.matchService.hostPaused(),
       onExpire: () => {
         if (this.phase() === 'drawing' && !this.submitted()) {
